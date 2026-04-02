@@ -1,132 +1,148 @@
 <template>
-  <nav class="topnav">
-    <div class="logo">
-      <div class="logo-icon">☀️</div>
-      <div>
-        <div class="logo-text">SolarMap Melbourne</div>
-        <div class="logo-sub">3D City Solar Potential</div>
-      </div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-stats">
-      <div class="nav-stat">
-        <span class="nav-stat-val">{{ buildingCount.toLocaleString() }}</span>
-        <span class="nav-stat-label">Buildings</span>
-      </div>
-      <div class="nav-stat"><span class="nav-stat-val">169K m²</span><span class="nav-stat-label">Usable Rooftop</span></div>
-      <div class="nav-stat"><span class="nav-stat-val">37.9 GWh</span><span class="nav-stat-label">Est. Annual Yield</span></div>
-      <div class="nav-stat"><span class="nav-stat-val">237</span><span class="nav-stat-label">High Potential</span></div>
-    </div>
-    <div class="nav-spacer"></div>
-    <div class="nav-badge">Iteration 1 · MVP</div>
-  </nav>
+  <!-- Password gate -->
+  <PasswordView v-if="view === 'password'" @authenticated="view = 'home'" />
 
-  <div class="main">
-    <div id="map">
-      <div v-if="isLoading" class="loading">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">{{ loadingText }}</div>
-      </div>
-      <div class="map-controls">
-        <div class="control-card">
-          <div class="control-title">Solar Potential</div>
-          <div class="legend-items">
-            <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div>High (score ≥ 60)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#EAB308"></div>Medium (30–59)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#DC2626"></div>Low (&lt; 30)</div>
-          </div>
-        </div>
-        <div class="control-card">
-          <div class="control-title">Filter by Roof Type</div>
-          <div class="filter-group">
-            <button
-              v-for="f in filters"
-              :key="f.type"
-              class="filter-btn"
-              :class="{ active: activeFilter === f.type }"
-              @click="filterRoof(f.type)"
-            >
-              <span class="filter-dot" :style="{ background: f.color }"></span>
-              {{ f.label }}
-            </button>
-          </div>
+  <!-- Home / landing page -->
+  <HomeView v-else-if="view === 'home'" @enter-map="view = 'map'" />
+
+  <!-- Map application -->
+  <template v-else>
+    <nav class="topnav">
+      <div class="logo">
+        <div class="logo-icon"><img :src="logoUrl" alt="SolarMap logo" /></div>
+        <div>
+          <div class="logo-text">SolarMap Melbourne</div>
+          <div class="logo-sub">3D City Solar Potential</div>
         </div>
       </div>
+      <div class="nav-divider"></div>
+      <div class="nav-stats">
+        <div class="nav-stat">
+          <span class="nav-stat-val">{{ buildingCount.toLocaleString() }}</span>
+          <span class="nav-stat-label">Buildings</span>
+        </div>
+        <div class="nav-stat"><span class="nav-stat-val">169K m²</span><span class="nav-stat-label">Usable Rooftop</span></div>
+        <div class="nav-stat"><span class="nav-stat-val">37.9 GWh</span><span class="nav-stat-label">Est. Annual Yield</span></div>
+        <div class="nav-stat"><span class="nav-stat-val">237</span><span class="nav-stat-label">High Potential</span></div>
+      </div>
+      <div class="nav-spacer"></div>
+      <button class="nav-home-btn" @click="view = 'home'">← Home</button>
+      <div class="nav-badge">Iteration 1 · MVP</div>
+    </nav>
+
+    <div class="main">
+      <div id="map">
+        <div v-if="isLoading" class="loading">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">{{ loadingText }}</div>
+        </div>
+        <div class="map-controls">
+          <div class="control-card">
+            <div class="control-title">Solar Potential</div>
+            <div class="legend-items">
+              <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div>High (score ≥ 60)</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#EAB308"></div>Medium (30–59)</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#DC2626"></div>Low (&lt; 30)</div>
+            </div>
+          </div>
+          <div class="control-card">
+            <div class="control-title">Filter by Roof Type</div>
+            <div class="filter-group">
+              <button
+                v-for="f in filters"
+                :key="f.type"
+                class="filter-btn"
+                :class="{ active: activeFilter === f.type }"
+                @click="filterRoof(f.type)"
+              >
+                <span class="filter-dot" :style="{ background: f.color }"></span>
+                {{ f.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">Building Details</div>
+          <div class="sidebar-sub">
+            {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
+          </div>
+        </div>
+        <div class="sidebar-content">
+          <div v-if="!selectedBuilding" class="empty-state">
+            <div class="empty-icon">🏢</div>
+            <div class="empty-text">Select a building on the map to view its solar potential analysis</div>
+          </div>
+          <div v-else class="building-panel visible">
+            <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
+            <div class="score-bar-wrap">
+              <div class="score-header">
+                <span class="score-label">Solar Score</span>
+                <span class="score-value">{{ score }}</span>
+              </div>
+              <div class="score-bar">
+                <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
+              </div>
+              <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-val">{{ Math.round(selectedBuilding.kwh_annual || 0).toLocaleString() }} kWh</div>
+                <div class="metric-label">Est. Annual kWh</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-val">{{ (selectedBuilding.usable_area || 0).toFixed(1) }} m²</div>
+                <div class="metric-label">Usable Area (m²)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-val">{{ (selectedBuilding.computed_area || 0).toFixed(1) }} m²</div>
+                <div class="metric-label">Total Footprint (m²)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-val">{{ (selectedBuilding.structure_max_elevation || selectedBuilding.structure_extrusion || 0).toFixed(1) }} m</div>
+                <div class="metric-label">Building Height (m)</div>
+              </div>
+            </div>
+            <div class="section-title">Building Info</div>
+            <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
+            <div class="info-row"><span class="info-key">Shading Analysis</span><span class="info-val" style="color:#92400E;font-size:12px;">Pending shadow analysis (E4)</span></div>
+            <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
+            <div class="info-row"><span class="info-key">Data Source</span><span class="info-val" style="font-size:11px;">City of Melbourne 2023</span></div>
+            <div class="assumptions">
+              <strong>⚡ Calculation Assumptions</strong>
+              Usable Area × 20% efficiency × 0.75 PR × 4.1 PSH × 365 days<br>
+              Melbourne CBD avg: 4.1 peak sun hours/day (BOM validated)
+            </div>
+            <div class="compare-section">
+              <div class="compare-header">
+                <span class="compare-title">Comparison</span>
+                <button class="compare-clear" @click="clearCompare">Clear</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Select a second building to compare</div>
+            </div>
+            <button class="share-btn" @click="shareBuilding">🔗 Copy Shareable Link</button>
+          </div>
+        </div>
+      </aside>
     </div>
 
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-title">Building Details</div>
-        <div class="sidebar-sub">
-          {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
-        </div>
-      </div>
-      <div class="sidebar-content">
-        <div v-if="!selectedBuilding" class="empty-state">
-          <div class="empty-icon">🏢</div>
-          <div class="empty-text">Select a building on the map to view its solar potential analysis</div>
-        </div>
-        <div v-else class="building-panel visible">
-          <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
-          <div class="score-bar-wrap">
-            <div class="score-header">
-              <span class="score-label">Solar Score</span>
-              <span class="score-value">{{ score }}</span>
-            </div>
-            <div class="score-bar">
-              <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
-            </div>
-            <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
-          </div>
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-val">{{ Math.round(selectedBuilding.kwh_annual || 0).toLocaleString() }} kWh</div>
-              <div class="metric-label">Est. Annual kWh</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-val">{{ (selectedBuilding.usable_area || 0).toFixed(1) }} m²</div>
-              <div class="metric-label">Usable Area (m²)</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-val">{{ (selectedBuilding.computed_area || 0).toFixed(1) }} m²</div>
-              <div class="metric-label">Total Footprint (m²)</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-val">{{ (selectedBuilding.structure_max_elevation || selectedBuilding.structure_extrusion || 0).toFixed(1) }} m</div>
-              <div class="metric-label">Building Height (m)</div>
-            </div>
-          </div>
-          <div class="section-title">Building Info</div>
-          <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
-          <div class="info-row"><span class="info-key">Shading Analysis</span><span class="info-val" style="color:#92400E;font-size:12px;">Pending shadow analysis (E4)</span></div>
-          <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
-          <div class="info-row"><span class="info-key">Data Source</span><span class="info-val" style="font-size:11px;">City of Melbourne 2023</span></div>
-          <div class="assumptions">
-            <strong>⚡ Calculation Assumptions</strong>
-            Usable Area × 20% efficiency × 0.75 PR × 4.1 PSH × 365 days<br>
-            Melbourne CBD avg: 4.1 peak sun hours/day (BOM validated)
-          </div>
-          <div class="compare-section">
-            <div class="compare-header">
-              <span class="compare-title">Comparison</span>
-              <button class="compare-clear" @click="clearCompare">Clear</button>
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Select a second building to compare</div>
-          </div>
-          <button class="share-btn" @click="shareBuilding">🔗 Copy Shareable Link</button>
-        </div>
-      </div>
-    </aside>
-  </div>
-
-  <div class="toast" :class="{ show: toastVisible }">{{ toastMessage }}</div>
+    <div class="toast" :class="{ show: toastVisible }">{{ toastMessage }}</div>
+  </template>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import logoUrl from './pictures/Project logo.png'
 import maplibregl from 'maplibre-gl'
+import PasswordView from './views/PasswordView.vue'
+import HomeView from './views/HomeView.vue'
 
 const GEOJSON_PATH = '/Backend/2023-building-footprints.geojson'
+
+// View state: 'password' | 'home' | 'map'
+const view = ref('password')
 
 const isLoading = ref(true)
 const loadingText = ref('Loading Melbourne building data…')
@@ -136,6 +152,7 @@ const activeFilter = ref('all')
 const toastMessage = ref('')
 const toastVisible = ref(false)
 let map = null
+let mapInitialised = false
 let toastTimer = null
 
 const filters = [
@@ -178,9 +195,7 @@ function filterRoof(type) {
   }
 }
 
-function clearCompare() {
-  // placeholder for future compare feature
-}
+function clearCompare() {}
 
 function shareBuilding() {
   if (!selectedBuilding.value) {
@@ -191,7 +206,10 @@ function shareBuilding() {
   navigator.clipboard.writeText(`SolarMap Building ${id}`).then(() => showToast('Copied to clipboard'))
 }
 
-onMounted(() => {
+function initMap() {
+  if (mapInitialised) return
+  mapInitialised = true
+
   map = new maplibregl.Map({
     container: 'map',
     style: {
@@ -247,7 +265,7 @@ onMounted(() => {
               '#8A9BB0'
             ],
             'fill-extrusion-height': ['coalesce', ['get', 'structure_extrusion'], ['get', 'footprint_extrusion'], 4],
-            'fill-extrusion-base': ['coalesce', ['get', 'structure_min_elevation'], 0],
+            'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.8
           }
         })
@@ -276,5 +294,13 @@ onMounted(() => {
         loadingText.value = `Error loading buildings: ${err.message}`
       })
   })
+}
+
+// Initialise map the first time the map view is shown
+watch(view, (val) => {
+  if (val === 'map') {
+    // Wait one tick for the #map DOM element to mount
+    setTimeout(initMap, 50)
+  }
 })
 </script>
