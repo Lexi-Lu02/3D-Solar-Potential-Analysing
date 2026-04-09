@@ -7,8 +7,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "maplibre-gl": "^4.7.1",
     "vue": "^3.4.0",
-    "maplibre-gl": "^4.7.1"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

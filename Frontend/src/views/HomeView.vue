@@ -1,39 +1,30 @@
 <template>
   <div class="home-screen">
-    <!-- Nav -->
-    <nav class="home-nav">
-      <div class="logo">
-        <div class="logo-icon"><img :src="logoUrl" alt="SolarMap logo" /></div>
-        <div>
-          <div class="logo-text">SolarMap Melbourne</div>
-          <div class="logo-sub">3D City Solar Potential</div>
-        </div>
-      </div>
-      <div class="nav-spacer"></div>
-      <div class="nav-badge">Iteration 1 · MVP</div>
-    </nav>
+    <MainNavbar />
 
     <!-- Hero -->
     <section class="hero">
-      <div class="hero-content">
-        <div class="hero-eyebrow">Melbourne CBD · 2023 Data</div>
-        <h1 class="hero-title">Discover Your Building's<br><span class="hero-accent">Solar Potential</span></h1>
-        <p class="hero-desc">
-          Explore an interactive 3D model of Melbourne's CBD buildings, each analysed for rooftop solar viability.
-          Identify high-yield sites, estimate annual energy generation, and support sustainable urban planning.
-        </p>
-        <div class="hero-actions">
-          <button class="btn-primary" @click="emit('enter-map')">
-            Explore the Map →
-          </button>
-          <a class="btn-ghost" href="#about">Learn more</a>
+      <div class="hero-inner">
+        <div class="hero-content">
+          <div class="hero-eyebrow">Melbourne CBD · 2023 Data</div>
+          <h1 class="hero-title">Discover Your Building's<br><span class="hero-accent">Solar Potential</span></h1>
+          <p class="hero-desc">
+            Explore an interactive 3D model of Melbourne's CBD buildings, each analysed for rooftop solar viability.
+            Identify high-yield sites, estimate annual energy generation, and support sustainable urban planning.
+          </p>
+          <div class="hero-actions">
+            <button class="btn-primary" @click="goToExplore">
+              Explore the Map →
+            </button>
+            <a class="btn-ghost" href="#about">Learn more</a>
+          </div>
         </div>
-      </div>
-      <div class="hero-visual">
-        <div class="stat-grid">
-          <div class="stat-card" v-for="s in stats" :key="s.label">
-            <div class="stat-val">{{ s.value }}</div>
-            <div class="stat-label">{{ s.label }}</div>
+        <div class="hero-visual">
+          <div class="stat-grid">
+            <div class="stat-card" v-for="s in stats" :key="s.label">
+              <div class="stat-val">{{ s.value }}</div>
+              <div class="stat-label">{{ s.label }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -58,7 +49,7 @@
     <section class="cta-section">
       <h2 class="cta-title">Ready to explore?</h2>
       <p class="cta-desc">Open the interactive 3D map and click any building to see its solar analysis.</p>
-      <button class="btn-primary" @click="emit('enter-map')">Open 3D Solar Map →</button>
+      <button class="btn-primary" @click="goToExplore">Open 3D Solar Map →</button>
     </section>
 
     <!-- Footer -->
@@ -73,9 +64,10 @@
 </template>
 
 <script setup>
-import logoUrl from '../pictures/Project logo.png'
+import { useRouter } from 'vue-router'
+import MainNavbar from '../components/MainNavbar.vue'
 
-const emit = defineEmits(['enter-map'])
+const router = useRouter()
 
 const stats = [
   { value: '500+',    label: 'Buildings analysed' },
@@ -116,6 +108,10 @@ const features = [
     desc: 'Select multiple buildings side-by-side to compare solar potential across different city blocks.',
   },
 ]
+
+function goToExplore() {
+  router.push('/explore')
+}
 </script>
 
 <style scoped>
@@ -129,46 +125,22 @@ const features = [
   overflow-y: auto;
 }
 
-/* Nav */
-.home-nav {
-  background: #ffffff;
-  border-bottom: 1px solid #E2DDD4;
-  padding: 0 32px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon {
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
-}
-
-.logo-icon img {
-  width: 36px; height: 36px;
-  object-fit: contain;
-}
-.logo-text { font-family: 'DM Serif Display', serif; font-size: 17px; }
-.logo-sub { font-size: 12px; color: #A8A29E; }
-.nav-spacer { flex: 1; }
-.nav-badge {
-  background: #FFF7ED; color: #EA580C;
-  font-size: 11px; font-weight: 600; padding: 4px 10px;
-  border-radius: 20px; border: 1px solid #FED7AA;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-
 /* Hero */
 .hero {
+  padding: 72px 64px;
+  width: 100%;
+  background-image:
+    linear-gradient(90deg, rgba(247, 245, 240, 0.88) 0%, rgba(247, 245, 240, 0.72) 45%, rgba(247, 245, 240, 0.52) 100%),
+    url('../pictures/Home Pge Background.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center 24%;
+}
+
+.hero-inner {
   display: flex;
   align-items: center;
   gap: 48px;
-  padding: 72px 64px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
@@ -305,7 +277,8 @@ const features = [
 
 /* Responsive */
 @media (max-width: 900px) {
-  .hero { flex-direction: column; padding: 48px 24px; gap: 32px; }
+  .hero { padding: 48px 24px; }
+  .hero-inner { flex-direction: column; gap: 32px; }
   .hero-title { font-size: 34px; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
