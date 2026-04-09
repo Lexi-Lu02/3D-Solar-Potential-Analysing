@@ -64,17 +64,19 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainNavbar from '../components/MainNavbar.vue'
 
 const router = useRouter()
+const GEOJSON_PATH = '/combined-buildings.geojson'
 
-const stats = [
+const stats = ref([
   { value: '500+',    label: 'Buildings analysed' },
   { value: '169K m²', label: 'Usable rooftop area' },
   { value: '37.9 GWh', label: 'Est. annual yield' },
   { value: '237',     label: 'High-potential sites' },
-]
+])
 
 const features = [
   {
@@ -112,6 +114,52 @@ const features = [
 function goToExplore() {
   router.push('/explore')
 }
+
+function formatAreaM2(value) {
+  if (!Number.isFinite(value)) return '—'
+  if (value >= 1000) return `${Math.round(value / 1000)}K m²`
+  return `${Math.round(value).toLocaleString()} m²`
+}
+
+function formatGWhFromKwh(value) {
+  if (!Number.isFinite(value)) return '—'
+  return `${(value / 1_000_000).toFixed(1)} GWh`
+}
+
+onMounted(async () => {
+  try {
+    const response = await fetch(GEOJSON_PATH)
+    if (!response.ok) return
+    const data = await response.json()
+    const features = data.features || []
+
+    let usableAreaTotal = 0
+    let annualKwhTotal = 0
+    let highPotentialCount = 0
+
+    for (const feature of features) {
+      const properties = feature.properties || {}
+      const score = Number(properties.solar_score || 0)
+      const usableArea = Number(properties.usable_roof_area || 0)
+      const annualKwh = Number(properties.kwh_annual || 0)
+
+      if (score >= 60) highPotentialCount += 1
+      if (properties.has_solar_data) {
+        usableAreaTotal += usableArea
+        annualKwhTotal += annualKwh
+      }
+    }
+
+    stats.value = [
+      { value: features.length.toLocaleString(), label: 'Buildings analysed' },
+      { value: formatAreaM2(usableAreaTotal), label: 'Usable rooftop area' },
+      { value: formatGWhFromKwh(annualKwhTotal), label: 'Est. annual yield' },
+      { value: highPotentialCount.toLocaleString(), label: 'High-potential sites' },
+    ]
+  } catch {
+    // Keep default fallback values when data cannot be fetched.
+  }
+})
 </script>
 
 <style scoped>

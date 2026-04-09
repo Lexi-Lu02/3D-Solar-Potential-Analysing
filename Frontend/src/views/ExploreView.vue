@@ -195,7 +195,11 @@
                   <div class="metric-label">Usable Roof Area</div>
                 </div>
                 <div class="metric-card">
-                  <div class="metric-val">{{ (selectedBuilding.footprint_area || 0).toFixed(1) }} m²</div>
+                  <div class="metric-val">
+                    {{ solarApiData?.roofAreaM2 != null
+                        ? solarApiData.roofAreaM2.toFixed(1) + ' m²'
+                        : (selectedBuilding.footprint_area || 0).toFixed(1) + ' m²' }}
+                  </div>
                   <div class="metric-label">Roof Footprint</div>
                 </div>
                 <div class="metric-card">
@@ -209,8 +213,8 @@
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
                 <span class="info-val">
-                  {{ solarApiData?.usableAreaM2 != null && selectedBuilding.footprint_area
-                      ? Math.round(solarApiData.usableAreaM2 / selectedBuilding.footprint_area * 100) + '%'
+                  {{ solarApiData?.usableAreaM2 != null
+                      ? Math.round(solarApiData.usableAreaM2 / (solarApiData.roofAreaM2 ?? selectedBuilding.footprint_area) * 100) + '%'
                       : selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}
                 </span>
               </div>
@@ -297,7 +301,6 @@ let buildingIndex = new Map() // structure_id (number) → feature properties
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
 const filters = [
-  { type: 'all', label: 'All Types', svgDash: 'none', mapDash: null },
   { type: 'Flat', label: 'Flat Roofs', svgDash: 'none', mapDash: null },
   { type: 'Hip', label: 'Hip Roofs', svgDash: '8,4', mapDash: [6, 3] },
   { type: 'Gable', label: 'Gable Roofs', svgDash: '4,4', mapDash: [3, 3] },
@@ -307,11 +310,11 @@ const filters = [
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
 const solarTiers = [
-  { id: 'very-high', label: 'Very High', range: '80-100', color: '#9A3412', min: 80, max: null },
-  { id: 'high', label: 'High', range: '60-79', color: '#EA580C', min: 60, max: 80 },
-  { id: 'medium', label: 'Medium', range: '40-59', color: '#F97316', min: 40, max: 60 },
-  { id: 'low', label: 'Low', range: '20-39', color: '#FB923C', min: 20, max: 40 },
-  { id: 'very-low', label: 'Very Low', range: '0-19', color: '#FED7AA', min: 0, max: 20 },
+  { id: 'very-high', label: 'Excellent',  range: '80-100', color: '#5B1F0A', min: 80, max: null },
+  { id: 'high',      label: 'Good',       range: '60-79',  color: '#9A3412', min: 60, max: 80 },
+  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: '#F97316', min: 40, max: 60 },
+  { id: 'low',       label: 'Poor',       range: '20-39',  color: '#F59E0B', min: 20, max: 40 },
+  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: '#FEF3C7', min: 0,  max: 20 },
 ]
 
 const score = computed(() => {
@@ -321,11 +324,11 @@ const score = computed(() => {
 
 const tier = computed(() => {
   const s = score.value
-  if (s >= 80) return 'Very High'
-  if (s >= 60) return 'High'
-  if (s >= 40) return 'Medium'
-  if (s >= 20) return 'Low'
-  return 'Very Low'
+  if (s >= 80) return 'Excellent'
+  if (s >= 60) return 'Good'
+  if (s >= 40) return 'Moderate'
+  if (s >= 20) return 'Poor'
+  return 'Very Poor'
 })
 
 const tierColor = computed(() => {
@@ -364,6 +367,7 @@ async function fetchSolarApiData(structureId, lat, lng) {
     const result = {
       maxPanels:    solar.maxArrayPanelsCount  ?? null,
       usableAreaM2: solar.maxArrayAreaMeters2  != null ? Math.round(solar.maxArrayAreaMeters2 * 10) / 10 : null,
+      roofAreaM2:   solar.wholeRoofStats?.areaMeters2 != null ? Math.round(solar.wholeRoofStats.areaMeters2 * 10) / 10 : null,
       kwhAnnual:    maxConfig?.yearlyEnergyDcKwh != null ? Math.round(maxConfig.yearlyEnergyDcKwh) : null,
     }
     solarApiCache.set(structureId, result)
@@ -414,7 +418,7 @@ function applyFilters() {
 }
 
 function filterRoof(type) {
-  activeFilter.value = type
+  activeFilter.value = activeFilter.value === type ? 'all' : type
   applyFilters()
 }
 
@@ -464,11 +468,11 @@ function scoreColor(score) {
 
 function scoreTier(score) {
   const s = Number(score) || 0
-  if (s >= 80) return 'Very High'
-  if (s >= 60) return 'High'
-  if (s >= 40) return 'Medium'
-  if (s >= 20) return 'Low'
-  return 'Very Low'
+  if (s >= 80) return 'Excellent'
+  if (s >= 60) return 'Good'
+  if (s >= 40) return 'Moderate'
+  if (s >= 20) return 'Poor'
+  return 'Very Poor'
 }
 
 // Returns the 4 comparable metrics for a compare entry
@@ -595,7 +599,7 @@ function initMap() {
           type: 'fill-extrusion',
           source: 'melbourne-buildings',
           paint: {
-            'fill-extrusion-color': ['step', ['get', 'solar_score'], '#FED7AA', 20, '#FB923C', 40, '#F97316', 60, '#EA580C', 80, '#9A3412'],
+            'fill-extrusion-color': ['step', ['get', 'solar_score'], '#FEF3C7', 20, '#F59E0B', 40, '#F97316', 60, '#9A3412', 80, '#5B1F0A'],
             'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.85,
