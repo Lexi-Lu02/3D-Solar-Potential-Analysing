@@ -9,8 +9,13 @@
         </div>
         <div class="map-controls">
           <div class="control-card">
-            <div class="control-title">Filter by Solar Potential</div>
-            <div class="filter-group">
+            <button class="control-card-toggle" @click="solarFilterOpen = !solarFilterOpen">
+              <span class="control-title">Filter by Solar Potential</span>
+              <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div v-show="solarFilterOpen" class="filter-group">
               <button
                 v-for="t in solarTiers"
                 :key="t.id"
@@ -24,8 +29,13 @@
             </div>
           </div>
           <div class="control-card">
-            <div class="control-title">Filter by Roof Type</div>
-            <div class="filter-group">
+            <button class="control-card-toggle" @click="roofFilterOpen = !roofFilterOpen">
+              <span class="control-title">Filter by Roof Type</span>
+              <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div v-show="roofFilterOpen" class="filter-group">
               <button
                 v-for="f in filters"
                 :key="f.type"
@@ -52,67 +62,111 @@
         </div>
       </div>
 
-      <aside class="sidebar">
-        <div class="sidebar-header">
-          <div class="sidebar-title">Building Details</div>
-          <div class="sidebar-sub">
-            {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
+      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }">
+        <button
+          class="sidebar-strip-btn"
+          @click="sidebarOpen = !sidebarOpen"
+          :title="sidebarOpen ? 'Collapse panel' : 'Expand panel'"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              :d="sidebarOpen ? 'M10 4l-4 4 4 4' : 'M6 4l4 4-4 4'"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div class="sidebar-body">
+          <div class="sidebar-header">
+            <div class="sidebar-title">Building Details</div>
+            <div class="sidebar-sub">
+              {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
+            </div>
+            <div class="search-row">
+              <input
+                v-model="searchId"
+                type="text"
+                class="search-input"
+                placeholder="Search by Structure ID…"
+                @keyup.enter="searchBuilding"
+              />
+              <button class="search-btn" @click="searchBuilding">→</button>
+            </div>
+            <div v-if="searchError" class="search-error">{{ searchError }}</div>
           </div>
-        </div>
-        <div class="sidebar-content">
-          <div v-if="!selectedBuilding" class="empty-state">
-            <div class="empty-icon">Building</div>
-            <div class="empty-text">Select a building on the map to view its solar potential analysis</div>
-          </div>
-          <div v-else class="building-panel visible">
-            <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
-            <div class="score-bar-wrap">
-              <div class="score-header">
-                <span class="score-label">Solar Score</span>
-                <span class="score-value">{{ score }}</span>
-              </div>
-              <div class="score-bar">
-                <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
-              </div>
-              <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
+          <div class="sidebar-content">
+            <div v-if="!selectedBuilding" class="empty-state">
+              <div class="empty-icon">Building</div>
+              <div class="empty-text">Select a building on the map to view its solar potential analysis</div>
             </div>
-            <div class="metrics-grid">
-              <div class="metric-card">
-                <div class="metric-val">{{ selectedBuilding.has_solar_data ? Math.round(selectedBuilding.kwh_annual || 0).toLocaleString() : '—' }} {{ selectedBuilding.has_solar_data ? 'kWh' : '' }}</div>
-                <div class="metric-label">Est. Annual kWh</div>
+            <div v-else class="building-panel visible">
+              <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
+              <div class="score-bar-wrap">
+                <div class="score-header">
+                  <span class="score-label">Solar Score</span>
+                  <span class="score-value">{{ score }}</span>
+                </div>
+                <div class="score-bar">
+                  <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
+                </div>
+                <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
               </div>
-              <div class="metric-card">
-                <div class="metric-val">{{ selectedBuilding.has_solar_data ? (selectedBuilding.usable_roof_area || 0).toFixed(1) + ' m²' : 'No data' }}</div>
-                <div class="metric-label">Usable Roof Area</div>
+              <!-- Data source badge -->
+              <div class="data-source-row">
+                <span v-if="solarApiLoading" class="data-badge data-badge--loading">⟳ Fetching live data…</span>
+                <span v-else-if="solarApiData" class="data-badge data-badge--live">★ Google Solar API</span>
+                <span v-else class="data-badge data-badge--local">~ Estimated (local data)</span>
               </div>
-              <div class="metric-card">
-                <div class="metric-val">{{ (selectedBuilding.footprint_area || 0).toFixed(1) }} m²</div>
-                <div class="metric-label">Roof Footprint</div>
+
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-val">
+                    {{ solarApiData?.kwhAnnual != null
+                        ? solarApiData.kwhAnnual.toLocaleString()
+                        : (selectedBuilding.has_solar_data ? Math.round(selectedBuilding.kwh_annual || 0).toLocaleString() : '—') }}
+                    {{ (solarApiData?.kwhAnnual != null || selectedBuilding.has_solar_data) ? ' kWh' : '' }}
+                  </div>
+                  <div class="metric-label">Est. Annual kWh</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val">
+                    {{ solarApiData?.usableAreaM2 != null
+                        ? solarApiData.usableAreaM2.toFixed(1) + ' m²'
+                        : (selectedBuilding.has_solar_data ? (selectedBuilding.usable_roof_area || 0).toFixed(1) + ' m²' : 'No data') }}
+                  </div>
+                  <div class="metric-label">Usable Roof Area</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val">{{ (selectedBuilding.footprint_area || 0).toFixed(1) }} m²</div>
+                  <div class="metric-label">Roof Footprint</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val">{{ (selectedBuilding.building_height || 0).toFixed(1) }} m</div>
+                  <div class="metric-label">Building Height</div>
+                </div>
               </div>
-              <div class="metric-card">
-                <div class="metric-val">{{ (selectedBuilding.building_height || 0).toFixed(1) }} m</div>
-                <div class="metric-label">Building Height</div>
+              <div class="section-title">Building Info</div>
+              <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
+              <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
+              <div class="info-row"><span class="info-key">Usable Ratio</span><span class="info-val">{{ selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}</span></div>
+              <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
+              <div class="info-row"><span class="info-key">Current coverage</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
+              <div class="assumptions">
+                <strong>Calculation assumptions</strong>
+                Usable Area x 20% efficiency x 0.75 PR x 4.1 PSH x 365 days<br />
+                Melbourne CBD avg: 4.1 peak sun hours/day (BOM validated)
               </div>
+              <div class="compare-section">
+                <div class="compare-header">
+                  <span class="compare-title">Comparison</span>
+                  <button class="compare-clear" @click="clearCompare">Clear</button>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Select a second building to compare</div>
+              </div>
+              <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
             </div>
-            <div class="section-title">Building Info</div>
-            <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
-            <div class="info-row"><span class="info-key">Solar Rating</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
-            <div class="info-row"><span class="info-key">Usable Ratio</span><span class="info-val">{{ selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}</span></div>
-            <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
-            <div class="info-row"><span class="info-key">Data Source</span><span class="info-val" style="font-size:11px;">City of Melbourne 2023</span></div>
-            <div class="assumptions">
-              <strong>Calculation assumptions</strong>
-              Usable Area x 20% efficiency x 0.75 PR x 4.1 PSH x 365 days<br />
-              Melbourne CBD avg: 4.1 peak sun hours/day (BOM validated)
-            </div>
-            <div class="compare-section">
-              <div class="compare-header">
-                <span class="compare-title">Comparison</span>
-                <button class="compare-clear" @click="clearCompare">Clear</button>
-              </div>
-              <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Select a second building to compare</div>
-            </div>
-            <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
           </div>
         </div>
       </aside>
@@ -128,6 +182,16 @@ import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
 
 const GEOJSON_PATH = '/combined-buildings.geojson'
+const SELECTED_BUILDING_COLOR = '#7F93B2'
+const SELECTED_BUILDING_OPACITY = 0.82
+
+// Google Solar API — key loaded from .env (VITE_SOLAR_API_KEY).
+// If blank the app works entirely on local data at no cost.
+const SOLAR_API_KEY = import.meta.env.VITE_SOLAR_API_KEY || ''
+const SOLAR_API_BASE = 'https://solar.googleapis.com/v1/buildingInsights:findClosest'
+
+// Session cache: structure_id → result object | null (null = known failure, skip retry)
+const solarApiCache = new Map()
 
 const isLoading = ref(true)
 const loadingText = ref('Loading Melbourne building data...')
@@ -136,10 +200,18 @@ const activeFilter = ref('all')
 const activeSolarFilter = ref('all')
 const toastMessage = ref('')
 const toastVisible = ref(false)
+const solarApiData = ref(null)   // { maxPanels, usableAreaM2, kwhAnnual } | null
+const solarApiLoading = ref(false)
+const searchId = ref('')
+const searchError = ref('')
+const sidebarOpen = ref(true)
+const solarFilterOpen = ref(true)
+const roofFilterOpen = ref(true)
 
 let map = null
 let toastTimer = null
 let compassIdx = 0
+let buildingIndex = new Map() // structure_id (number) → feature properties
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
 const filters = [
@@ -182,6 +254,44 @@ const tierColor = computed(() => {
   if (s >= 20) return 'var(--solar-low)'
   return 'var(--solar-very-low)'
 })
+
+// Fetch live solar data for one building from Google Solar API.
+// Returns { maxPanels, usableAreaM2, kwhAnnual } on success, null on any failure.
+// Results are cached for the session so the same building is never billed twice.
+async function fetchSolarApiData(structureId, lat, lng) {
+  if (!SOLAR_API_KEY) return null                          // no key → free fallback
+  if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
+
+  try {
+    const url = `${SOLAR_API_BASE}?location.latitude=${lat}&location.longitude=${lng}&requiredQuality=LOW&key=${SOLAR_API_KEY}`
+    const res = await fetch(url)
+
+    if (!res.ok) {
+      // 404 = building not in Google's coverage; 429 = quota hit — both are silent fallbacks
+      solarApiCache.set(structureId, null)
+      return null
+    }
+
+    const body = await res.json()
+    const solar = body.solarPotential
+    if (!solar) { solarApiCache.set(structureId, null); return null }
+
+    // solarPanelConfigs is sorted ascending by panel count; last entry = maximum config
+    const maxConfig = solar.solarPanelConfigs?.at(-1)
+
+    const result = {
+      maxPanels:    solar.maxArrayPanelsCount  ?? null,
+      usableAreaM2: solar.maxArrayAreaMeters2  != null ? Math.round(solar.maxArrayAreaMeters2 * 10) / 10 : null,
+      kwhAnnual:    maxConfig?.yearlyEnergyDcKwh != null ? Math.round(maxConfig.yearlyEnergyDcKwh) : null,
+    }
+    solarApiCache.set(structureId, result)
+    return result
+  } catch {
+    // Network error, CORS, parse failure — never crash the UI
+    solarApiCache.set(structureId, null)
+    return null
+  }
+}
 
 function showToast(message) {
   if (toastTimer) clearTimeout(toastTimer)
@@ -229,6 +339,36 @@ function filterRoof(type) {
 function filterSolar(tierId) {
   activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
   applyFilters()
+}
+
+async function searchBuilding() {
+  const id = parseInt(searchId.value.trim(), 10)
+  if (isNaN(id)) { searchError.value = 'Please enter a valid Structure ID'; return }
+
+  const props = buildingIndex.get(id)
+  if (!props) { searchError.value = `Structure ${id} not found`; return }
+
+  searchError.value = ''
+  selectedBuilding.value = props
+  solarApiData.value = null
+  solarApiLoading.value = true
+
+  if (map) {
+    map.setFilter('building-selected', ['==', ['get', 'structure_id'], id])
+    const lng = Number(props.lng)
+    const lat = Number(props.lat)
+    if (lat && lng) {
+      map.flyTo({
+        center: [lng, lat],
+        zoom: Math.max(map.getZoom(), 15.5),
+        pitch: 55,
+        duration: 1200,
+        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+      })
+    }
+    solarApiData.value = await fetchSolarApiData(id, Number(props.lat), Number(props.lng))
+  }
+  solarApiLoading.value = false
 }
 
 function clearCompare() {}
@@ -297,6 +437,8 @@ function initMap() {
       })
       .then((data) => {
         isLoading.value = false
+        // Build lookup index for the search box
+        data.features.forEach(f => buildingIndex.set(Number(f.properties.structure_id), f.properties))
         map.addSource('melbourne-buildings', { type: 'geojson', data })
 
         map.addLayer({
@@ -308,6 +450,20 @@ function initMap() {
             'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.85,
+          },
+        })
+
+        // Selected building highlight
+        map.addLayer({
+          id: 'building-selected',
+          type: 'fill-extrusion',
+          source: 'melbourne-buildings',
+          filter: ['==', ['get', 'structure_id'], -1],
+          paint: {
+            'fill-extrusion-color': SELECTED_BUILDING_COLOR,
+            'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': SELECTED_BUILDING_OPACITY,
           },
         })
 
@@ -327,9 +483,32 @@ function initMap() {
           })
         })
 
-        map.on('click', 'building-extrusion', (event) => {
+        map.on('click', 'building-extrusion', async (event) => {
           if (!event.features?.length) return
-          selectedBuilding.value = event.features[0].properties
+          const props = event.features[0].properties
+          selectedBuilding.value = props
+          solarApiData.value = null
+          solarApiLoading.value = true
+
+          // Highlight the clicked building
+          map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(props.structure_id)])
+
+          // Fly to building centre
+          const lng = Number(props.lng)
+          const lat = Number(props.lat)
+          if (lat && lng) {
+            map.flyTo({
+              center: [lng, lat],
+              zoom: Math.max(map.getZoom(), 15.5),
+              pitch: 55,
+              duration: 1200,
+              easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+            })
+          }
+
+          // Fetch live data — falls back silently if API key missing or call fails
+          solarApiData.value = await fetchSolarApiData(Number(props.structure_id), lat, lng)
+          solarApiLoading.value = false
         })
 
         map.on('mouseenter', 'building-extrusion', () => {
