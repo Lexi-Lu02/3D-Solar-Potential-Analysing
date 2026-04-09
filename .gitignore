@@ -1,0 +1,5 @@
+node_modules/
+dist/
+
+# Vite cache
+node_modules/.vite/
