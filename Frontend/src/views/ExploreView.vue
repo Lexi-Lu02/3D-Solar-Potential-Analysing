@@ -60,6 +60,62 @@
             </div>
           </div>
         </div>
+
+        <!-- Comparison panel — slides up from bottom of map area -->
+        <Transition name="compare-slide">
+          <div v-if="compareVisible" class="comparison-panel">
+            <div class="comparison-header">
+              <span class="comparison-title">
+                Compare Buildings
+                <span class="comparison-count">{{ compareBuildings.length }}/2</span>
+              </span>
+              <button class="comparison-close-btn" @click="clearCompare" title="Close">✕</button>
+            </div>
+            <div class="comparison-body">
+              <div
+                v-for="(item, col) in compareBuildings"
+                :key="item.building.structure_id"
+                class="comparison-col"
+              >
+                <div class="comparison-col-header">
+                  <span class="comparison-building-id">Structure {{ item.building.structure_id }}</span>
+                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" title="Remove">✕</button>
+                </div>
+                <!-- Score bar -->
+                <div class="comparison-score-row">
+                  <div class="comparison-score-val" :style="{ color: scoreColor(item.building.solar_score) }">
+                    {{ item.building.solar_score }}
+                  </div>
+                  <div class="comparison-score-bar-wrap">
+                    <div class="comparison-score-bar">
+                      <div class="comparison-score-fill" :style="{ width: Math.min(100, item.building.solar_score || 0) + '%', background: scoreColor(item.building.solar_score) }"></div>
+                    </div>
+                    <div class="comparison-tier-label" :style="{ color: scoreColor(item.building.solar_score) }">{{ scoreTier(item.building.solar_score) }}</div>
+                  </div>
+                </div>
+                <!-- Metric rows -->
+                <div
+                  v-for="(metric, mi) in compareMetrics(item)"
+                  :key="metric.label"
+                  class="comparison-metric-row"
+                  :class="{ 'comparison-winner': compareWinners[mi]?.[col] }"
+                >
+                  <span class="comparison-metric-label">{{ metric.label }}</span>
+                  <span class="comparison-metric-val">
+                    {{ metric.display }}
+                    <span v-if="compareWinners[mi]?.[col]" class="comparison-winner-badge">▲</span>
+                  </span>
+                </div>
+              </div>
+              <!-- Empty slot when only 1 building added -->
+              <div v-if="compareBuildings.length < 2" class="comparison-empty-col">
+                <div class="comparison-empty-hint">
+                  Click a building,<br>then "Add to Compare"
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }">
@@ -150,7 +206,14 @@
               <div class="section-title">Building Info</div>
               <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
               <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
-              <div class="info-row"><span class="info-key">Usable Ratio</span><span class="info-val">{{ selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}</span></div>
+              <div class="info-row">
+                <span class="info-key">Usable Ratio</span>
+                <span class="info-val">
+                  {{ solarApiData?.usableAreaM2 != null && selectedBuilding.footprint_area
+                      ? Math.round(solarApiData.usableAreaM2 / selectedBuilding.footprint_area * 100) + '%'
+                      : selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}
+                </span>
+              </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
               <div class="info-row"><span class="info-key">Current coverage</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
               <div class="assumptions">
@@ -161,9 +224,25 @@
               <div class="compare-section">
                 <div class="compare-header">
                   <span class="compare-title">Comparison</span>
-                  <button class="compare-clear" @click="clearCompare">Clear</button>
+                  <button v-if="compareBuildings.length > 0" class="compare-clear" @click="clearCompare">Clear all</button>
                 </div>
-                <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Select a second building to compare</div>
+                <div v-if="compareBuildings.length === 0" style="font-size:12px;color:var(--text-muted);padding:4px 0 8px;">
+                  Add up to 2 buildings to compare side by side
+                </div>
+                <div v-else class="compare-slots-mini">
+                  <div v-for="(item, i) in compareBuildings" :key="item.building.structure_id" class="compare-slot-mini">
+                    <span class="compare-slot-mini-id">#{{ item.building.structure_id }}</span>
+                    <span class="compare-slot-mini-score" :style="{ color: scoreColor(item.building.solar_score) }">{{ item.building.solar_score }}</span>
+                    <button class="compare-slot-remove" @click="removeFromCompare(i)">✕</button>
+                  </div>
+                </div>
+                <button
+                  class="compare-add-btn"
+                  @click="addToCompare"
+                  :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
+                >
+                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? '✓ Already in comparison' : '+ Add to Compare' }}
+                </button>
               </div>
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
             </div>
@@ -207,6 +286,9 @@ const searchError = ref('')
 const sidebarOpen = ref(true)
 const solarFilterOpen = ref(true)
 const roofFilterOpen = ref(true)
+const compareBuildings = ref([]) // [{ building, apiData }] — max 2
+
+const compareVisible = computed(() => compareBuildings.value.length > 0)
 
 let map = null
 let toastTimer = null
@@ -371,7 +453,74 @@ async function searchBuilding() {
   solarApiLoading.value = false
 }
 
-function clearCompare() {}
+function scoreColor(score) {
+  const s = Number(score) || 0
+  if (s >= 80) return 'var(--solar-very-high)'
+  if (s >= 60) return 'var(--solar-high)'
+  if (s >= 40) return 'var(--solar-med)'
+  if (s >= 20) return 'var(--solar-low)'
+  return 'var(--solar-very-low)'
+}
+
+function scoreTier(score) {
+  const s = Number(score) || 0
+  if (s >= 80) return 'Very High'
+  if (s >= 60) return 'High'
+  if (s >= 40) return 'Medium'
+  if (s >= 20) return 'Low'
+  return 'Very Low'
+}
+
+// Returns the 4 comparable metrics for a compare entry
+function compareMetrics(item) {
+  const b = item.building
+  const api = item.apiData
+  const kwh = api?.kwhAnnual ?? (b.has_solar_data ? Math.round(Number(b.kwh_annual) || 0) : null)
+  const area = api?.usableAreaM2 ?? (b.has_solar_data ? Number(b.usable_roof_area) : null)
+  return [
+    { label: 'Annual kWh',  display: kwh  != null ? Number(kwh).toLocaleString()         + ' kWh' : '—', raw: kwh  ?? 0 },
+    { label: 'Usable Area', display: area != null ? Number(area).toFixed(1)               + ' m²'  : '—', raw: area ?? 0 },
+    { label: 'Roof Type',   display: b.roof_type || '—',                                              raw: null },
+    { label: 'Height',      display: b.building_height ? Number(b.building_height).toFixed(1) + ' m' : '—', raw: Number(b.building_height) || 0 },
+  ]
+}
+
+// For each metric index: [isWinner_col0, isWinner_col1]
+const compareWinners = computed(() => {
+  if (compareBuildings.value.length < 2) return []
+  const m0 = compareMetrics(compareBuildings.value[0])
+  const m1 = compareMetrics(compareBuildings.value[1])
+  return m0.map((_, i) => {
+    if (m0[i].raw === null || m1[i].raw === null) return [false, false]
+    if (m0[i].raw > m1[i].raw) return [true, false]
+    if (m1[i].raw > m0[i].raw) return [false, true]
+    return [false, false]
+  })
+})
+
+function addToCompare() {
+  if (!selectedBuilding.value) return
+  const sid = selectedBuilding.value.structure_id
+  if (compareBuildings.value.some(c => c.building.structure_id === sid)) {
+    showToast('Already in comparison')
+    return
+  }
+  const entry = {
+    building: { ...selectedBuilding.value },
+    apiData:  solarApiData.value ? { ...solarApiData.value } : null,
+  }
+  if (compareBuildings.value.length >= 2) compareBuildings.value.shift() // replace oldest
+  compareBuildings.value.push(entry)
+  showToast('Added to comparison')
+}
+
+function removeFromCompare(idx) {
+  compareBuildings.value.splice(idx, 1)
+}
+
+function clearCompare() {
+  compareBuildings.value = []
+}
 
 function shareBuilding() {
   if (!selectedBuilding.value) {

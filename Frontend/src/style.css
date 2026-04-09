@@ -203,3 +203,97 @@ body {
 .control-card-toggle .control-title { margin-bottom: 0; flex: 1; text-align: left; }
 .chevron-icon { color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
 .chevron-icon.chevron-up { transform: rotate(180deg); }
+
+/* ── Comparison panel ───────────────────────────────────── */
+.comparison-panel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  z-index: 20; padding: 12px 16px 14px;
+}
+.comparison-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.comparison-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.comparison-count {
+  background: var(--accent-light); color: var(--accent);
+  font-size: 10px; padding: 2px 7px; border-radius: 20px; border: 1px solid #FED7AA;
+}
+.comparison-close-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; padding: 2px 6px;
+  border-radius: 4px; transition: background 0.15s;
+}
+.comparison-close-btn:hover { background: var(--surface2); color: var(--text-primary); }
+.comparison-body { display: flex; gap: 12px; }
+.comparison-col {
+  flex: 1; background: var(--surface2); border-radius: 8px;
+  padding: 10px 12px; border: 1px solid var(--border);
+}
+.comparison-col-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+}
+.comparison-building-id { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.comparison-remove-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 12px; padding: 0 2px; transition: color 0.15s;
+}
+.comparison-remove-btn:hover { color: var(--text-primary); }
+.comparison-score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.comparison-score-val {
+  font-size: 22px; font-weight: 700; font-family: 'DM Serif Display', serif;
+  line-height: 1; flex-shrink: 0;
+}
+.comparison-score-bar-wrap { flex: 1; }
+.comparison-score-bar {
+  height: 6px; background: #E5E0D8; border-radius: 3px; overflow: hidden; margin-bottom: 3px;
+}
+.comparison-score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.comparison-tier-label { font-size: 10px; font-weight: 600; }
+.comparison-metric-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; padding: 3px 4px; border-bottom: 1px solid var(--border);
+  border-radius: 3px;
+}
+.comparison-metric-row:last-child { border-bottom: none; }
+.comparison-metric-label { color: var(--text-secondary); }
+.comparison-metric-val { font-weight: 500; display: flex; align-items: center; gap: 3px; }
+.comparison-winner { background: #FFFBEB; }
+.comparison-winner .comparison-metric-val { color: var(--accent); }
+.comparison-winner-badge { font-size: 9px; color: var(--accent); }
+.comparison-empty-col {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  border: 2px dashed var(--border); border-radius: 8px; min-height: 100px;
+}
+.comparison-empty-hint { font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
+/* Slide-up transition */
+.compare-slide-enter-active, .compare-slide-leave-active { transition: transform 0.28s ease, opacity 0.28s ease; }
+.compare-slide-enter-from, .compare-slide-leave-to { transform: translateY(100%); opacity: 0; }
+
+/* ── Sidebar compare section ─────────────────────────────── */
+.compare-slots-mini { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.compare-slot-mini {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border-radius: 6px; padding: 6px 10px; font-size: 12px;
+}
+.compare-slot-mini-id { flex: 1; font-weight: 500; color: var(--text-primary); }
+.compare-slot-mini-score { font-weight: 700; font-size: 13px; }
+.compare-slot-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 12px; padding: 0 2px; transition: color 0.15s;
+}
+.compare-slot-remove:hover { color: var(--text-primary); }
+.compare-add-btn {
+  width: 100%; padding: 8px; background: transparent; color: var(--accent);
+  border: 1.5px solid var(--accent); border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s; margin-top: 2px;
+}
+.compare-add-btn:hover:not(:disabled) { background: var(--accent-light); }
+.compare-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
