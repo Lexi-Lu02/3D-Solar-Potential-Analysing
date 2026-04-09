@@ -3,3 +3,11 @@ dist/
 
 # Vite cache
 node_modules/.vite/
+
+# Environment variables — match in any subdirectory
+.env
+.env.local
+.env.*.local
+*/.env
+*/.env.local
+*/.env.*.local
