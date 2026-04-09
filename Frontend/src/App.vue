@@ -139,7 +139,7 @@ import maplibregl from 'maplibre-gl'
 import PasswordView from './views/PasswordView.vue'
 import HomeView from './views/HomeView.vue'
 
-const GEOJSON_PATH = '/Backend/2023-building-footprints.geojson'
+const GEOJSON_PATH = '/2023-building-footprints.geojson'
 
 // View state: 'password' | 'home' | 'map'
 const view = ref('password')
