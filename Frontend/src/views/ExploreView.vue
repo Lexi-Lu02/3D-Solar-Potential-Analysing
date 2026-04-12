@@ -263,6 +263,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const GEOJSON_PATH = '/combined-buildings.geojson'
 const SELECTED_BUILDING_COLOR = '#7F93B2'
@@ -525,14 +528,54 @@ function removeFromCompare(idx) {
 function clearCompare() {
   compareBuildings.value = []
 }
-
+// Generates a shareable URL for the currently selected building and copies it to clipboard
 function shareBuilding() {
   if (!selectedBuilding.value) {
     showToast('Select a building first')
     return
   }
-  const id = selectedBuilding.value.structure_id || '-'
-  navigator.clipboard.writeText(`SolarMap Building ${id}`).then(() => showToast('Copied to clipboard'))
+
+  const id = selectedBuilding.value.structure_id
+  const url = `${window.location.origin}/explore?buildingId=${id}`
+
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Shareable link copied!')
+  })
+}
+// On page load, check if URL has ?buildingId= and if so open that building's details
+async function openBuildingFromUrl() {
+  const buildingId = route.query.buildingId
+  if (!buildingId) return
+
+  const id = Number(buildingId)
+  const props = buildingIndex.get(id)
+
+  if (!props) return
+
+  selectedBuilding.value = props
+  solarApiData.value = null
+  solarApiLoading.value = true
+
+  // highlight
+  if (map) {
+    map.setFilter('building-selected', ['==', ['get', 'structure_id'], id])
+
+    const lng = Number(props.lng)
+    const lat = Number(props.lat)
+
+    if (lat && lng) {
+      map.flyTo({
+        center: [lng, lat],
+        zoom: 16,
+        pitch: 55,
+        duration: 1200,
+      })
+    }
+
+    solarApiData.value = await fetchSolarApiData(id, lat, lng)
+  }
+
+  solarApiLoading.value = false
 }
 
 function initMap() {
@@ -589,6 +632,7 @@ function initMap() {
         return response.json()
       })
       .then((data) => {
+        openBuildingFromUrl()
         isLoading.value = false
         // Build lookup index for the search box
         data.features.forEach(f => buildingIndex.set(Number(f.properties.structure_id), f.properties))
