@@ -24,17 +24,23 @@ os.environ.setdefault("DB_PASSWORD", "test_pw")
 
 
 class FakeCursor:
-    def __init__(self, rows: list[tuple[Any, ...]] | None = None):
-        self._rows = rows or []
+    """
+    Pretend cursor. Accepts both tuple rows (health endpoint) and dict rows
+    (buildings endpoint) — `row_factory` is recorded but otherwise ignored,
+    so tests can pre-shape rows however the service expects.
+    """
+
+    def __init__(self, rows: list[Any] | None = None):
+        self._rows = list(rows or [])
         self.executed: list[tuple[str, Any]] = []
 
     def execute(self, sql: str, params: Any = None) -> None:
         self.executed.append((sql, params))
 
-    def fetchone(self) -> tuple[Any, ...] | None:
+    def fetchone(self) -> Any | None:
         return self._rows[0] if self._rows else None
 
-    def fetchall(self) -> list[tuple[Any, ...]]:
+    def fetchall(self) -> list[Any]:
         return list(self._rows)
 
     def __enter__(self) -> "FakeCursor":
@@ -45,11 +51,11 @@ class FakeCursor:
 
 
 class FakeConnection:
-    def __init__(self, rows: list[tuple[Any, ...]] | None = None, raise_on_query: bool = False):
+    def __init__(self, rows: list[Any] | None = None, raise_on_query: bool = False):
         self._rows = rows or []
         self._raise = raise_on_query
 
-    def cursor(self) -> FakeCursor:
+    def cursor(self, *_args: Any, **_kwargs: Any) -> FakeCursor:
         if self._raise:
             raise RuntimeError("simulated DB failure")
         return FakeCursor(self._rows)
@@ -74,7 +80,7 @@ class FakePool:
 def fake_pool_factory():
     """Factory: build a FakePool with the given fetchone() rows."""
 
-    def _factory(rows: list[tuple[Any, ...]] | None = None, raise_on_query: bool = False) -> FakePool:
+    def _factory(rows: list[Any] | None = None, raise_on_query: bool = False) -> FakePool:
         return FakePool(FakeConnection(rows=rows, raise_on_query=raise_on_query))
 
     return _factory
@@ -88,7 +94,7 @@ def app_with_pool(fake_pool_factory, monkeypatch):
     """
     from app import main as app_main  # noqa: WPS433  (import after env is set)
 
-    def _builder(rows: list[tuple[Any, ...]] | None = None, raise_on_query: bool = False):
+    def _builder(rows: list[Any] | None = None, raise_on_query: bool = False):
         pool = fake_pool_factory(rows=rows, raise_on_query=raise_on_query)
 
         # Patch build_pool so create_app's lifespan installs the fake.

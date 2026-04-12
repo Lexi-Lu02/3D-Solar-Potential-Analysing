@@ -28,7 +28,7 @@ from slowapi.util import get_remote_address
 from .config import get_settings
 from .db import build_pool, lifespan_pool
 from .errors import register_error_handlers
-from .routers import health
+from .routers import buildings, health
 
 API_PREFIX = "/api/v1"
 
@@ -98,6 +98,7 @@ def create_app() -> FastAPI:
 
     # --- Routers ---
     app.include_router(health.router, prefix=API_PREFIX)
+    app.include_router(buildings.router, prefix=API_PREFIX)
 
     return app
 
