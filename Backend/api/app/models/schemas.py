@@ -106,3 +106,48 @@ class BuildingResponse(BaseModel):
             "Nominatim batch backfill lands."
         ),
     )
+
+
+# --- /buildings/{id}/yield ---------------------------------------------------
+
+
+class YieldMonthlyItem(BaseModel):
+    month: str = Field(..., description="月份缩写，例如 'Jan'")
+    days: int = Field(..., ge=28, le=31, description="该月天数")
+    psh: float = Field(..., ge=0, description="该月日均峰值日照时数（kWh/m²/day），NASA POWER 来源")
+    kwh: int = Field(..., ge=0, description="该月估算发电量（kWh），已四舍五入为整数")
+
+
+class YieldAssumptions(BaseModel):
+    """
+    用于计算本次 kWh 估算所使用的参数，方便前端展示"计算依据"或做灵敏度分析。
+    """
+    panel_efficiency: float = Field(
+        ..., description="光伏板转换效率，当前固定为 0.20（20%）"
+    )
+    performance_ratio: float = Field(
+        ..., description="系统性能比（逆变器损耗等），当前固定为 0.75"
+    )
+    peak_sun_hours_annual: float = Field(
+        ..., description="BOM 校准后年均峰值日照时数（4.1 PSH/day）"
+    )
+    usable_roof_area_m2: float = Field(
+        ..., ge=0, description="参与计算的可用屋顶面积（m²），来自 rooftop_solar 调研"
+    )
+
+
+class YieldResponse(BaseModel):
+    structure_id: int = Field(..., description="City of Melbourne primary key")
+    has_data: bool = Field(
+        ..., description="是否有光伏调研数据。False 时 kwh_annual=0，kwh_monthly=[]"
+    )
+    kwh_annual: int = Field(
+        ..., ge=0,
+        description="年度估算发电量（kWh）= sum(kwh_monthly)，保证与月度加总一致"
+    )
+    kwh_monthly: list[YieldMonthlyItem] = Field(
+        ..., description="12 个月的发电量明细（has_data=False 时为空列表）"
+    )
+    assumptions: YieldAssumptions = Field(
+        ..., description="本次计算所用的参数，供前端透明展示"
+    )

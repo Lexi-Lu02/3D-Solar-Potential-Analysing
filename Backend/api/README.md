@@ -3,8 +3,8 @@
 **3D Solar Potential Analysing** 项目的只读 HTTP 后端。为 Vue + MapLibre 前端
 提供墨尔本 CBD 的建筑轮廓、屋顶光伏适宜度数据,以及按建筑计算的 kWh 估算值。
 
-> **当前状态:** Phase B 已完成 — 实现了 `/health` 与 `/buildings/{id}` 两个端点。
-> Phase C–E 将依次加入 kWh 月度估算 (`/yield`)、地址回填、EC2 部署。完整路线图见
+> **当前状态:** Phase C 已完成 — 三个端点全部就绪：`/health`、`/buildings/{id}`、
+> `/buildings/{id}/yield`。Phase D–E 将依次加入地址回填、EC2 部署。完整路线图见
 > `C:\Users\Flame\.claude\plans\` 中的实施计划。
 
 ---
@@ -275,6 +275,119 @@ curl -sf http://localhost:8000/api/v1/health | jq .
 
 ```bash
 curl -sf http://localhost:8000/api/v1/buildings/12345 | jq .
+```
+
+---
+
+### 5.3 `GET /api/v1/buildings/{structure_id}/yield`
+
+**用途:** 返回该建筑 12 个月的光伏发电量估算及年度合计，对应 Epic 3
+"kWh 计算引擎"。与 `/buildings/{id}` 拆开是为了让前端可以独立缓存月度数据，
+并在用户展开 kWh 详情面板时才按需拉取。
+
+**Epic:** Epic 3 — 屋顶光伏 kWh 计算引擎
+
+**路径参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `structure_id` | int | `≥ 1` | City of Melbourne 主键 |
+
+**查询参数:** 无
+
+**响应 200 — 有光伏数据时**
+
+```json
+{
+  "structure_id": 12345,
+  "has_data": true,
+  "kwh_annual": 13489,
+  "kwh_monthly": [
+    {"month": "Jan", "days": 31, "psh": 6.56, "kwh": 1829},
+    {"month": "Feb", "days": 28, "psh": 5.71, "kwh": 1450},
+    {"month": "Mar", "days": 31, "psh": 4.59, "kwh": 1279},
+    {"month": "Apr", "days": 30, "psh": 3.18, "kwh":  858},
+    {"month": "May", "days": 31, "psh": 2.16, "kwh":  602},
+    {"month": "Jun", "days": 30, "psh": 1.69, "kwh":  456},
+    {"month": "Jul", "days": 31, "psh": 1.86, "kwh":  518},
+    {"month": "Aug", "days": 31, "psh": 2.61, "kwh":  727},
+    {"month": "Sep", "days": 30, "psh": 3.72, "kwh": 1004},
+    {"month": "Oct", "days": 31, "psh": 4.92, "kwh": 1371},
+    {"month": "Nov", "days": 30, "psh": 5.78, "kwh": 1561},
+    {"month": "Dec", "days": 31, "psh": 6.49, "kwh": 1809}
+  ],
+  "assumptions": {
+    "panel_efficiency": 0.20,
+    "performance_ratio": 0.75,
+    "peak_sun_hours_annual": 4.1,
+    "usable_roof_area_m2": 60.0
+  }
+}
+```
+
+**响应 200 — 无光伏调研数据时**（`has_data: false`，约占 5% 建筑）
+
+```json
+{
+  "structure_id": 99999,
+  "has_data": false,
+  "kwh_annual": 0,
+  "kwh_monthly": [],
+  "assumptions": {
+    "panel_efficiency": 0.20,
+    "performance_ratio": 0.75,
+    "peak_sun_hours_annual": 4.1,
+    "usable_roof_area_m2": 0.0
+  }
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `structure_id` | int | City of Melbourne 主键 |
+| `has_data` | bool | 是否有屋顶光伏调研数据 |
+| `kwh_annual` | int | 年度估算发电量（kWh）。**精确等于 kwh_monthly 的加总**，不会出现与月度数字矛盾的情况 |
+| `kwh_monthly[].month` | string | 月份缩写（Jan–Dec）|
+| `kwh_monthly[].days` | int | 该月天数 |
+| `kwh_monthly[].psh` | float | 该月日均峰值日照时数（来自 NASA POWER，经 BOM 年均校准）|
+| `kwh_monthly[].kwh` | int | 该月估算发电量（kWh），公式见下 |
+| `assumptions.panel_efficiency` | float | 光伏板效率，固定 0.20 |
+| `assumptions.performance_ratio` | float | 系统性能比，固定 0.75 |
+| `assumptions.peak_sun_hours_annual` | float | BOM 校准年均 PSH，固定 4.1 |
+| `assumptions.usable_roof_area_m2` | float | 参与计算的可用屋顶面积（m²）|
+
+**kWh 计算公式**
+
+```
+kwh_monthly[i] = usable_roof_area_m2
+                 × panel_efficiency (0.20)
+                 × performance_ratio (0.75)
+                 × psh[i]
+                 × days[i]
+
+kwh_annual = sum(kwh_monthly[0..11])
+```
+
+月度 PSH 来自 NASA POWER 气候学 API（20 年均值 2001–2020），经等比缩放使
+年均恰好等于 BOM 站点 086338（墨尔本气象站）实测基准值 4.1 PSH/day，
+消除卫星数据约 +10% 的系统性偏高偏差。详见
+`app/constants/melbourne_psh.py` 中的注释。
+
+**响应 404 / 422:** 格式同 §5.2，不再重复。
+
+**缓存:** `Cache-Control: public, max-age=86400`
+
+**curl 示例:**
+
+```bash
+# 有数据的建筑
+curl -sf http://localhost:8000/api/v1/buildings/12345/yield | jq .
+
+# 展示月度发电量柱状图（只拿 month 和 kwh）
+curl -sf http://localhost:8000/api/v1/buildings/12345/yield \
+  | jq '[.kwh_monthly[] | {month, kwh}]'
 ```
 
 ---
