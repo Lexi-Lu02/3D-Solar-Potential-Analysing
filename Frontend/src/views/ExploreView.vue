@@ -220,10 +220,27 @@
               </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
               <div class="info-row"><span class="info-key">Current coverage</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
-              <div class="assumptions">
-                <strong>Calculation assumptions</strong>
-                Usable Area x 20% efficiency x 0.75 PR x 4.1 PSH x 365 days<br />
-                Melbourne CBD avg: 4.1 peak sun hours/day (BOM validated)
+              <div class="section-title">Monthly Output</div>
+              <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
+              <div v-else class="monthly-chart">
+                <div class="monthly-bars">
+                  <div
+                    v-for="(m, i) in monthlyOutput"
+                    :key="m.month"
+                    class="monthly-bar-col"
+                    :class="{ 'monthly-bar-col--hovered': hoveredMonthIdx === i }"
+                    @mouseenter="hoveredMonthIdx = i"
+                    @mouseleave="hoveredMonthIdx = null"
+                  >
+                    <div class="monthly-tooltip" v-if="hoveredMonthIdx === i">
+                      {{ m.kwh.toLocaleString() }} kWh
+                    </div>
+                    <div class="monthly-bar-wrap">
+                      <div class="monthly-bar" :style="{ height: m.pct + '%' }"></div>
+                    </div>
+                    <div class="monthly-bar-label">{{ m.month }}</div>
+                  </div>
+                </div>
               </div>
               <div class="compare-section">
                 <div class="compare-header">
@@ -296,6 +313,44 @@ const roofFilterOpen = ref(true)
 const compareBuildings = ref([]) // [{ building, apiData }] — max 2
 
 const compareVisible = computed(() => compareBuildings.value.length > 0)
+const hoveredMonthIdx = ref(null)
+
+// NASA POWER monthly PSH scaled to BOM annual baseline of 4.1 PSH/day
+const MONTHLY_PSH = [
+  { month: 'Jan', days: 31, psh: 6.56 },
+  { month: 'Feb', days: 28, psh: 5.71 },
+  { month: 'Mar', days: 31, psh: 4.59 },
+  { month: 'Apr', days: 30, psh: 3.18 },
+  { month: 'May', days: 31, psh: 2.16 },
+  { month: 'Jun', days: 30, psh: 1.69 },
+  { month: 'Jul', days: 31, psh: 1.86 },
+  { month: 'Aug', days: 31, psh: 2.61 },
+  { month: 'Sep', days: 30, psh: 3.72 },
+  { month: 'Oct', days: 31, psh: 4.92 },
+  { month: 'Nov', days: 30, psh: 5.78 },
+  { month: 'Dec', days: 31, psh: 6.49 },
+]
+
+const monthlyOutput = computed(() => {
+  if (!selectedBuilding.value) return []
+
+  // Prefer API annual total (consistent with the kWh card above);
+  // fall back to the pre-computed kwh_annual already in the GeoJSON.
+  const annualKwh = solarApiData.value?.kwhAnnual
+    ?? Number(selectedBuilding.value.kwh_annual) ?? 0
+
+  if (annualKwh <= 0) return []
+
+  // Distribute annual total proportionally using NASA POWER monthly PSH weights
+  const weights = MONTHLY_PSH.map(({ month, days, psh }) => ({ month, w: psh * days }))
+  const totalWeight = weights.reduce((s, m) => s + m.w, 0)
+  const months = weights.map(({ month, w }) => ({
+    month,
+    kwh: Math.round((w / totalWeight) * annualKwh),
+  }))
+  const maxKwh = Math.max(...months.map(m => m.kwh))
+  return months.map(m => ({ ...m, pct: Math.round(m.kwh / maxKwh * 100) }))
+})
 
 let map = null
 let toastTimer = null

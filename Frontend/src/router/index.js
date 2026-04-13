@@ -37,16 +37,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/scenarios-2050',
-      name: 'scenarios-2050',
-      component: FeaturePlaceholderView,
-      props: {
-        title: '2050 Scenarios',
-        description: 'This section will let users compare future rooftop, demand, and policy scenarios through 2050.',
-      },
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/insights',
       name: 'insights',
       component: FeaturePlaceholderView,

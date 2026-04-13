@@ -16,6 +16,7 @@
         class="main-nav-link"
         :class="{ 'is-active': route.path === item.to }"
       >
+        <img :src="item.icon" :alt="item.label" class="nav-link-icon" />
         {{ item.label }}
       </RouterLink>
     </nav>
@@ -28,16 +29,19 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
-import logoUrl from '../pictures/Project logo.png'
+import logoUrl       from '../pictures/Project logo.png'
+import iconHome      from '../pictures/home.png'
+import iconExplore   from '../pictures/3d explore.png'
+import iconPrecincts from '../pictures/precinct.png'
+import iconInsights  from '../pictures/ai insights.png'
 
 const route = useRoute()
 
 const navItems = [
-  { label: 'Home', to: '/' },
-  { label: '3D Explore', to: '/explore' },
-  { label: 'Precincts', to: '/precincts' },
-  { label: '2050 Scenarios', to: '/scenarios-2050' },
-  { label: 'AI Insights', to: '/insights' },
+  { label: 'Home',       to: '/',          icon: iconHome      },
+  { label: '3D Explore', to: '/explore',   icon: iconExplore   },
+  { label: 'Precincts',  to: '/precincts', icon: iconPrecincts },
+  { label: 'AI Insights',to: '/insights',  icon: iconInsights  },
 ]
 </script>
 
@@ -102,6 +106,16 @@ const navItems = [
   border-radius: 9px;
   border: 1px solid transparent;
   transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-link-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .main-nav-link:hover {
