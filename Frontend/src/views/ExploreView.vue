@@ -631,8 +631,7 @@ function initMap() {
         if (!response.ok) throw new Error(`Failed to load GeoJSON: ${response.statusText}`)
         return response.json()
       })
-      .then((data) => {
-        openBuildingFromUrl()
+      .then(async (data) => {
         isLoading.value = false
         // Build lookup index for the search box
         data.features.forEach(f => buildingIndex.set(Number(f.properties.structure_id), f.properties))
@@ -714,6 +713,8 @@ function initMap() {
         map.on('mouseleave', 'building-extrusion', () => {
           map.getCanvas().style.cursor = ''
         })
+        // Add flat roof outlines as a separate layer on top of all others, so they remain visible when any roof filter is active
+        await openBuildingFromUrl()
       })
       .catch((err) => {
         console.error(err)
