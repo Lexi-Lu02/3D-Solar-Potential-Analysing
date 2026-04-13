@@ -236,7 +236,7 @@ curl -sf http://localhost:8000/api/v1/health | jq .
 | `solar.total_roof_area_m2` | float \| null | 所有调研屋顶分块面积之和 |
 | `solar.roof_patch_count` | int \| null | 调研到的屋顶分块数量 |
 | `solar.excellent_area_m2` | float \| null | 仅 Excellent 评级的面积之和 |
-| `address` | string \| null | 反向地理编码出的街道地址。**Phase D 之前永远为 `null`**,Phase D 用 Nominatim 批量回填后才会有值 |
+| `address` | string \| null | 反向地理编码出的街道地址（例如 `"123 Collins Street, Melbourne, Victoria 3000"`）。运行 Phase D 脚本前为 `null`，回填完成后自动生效，API 代码无需修改 |
 
 **没有数据时的字段处理**
 
