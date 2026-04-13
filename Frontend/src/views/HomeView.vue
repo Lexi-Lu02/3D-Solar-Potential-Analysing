@@ -37,7 +37,7 @@
         <h2 class="section-title">Built for solar decision-making</h2>
         <div class="feature-grid">
           <div class="feature-card" v-for="f in features" :key="f.title">
-            <div class="feature-icon">{{ f.icon }}</div>
+            <div class="feature-icon"><img :src="f.icon" :alt="f.title" /></div>
             <div class="feature-title">{{ f.title }}</div>
             <div class="feature-desc">{{ f.desc }}</div>
           </div>
@@ -67,6 +67,12 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainNavbar from '../components/MainNavbar.vue'
+import icon3DBuilding    from '../pictures/3D Building Extrusion.png'
+import iconSolarScore    from '../pictures/Solar Score Ranking.png'
+import iconRoofType      from '../pictures/Roof Type Filtering.png'
+import iconEnergy        from '../pictures/Energy Estimates.png'
+import iconClickInspect  from '../pictures/Click-to-Inspect.png'
+import iconComparison    from '../pictures/Comparison View.png'
 
 const router = useRouter()
 const GEOJSON_PATH = '/combined-buildings.geojson'
@@ -80,32 +86,32 @@ const stats = ref([
 
 const features = [
   {
-    icon: '🏙️',
+    icon: icon3DBuilding,
     title: '3D Building Extrusion',
     desc: 'Visualise every building in Melbourne CBD as a true-to-scale 3D model, colour-coded by solar score.',
   },
   {
-    icon: '☀️',
+    icon: iconSolarScore,
     title: 'Solar Score Ranking',
     desc: 'Each building receives a solar potential score derived from rooftop area, roof type, and peak sun hours.',
   },
   {
-    icon: '🔍',
+    icon: iconRoofType,
     title: 'Roof Type Filtering',
     desc: 'Filter by Flat, Hip, Gable, Pyramid, or Shed roof types to zero in on suitable installation candidates.',
   },
   {
-    icon: '⚡',
+    icon: iconEnergy,
     title: 'Energy Estimates',
     desc: 'Instant kWh generation estimates using BOM-validated 4.1 peak sun hours/day for Melbourne CBD.',
   },
   {
-    icon: '📍',
+    icon: iconClickInspect,
     title: 'Click-to-Inspect',
     desc: 'Click any building to open a full analysis panel with area metrics, height, roof type, and energy output.',
   },
   {
-    icon: '📊',
+    icon: iconComparison,
     title: 'Comparison View',
     desc: 'Select multiple buildings side-by-side to compare solar potential across different city blocks.',
   },
@@ -293,7 +299,8 @@ onMounted(async () => {
   border-radius: 12px; padding: 22px 20px;
 }
 
-.feature-icon { font-size: 24px; margin-bottom: 10px; }
+.feature-icon { margin-bottom: 10px; }
+.feature-icon img { width: 40px; height: 40px; object-fit: contain; }
 .feature-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .feature-desc { font-size: 13px; color: #6B6560; line-height: 1.6; }
 
