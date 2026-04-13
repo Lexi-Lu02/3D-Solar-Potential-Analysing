@@ -64,8 +64,19 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !isAuthenticated) return '/login'
-  if (to.path === '/login' && isAuthenticated) return '/'
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return {
+      path: '/login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
+  }
+
+  if (to.path === '/login' && isAuthenticated) {
+    return to.query.redirect || '/'
+  }
+
   return true
 })
 
