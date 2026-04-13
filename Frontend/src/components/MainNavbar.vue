@@ -47,8 +47,8 @@ const navItems = [
 
 <style scoped>
 .main-nav {
-  background: linear-gradient(135deg, #fff7ed 0%, #f7f5f0 55%, #fef3c7 100%);
-  border-bottom: 1px solid #e2ddd4;
+  background: #3A3A3A;
+  border-bottom: 1px solid #555555;
   padding: 10px 20px;
   display: flex;
   align-items: center;
@@ -81,12 +81,12 @@ const navItems = [
   font-family: 'DM Serif Display', serif;
   font-size: 20px;
   line-height: 1;
-  color: #1c1917;
+  color: #FFFFFF;
 }
 
 .main-nav-subtitle {
   font-size: 11px;
-  color: #a8a29e;
+  color: #A0A0A0;
   margin-top: 2px;
 }
 
@@ -99,7 +99,7 @@ const navItems = [
 
 .main-nav-link {
   text-decoration: none;
-  color: #6b6560;
+  color: #D1D5DB;
   font-size: 13px;
   font-weight: 500;
   padding: 7px 12px;
@@ -119,14 +119,14 @@ const navItems = [
 }
 
 .main-nav-link:hover {
-  background: #f0ede6;
-  color: #1c1917;
+  background: #505050;
+  color: #FFFFFF;
 }
 
 .main-nav-link.is-active {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #ea580c;
+  background: #4A3728;
+  border-color: #C2601A;
+  color: #FB923C;
   font-weight: 600;
 }
 
@@ -135,9 +135,9 @@ const navItems = [
 }
 
 .main-nav-badge {
-  background: #fff7ed;
-  color: #ea580c;
-  border: 1px solid #fed7aa;
+  background: #4A3728;
+  color: #FB923C;
+  border: 1px solid #C2601A;
   border-radius: 999px;
   font-size: 10px;
   font-weight: 700;

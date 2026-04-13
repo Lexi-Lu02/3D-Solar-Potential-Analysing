@@ -1,7 +1,7 @@
 node_modules/
+Frontend/node_modules/
+.vite/
 dist/
-
-# Vite cache
 node_modules/.vite/
 
 # Environment variables — match in any subdirectory
