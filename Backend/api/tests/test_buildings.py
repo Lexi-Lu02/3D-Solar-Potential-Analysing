@@ -1,4 +1,4 @@
-"""Unit tests for GET /api/v1/buildings/{structure_id}."""
+"""Unit tests for GET /api/v1/buildings/search and GET /api/v1/buildings/{id}."""
 
 from __future__ import annotations
 
@@ -7,11 +7,8 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 
-# A small Melbourne CBD polygon, ~10 m × ~10 m, encoded as a GeoJSON string
+# A small Melbourne CBD polygon, ~100 m × ~100 m, encoded as a GeoJSON string
 # the way buildings.geo_shape is stored in PG. Centred near Federation Square.
-# At lat -37.818 the cosine factor is ~0.79, so 10m E-W ≈ 0.000114 deg lng,
-# and 10m N-S ≈ 0.0000899 deg lat. We'll use a slightly larger polygon so the
-# rounded area is unambiguous.
 _LAT0 = -37.8180
 _LNG0 = 144.9680
 _DLAT = 0.000899   # ≈ 100 m N-S
@@ -30,6 +27,7 @@ TEST_POLYGON = {
 
 def _row_with_solar() -> dict:
     return {
+        "id": 1,
         "structure_id": 12345,
         "lat": _LAT0,
         "lng": _LNG0,
@@ -40,6 +38,7 @@ def _row_with_solar() -> dict:
         "min_elevation": 20.0,
         "date_captured": date(2018, 5, 28),
         "geo_shape": json.dumps(TEST_POLYGON),
+        "address": None,
         "total_roof_area": 95.0,
         "usable_roof_area": 60.0,
         "dominant_rating": "Good",
@@ -52,6 +51,7 @@ def _row_with_solar() -> dict:
 
 def _row_without_solar() -> dict:
     row = _row_with_solar()
+    row["id"] = 2
     row["structure_id"] = 99999
     row["total_roof_area"] = None
     row["usable_roof_area"] = None
@@ -66,13 +66,14 @@ def _row_without_solar() -> dict:
 def test_building_found_with_solar_data(app_with_pool):
     app = app_with_pool(rows=[_row_with_solar()])
     with TestClient(app) as client:
-        resp = client.get("/api/v1/buildings/12345")
+        resp = client.get("/api/v1/buildings/1")
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
+    assert body["id"] == 1
     assert body["structure_id"] == 12345
-    assert body["address"] is None  # Phase D will populate
+    assert body["address"] is None  # Phase D will populate via solar_api_cache
 
     # Geometry round-trips intact
     assert body["geometry"]["type"] == "Polygon"
@@ -82,11 +83,11 @@ def test_building_found_with_solar_data(app_with_pool):
     assert body["location"]["lat"] == _LAT0
     assert body["location"]["lng"] == _LNG0
 
-    # Footprint area: ~100 m × ~100 m polygon should be ~10_000 m² ± 1%
+    # Footprint (no footprint_area_m2 — deleted, DB has no such column)
     fp = body["footprint"]
-    assert 9_900 <= fp["footprint_area_m2"] <= 10_100
     assert fp["roof_type"] == "Flat"
     assert fp["date_captured"] == "2018-05-28"
+    assert "footprint_area_m2" not in fp
 
     # Height
     h = body["height"]
@@ -108,14 +109,14 @@ def test_building_found_with_solar_data(app_with_pool):
     assert s["roof_patch_count"] == 5
     assert s["excellent_area_m2"] == 10.0
 
-    # Cache header so the frontend / nginx can cache aggressively
+    # Cache header
     assert "max-age" in resp.headers.get("cache-control", "")
 
 
 def test_building_found_without_solar_data(app_with_pool):
     app = app_with_pool(rows=[_row_without_solar()])
     with TestClient(app) as client:
-        resp = client.get("/api/v1/buildings/99999")
+        resp = client.get("/api/v1/buildings/2")
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -133,7 +134,7 @@ def test_building_found_without_solar_data(app_with_pool):
 
     # Other sections still populated
     assert body["height"]["building_height_m"] == 30.0
-    assert body["footprint"]["footprint_area_m2"] > 0
+    assert body["footprint"]["roof_type"] == "Flat"
 
 
 def test_building_not_found_returns_404(app_with_pool):

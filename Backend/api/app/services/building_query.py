@@ -22,38 +22,63 @@ from ..models.schemas import (
     BuildingHeight,
     BuildingLocation,
     BuildingResponse,
+    BuildingSearchItem,
     BuildingSolar,
 )
 from ..sql import load
-from .geometry import parse_geo_shape, polygon_area_m2
+from .geometry import parse_geo_shape
 
 logger = logging.getLogger(__name__)
 
 
 class BuildingNotFound(Exception):
-    """Raised when no building exists for the given structure_id."""
+    """Raised when no building exists for the given id."""
 
-    def __init__(self, structure_id: int):
-        super().__init__(f"building {structure_id} not found")
-        self.structure_id = structure_id
+    def __init__(self, id: int):
+        super().__init__(f"building {id} not found")
+        self.id = id
 
 
-def fetch_building(conn: Connection, structure_id: int) -> BuildingResponse:
+def fetch_building(conn: Connection, id: int) -> BuildingResponse:
     """
-    Look up one building by primary key, LEFT JOINed with rooftop_solar.
+    Look up one building by surrogate PK (buildings.id), LEFT JOINed with
+    solar_api_cache (address) and rooftop_solar (solar data).
 
     Raises `BuildingNotFound` if the row does not exist. The router translates
     that into a 404 response.
     """
     sql = load("building_by_id")
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, {"structure_id": structure_id})
+        cur.execute(sql, {"id": id})
         row = cur.fetchone()
 
     if row is None:
-        raise BuildingNotFound(structure_id)
+        raise BuildingNotFound(id)
 
     return _row_to_response(row)
+
+
+def search_buildings(conn: Connection, q: str) -> list[BuildingSearchItem]:
+    """
+    Return up to 20 buildings whose address matches the query string.
+    The search is case-insensitive and partial (ILIKE %q%).
+    Only buildings with a populated address in solar_api_cache are returned.
+    """
+    sql = load("buildings_search")
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"q": f"%{q}%"})
+        rows = cur.fetchall()
+
+    return [
+        BuildingSearchItem(
+            id=int(row["id"]),
+            structure_id=int(row["structure_id"]),
+            lat=float(row["lat"]),
+            lng=float(row["lng"]),
+            address=_safe_str(row.get("address")),
+        )
+        for row in rows
+    ]
 
 
 # --- internal helpers ---------------------------------------------------------
@@ -62,12 +87,12 @@ def fetch_building(conn: Connection, structure_id: int) -> BuildingResponse:
 def _row_to_response(row: dict[str, Any]) -> BuildingResponse:
     """Convert a single PG dict row into a BuildingResponse."""
     geometry = parse_geo_shape(row.get("geo_shape"))
-    footprint_area_m2 = polygon_area_m2(row.get("geo_shape"))
 
     has_solar = row.get("solar_score_avg") is not None
     solar_score_avg = _safe_float(row.get("solar_score_avg")) if has_solar else None
 
     return BuildingResponse(
+        id=int(row["id"]),
         structure_id=int(row["structure_id"]),
         geometry=geometry,
         location=BuildingLocation(
@@ -75,7 +100,6 @@ def _row_to_response(row: dict[str, Any]) -> BuildingResponse:
             lng=_safe_float(row.get("lng")),
         ),
         footprint=BuildingFootprint(
-            footprint_area_m2=footprint_area_m2,
             roof_type=_safe_str(row.get("roof_type")),
             date_captured=_safe_date(row.get("date_captured")),
         ),
@@ -97,7 +121,7 @@ def _row_to_response(row: dict[str, Any]) -> BuildingResponse:
             excellent_area_m2=_safe_float(row.get("excellent_area")) if has_solar else None,
         ),
         # Populated by scripts/reverse_geocode_addresses.py (Phase D).
-        # Returns null until the batch has finished and the address column exists.
+        # Returns null until the batch script has run against solar_api_cache.
         address=_safe_str(row.get("address")),
     )
 

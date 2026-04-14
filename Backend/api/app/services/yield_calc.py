@@ -41,12 +41,12 @@ logger = logging.getLogger(__name__)
 class BuildingNotFoundForYield(Exception):
     """建筑主键不存在时抛出（yield 路由同样需要 404）。"""
 
-    def __init__(self, structure_id: int):
-        super().__init__(f"building {structure_id} not found")
-        self.structure_id = structure_id
+    def __init__(self, id: int):
+        super().__init__(f"building {id} not found")
+        self.id = id
 
 
-def fetch_yield(conn: Connection, structure_id: int) -> YieldResponse:
+def fetch_yield(conn: Connection, id: int) -> YieldResponse:
     """
     查询 usable_roof_area，用公式计算月度和年度 kWh，返回 YieldResponse。
 
@@ -55,11 +55,11 @@ def fetch_yield(conn: Connection, structure_id: int) -> YieldResponse:
     """
     sql = load("yield_by_id")
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, {"structure_id": structure_id})
+        cur.execute(sql, {"id": id})
         row = cur.fetchone()
 
     if row is None:
-        raise BuildingNotFoundForYield(structure_id)
+        raise BuildingNotFoundForYield(id)
 
     usable_area = _safe_float(row.get("usable_roof_area"))
     has_data = row.get("usable_roof_area") is not None and usable_area > 0
