@@ -39,9 +39,6 @@ class BuildingLocation(BaseModel):
 
 
 class BuildingFootprint(BaseModel):
-    footprint_area_m2: float = Field(
-        ..., ge=0, description="Roof footprint area in square metres, computed from geo_shape"
-    )
     roof_type: str | None = Field(None, description="Roof type label from City of Melbourne")
     date_captured: str | None = Field(
         None, description="ISO 8601 date the footprint was captured"
@@ -90,7 +87,8 @@ class BuildingSolar(BaseModel):
 
 
 class BuildingResponse(BaseModel):
-    structure_id: int = Field(..., description="City of Melbourne primary key")
+    id: int = Field(..., description="Surrogate primary key (buildings.id)")
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
     geometry: dict[str, Any] | None = Field(
         None,
         description="Parsed GeoJSON Polygon (the same shape stored in buildings.geo_shape)",
@@ -102,10 +100,48 @@ class BuildingResponse(BaseModel):
     address: str | None = Field(
         None,
         description=(
-            "Reverse-geocoded street address. Always null until Phase D's "
-            "Nominatim batch backfill lands."
+            "Reverse-geocoded street address. Populated from solar_api_cache.address "
+            "after scripts/reverse_geocode_addresses.py has run."
         ),
     )
+
+
+# --- /buildings/search -------------------------------------------------------
+
+
+class BuildingSearchItem(BaseModel):
+    id: int = Field(..., description="Surrogate primary key (buildings.id)")
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
+    lat: float = Field(..., description="Latitude (WGS84)")
+    lng: float = Field(..., description="Longitude (WGS84)")
+    address: str | None = Field(None, description="Street address from solar_api_cache")
+
+
+# --- /buildings/{id}/solar ---------------------------------------------------
+
+
+class SolarCacheResponse(BaseModel):
+    """
+    Raw solar API cache data from solar_api_cache for a single building.
+    Used by Epic 1 / Epic 2 panels that need panel configuration details.
+    """
+
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
+    address: str | None = Field(None, description="Reverse-geocoded street address")
+    max_panels: int | None = Field(None, ge=0, description="Maximum number of panels that fit")
+    max_array_area_m2: float | None = Field(None, ge=0, description="Area covered by max panels (m²)")
+    max_panels_kwh_annual: float | None = Field(
+        None, ge=0, description="Annual kWh with maximum panel count"
+    )
+    max_sunshine_hours_per_year: float | None = Field(
+        None, ge=0, description="Max annual sunshine hours from solar API"
+    )
+    carbon_offset_kg_per_mwh: float | None = Field(
+        None, ge=0, description="Carbon offset factor (kg CO₂ per MWh)"
+    )
+    whole_roof_area_m2: float | None = Field(None, ge=0, description="Total roof area from solar API (m²)")
+    roof_segment_stats: dict | None = Field(None, description="Per-segment solar statistics (jsonb)")
+    solar_panel_configs: dict | None = Field(None, description="Panel configuration options (jsonb)")
 
 
 # --- /buildings/{id}/yield ---------------------------------------------------
@@ -137,7 +173,7 @@ class YieldAssumptions(BaseModel):
 
 
 class YieldResponse(BaseModel):
-    structure_id: int = Field(..., description="City of Melbourne primary key")
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
     has_data: bool = Field(
         ..., description="是否有光伏调研数据。False 时 kwh_annual=0，kwh_monthly=[]"
     )
