@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     db_user: str = Field(..., description="DB user (use solarmap_api_ro in prod)")
     db_password: str = Field(..., description="DB password")
 
+    # EDIT1: Google Solar API ---
+    solar_api_key: str = Field("", description="Google Solar API key")
     # --- Connection pool ---
     db_pool_min_size: int = Field(1, ge=1)
     db_pool_max_size: int = Field(10, ge=1)
