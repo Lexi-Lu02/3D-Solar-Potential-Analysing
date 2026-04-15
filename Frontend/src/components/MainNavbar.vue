@@ -8,15 +8,16 @@
       </div>
     </div>
 
-    <nav class="main-nav-links">
+    <nav class="main-nav-links" aria-label="Main navigation">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
         class="main-nav-link"
         :class="{ 'is-active': route.path === item.to }"
+        :aria-current="route.path === item.to ? 'page' : undefined"
       >
-        <img :src="item.icon" :alt="item.label" class="nav-link-icon" />
+        <img :src="item.icon" :alt="'' " class="nav-link-icon" aria-hidden="true" />
         {{ item.label }}
       </RouterLink>
     </nav>
@@ -118,6 +119,13 @@ const navItems = [
 }
 
 .main-nav-link:hover {
+  background: #505050;
+  color: #FFFFFF;
+}
+
+.main-nav-link:focus-visible {
+  outline: 3px solid #FB923C;
+  outline-offset: 2px;
   background: #505050;
   color: #FFFFFF;
 }

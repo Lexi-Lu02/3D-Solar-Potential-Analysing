@@ -2,6 +2,8 @@
   <div class="home-screen">
     <MainNavbar />
 
+    <main id="main-content">
+
     <!-- Hero -->
     <section class="hero">
       <div class="hero-inner">
@@ -13,23 +15,23 @@
             Identify high-yield sites, estimate annual energy generation, and support sustainable urban planning.
           </p>
           <div class="hero-actions">
-            <button class="btn-primary" @click="goToExplore">
+            <button class="btn-primary" @click="goToExplore" aria-label="Explore the 3D Solar Map">
               Explore the Map →
             </button>
-            <a class="btn-ghost" href="#about">Learn more</a>
+            <a class="btn-ghost" href="#about" aria-label="Learn more about SolarMap features">Learn more</a>
           </div>
         </div>
-        <div class="hero-visual">
-          <div class="stat-grid">
+        <div class="hero-visual" aria-label="Key statistics">
+          <dl class="stat-grid">
             <div class="stat-card" v-for="s in stats" :key="s.label">
-              <div class="stat-val">{{ s.value }}</div>
-              <div class="stat-label">{{ s.label }}</div>
+              <dd class="stat-val">{{ s.value }}</dd>
+              <dt class="stat-label">{{ s.label }}</dt>
             </div>
-          </div>
+          </dl>
         </div>
       </div>
       <div class="hero-photo-credit">
-        Photo by <a href="https://unsplash.com/photos/ZXJKUWUIjSM" target="_blank" rel="noopener">Unsplash</a>
+        Photo by <a href="https://unsplash.com/photos/ZXJKUWUIjSM" target="_blank" rel="noopener" aria-label="Hero photo credit on Unsplash (opens in new tab)">Unsplash</a>
       </div>
     </section>
 
@@ -48,20 +50,56 @@
       </div>
     </section>
 
-    <!-- CTA -->
-    <section class="cta-section">
-      <h2 class="cta-title">Ready to explore?</h2>
-      <p class="cta-desc">Open the interactive 3D map and click any building to see its solar analysis.</p>
-      <button class="btn-primary" @click="goToExplore">Open 3D Solar Map →</button>
-    </section>
+    </main>
 
     <!-- Footer -->
-    <footer class="home-footer">
-      <span>Data: City of Melbourne Open Data 2023</span>
-      <span>·</span>
-      <span>Built with MapLibre GL · Vue 3</span>
-      <span>·</span>
-      <span>FIT5120 Iteration 1</span>
+    <footer class="home-footer" aria-label="Site footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img :src="logoUrl" alt="SolarMap logo" class="footer-logo" />
+          <div>
+            <div class="footer-brand-name">SolarMap Melbourne</div>
+            <div class="footer-brand-sub">3D City Solar Potential Platform</div>
+          </div>
+        </div>
+
+        <div class="footer-links">
+          <div class="footer-col">
+            <div class="footer-col-title">Platform</div>
+            <span class="footer-link">Home</span>
+            <span class="footer-link">3D Explore</span>
+            <span class="footer-link">Precincts</span>
+            <span class="footer-link">AI Insights</span>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Data Sources</div>
+            <span class="footer-link">City of Melbourne Open Data 2023</span>
+            <span class="footer-link">Bureau of Meteorology (BOM)</span>
+            <span class="footer-link">NASA POWER Monthly PSH</span>
+            <span class="footer-link">Google Solar API</span>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Built With</div>
+            <span class="footer-link">MapLibre GL JS</span>
+            <span class="footer-link">Vue 3 · Vite</span>
+            <span class="footer-link">CARTO Basemaps</span>
+            <span class="footer-link">OpenStreetMap</span>
+          </div>
+        </div>
+
+        <div class="footer-cta">
+          <p class="footer-cta-text">Ready to explore Melbourne's solar potential?</p>
+          <button class="btn-primary footer-cta-btn" @click="goToExplore" aria-label="Open 3D Solar Map">
+            Open 3D Solar Map →
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2023 City of Melbourne · Data for research purposes only</span>
+        <span class="footer-dot">·</span>
+        <span>FIT5120 Iteration 1</span>
+      </div>
     </footer>
   </div>
 </template>
@@ -70,6 +108,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainNavbar from '../components/MainNavbar.vue'
+import logoUrl          from '../pictures/Project logo.png'
 import icon3DBuilding    from '../pictures/3D Building Extrusion.png'
 import iconSolarScore    from '../pictures/Solar Score Ranking.png'
 import iconRoofType      from '../pictures/Roof Type Filtering.png'
@@ -255,6 +294,11 @@ onMounted(async () => {
   text-decoration: none;
 }
 .btn-primary:hover { background: #C2410C; }
+.btn-primary:focus-visible {
+  outline: 3px solid #1C1917;
+  outline-offset: 3px;
+  background: #C2410C;
+}
 
 .btn-ghost {
   padding: 12px 20px;
@@ -265,6 +309,12 @@ onMounted(async () => {
   display: inline-block;
 }
 .btn-ghost:hover { background: #ffffff; color: #1C1917; }
+.btn-ghost:focus-visible {
+  outline: 3px solid #EA580C;
+  outline-offset: 3px;
+  background: #ffffff;
+  color: #1C1917;
+}
 
 /* Stat grid (hero right side) */
 .hero-visual { flex: 0 0 auto; }
@@ -326,30 +376,118 @@ onMounted(async () => {
 .feature-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .feature-desc { font-size: 13px; color: #6B6560; line-height: 1.6; }
 
-/* CTA */
-.cta-section {
-  text-align: center;
-  padding: 72px 32px;
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.cta-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 30px; margin-bottom: 12px;
-}
-
-.cta-desc {
-  font-size: 14px; color: #6B6560; line-height: 1.6;
-  margin-bottom: 24px;
-}
-
 /* Footer */
 .home-footer {
-  border-top: 1px solid #E2DDD4;
-  padding: 16px 32px;
-  display: flex; gap: 10px; justify-content: center;
-  font-size: 11px; color: #A8A29E; flex-wrap: wrap;
+  background: #2C2C2C;
+  color: #D1D5DB;
+  font-family: 'DM Sans', sans-serif;
+  flex-shrink: 0;
+}
+
+.footer-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 64px 40px;
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+.footer-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.footer-brand-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.footer-brand-sub {
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-top: 2px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 48px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.footer-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #FB923C;
+  margin-bottom: 2px;
+}
+
+.footer-link {
+  font-size: 13px;
+  color: #9CA3AF;
+  line-height: 1.4;
+  cursor: default;
+}
+
+.footer-cta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.footer-cta-text {
+  font-size: 14px;
+  color: #E5E7EB;
+  line-height: 1.5;
+  max-width: 220px;
+}
+
+.footer-cta-btn {
+  white-space: nowrap;
+}
+
+.footer-bottom {
+  border-top: 1px solid #3F3F3F;
+  padding: 14px 64px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  font-size: 11px;
+  color: #6B7280;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.footer-dot {
+  color: #4B5563;
 }
 
 /* Responsive */
@@ -360,10 +498,17 @@ onMounted(async () => {
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
   .features { padding: 48px 24px; }
+  .footer-inner { padding: 40px 24px 32px; gap: 32px; }
+  .footer-links { gap: 28px; }
+  .footer-bottom { padding: 14px 24px; }
 }
 
 @media (max-width: 600px) {
   .feature-grid { grid-template-columns: 1fr; }
   .hero-title { font-size: 28px; }
+  .footer-inner { flex-direction: column; gap: 28px; }
+  .footer-links { flex-direction: column; gap: 20px; }
+  .footer-cta { width: 100%; }
+  .footer-cta-btn { width: 100%; }
 }
 </style>
