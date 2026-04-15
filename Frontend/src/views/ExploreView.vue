@@ -169,7 +169,10 @@
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
               </div>
+<<<<<<< HEAD
+=======
 
+>>>>>>> 6abc224c0ff444f694d7d9bbe1e2bf814f67d762
               <div class="metrics-grid">
                 <div class="metric-card">
                   <div class="metric-val">
