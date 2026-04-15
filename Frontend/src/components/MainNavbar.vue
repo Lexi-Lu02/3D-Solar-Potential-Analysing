@@ -4,22 +4,32 @@
       <div class="main-nav-logo"><img :src="logoUrl" alt="SolarMap logo" /></div>
       <div class="main-nav-brand-text">
         <div class="main-nav-title">SolarMap</div>
-        <div class="main-nav-subtitle">Melbourne - 3D Solar Platform</div>
+        <div class="main-nav-subtitle">Melbourne CBD - 3D Solar Platform</div>
       </div>
     </div>
 
     <nav class="main-nav-links" aria-label="Main navigation">
-      <RouterLink
-        v-for="item in navItems"
-        :key="item.to"
-        :to="item.to"
-        class="main-nav-link"
-        :class="{ 'is-active': route.path === item.to }"
-        :aria-current="route.path === item.to ? 'page' : undefined"
-      >
-        <img :src="item.icon" :alt="'' " class="nav-link-icon" aria-hidden="true" />
-        {{ item.label }}
-      </RouterLink>
+      <template v-for="item in navItems" :key="item.to">
+        <RouterLink
+          v-if="!item.disabled"
+          :to="item.to"
+          class="main-nav-link"
+          :class="{ 'is-active': route.path === item.to }"
+          :aria-current="route.path === item.to ? 'page' : undefined"
+        >
+          <img :src="item.icon" :alt="''" class="nav-link-icon" aria-hidden="true" />
+          {{ item.label }}
+        </RouterLink>
+        <span
+          v-else
+          class="main-nav-link main-nav-link--disabled"
+          aria-disabled="true"
+          :title="`${item.label} — coming soon`"
+        >
+          <img :src="item.icon" :alt="''" class="nav-link-icon" aria-hidden="true" />
+          {{ item.label }}
+        </span>
+      </template>
     </nav>
 
     <div class="main-nav-right">
@@ -38,10 +48,10 @@ import iconInsights  from '../pictures/ai insights.png'
 const route = useRoute()
 
 const navItems = [
-  { label: 'Home',       to: '/',          icon: iconHome      },
-  { label: '3D Explore', to: '/explore',   icon: iconExplore   },
-  { label: 'Precincts',  to: '/precincts', icon: iconPrecincts },
-  { label: 'AI Insights',to: '/insights',  icon: iconInsights  },
+  { label: 'Home',        to: '/',          icon: iconHome      },
+  { label: '3D Explore',  to: '/explore',   icon: iconExplore   },
+  { label: 'Precincts',   to: '/precincts', icon: iconPrecincts, disabled: true },
+  { label: 'AI Insights', to: '/insights',  icon: iconInsights,  disabled: true },
 ]
 </script>
 
@@ -128,6 +138,12 @@ const navItems = [
   outline-offset: 2px;
   background: #505050;
   color: #FFFFFF;
+}
+
+.main-nav-link--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .main-nav-link.is-active {

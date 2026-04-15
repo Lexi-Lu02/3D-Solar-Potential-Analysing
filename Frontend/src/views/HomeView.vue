@@ -64,42 +64,43 @@
         </div>
 
         <div class="footer-links">
-          <div class="footer-col">
-            <div class="footer-col-title">Platform</div>
-            <span class="footer-link">Home</span>
-            <span class="footer-link">3D Explore</span>
-            <span class="footer-link">Precincts</span>
-            <span class="footer-link">AI Insights</span>
+          <div class="footer-col-group">
+            <div class="footer-col">
+              <div class="footer-col-title">Platform</div>
+              <span class="footer-link">Home</span>
+              <span class="footer-link">3D Explore</span>
+              <span class="footer-link">Precincts</span>
+              <span class="footer-link">AI Insights</span>
+            </div>
+            <div class="footer-col">
+              <div class="footer-col-title">Built With</div>
+              <span class="footer-link">MapLibre GL JS</span>
+              <span class="footer-link">Vue 3 · Vite</span>
+              <span class="footer-link">CARTO Basemaps</span>
+              <span class="footer-link">OpenStreetMap</span>
+            </div>
           </div>
           <div class="footer-col">
             <div class="footer-col-title">Data Sources</div>
-            <span class="footer-link">City of Melbourne Open Data 2023</span>
-            <span class="footer-link">Bureau of Meteorology (BOM)</span>
-            <span class="footer-link">NASA POWER Monthly PSH</span>
-            <span class="footer-link">Google Solar API</span>
+            <a class="footer-link footer-link--url" href="https://data.melbourne.vic.gov.au/explore/dataset/2023-building-footprints/" target="_blank" rel="noopener noreferrer">City of Melbourne Building Footprints</a>
+            <a class="footer-link footer-link--url" href="https://www.melbourne.vic.gov.au/mapping-our-roofs" target="_blank" rel="noopener noreferrer">City of Melbourne Rooftop Project</a>
+            <a class="footer-link footer-link--url" href="http://www.bom.gov.au/climate/austmaps/about-solar-maps.shtml" target="_blank" rel="noopener noreferrer">Bureau of Meteorology (BOM)</a>
+            <a class="footer-link footer-link--url" href="https://power.larc.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA POWER Monthly PSH</a>
+            <a class="footer-link footer-link--url" href="https://pv-map.apvi.org.au/" target="_blank" rel="noopener noreferrer">APVI Solar Map</a>
+            <a class="footer-link footer-link--url" href="https://pv-map.apvi.org.au/sunspot/" target="_blank" rel="noopener noreferrer">SunSPOT (UNSW / APVI)</a>
+            <a class="footer-link footer-link--url" href="https://developers.google.com/maps/documentation/solar" target="_blank" rel="noopener noreferrer">Google Solar API</a>
           </div>
           <div class="footer-col">
-            <div class="footer-col-title">Built With</div>
-            <span class="footer-link">MapLibre GL JS</span>
-            <span class="footer-link">Vue 3 · Vite</span>
-            <span class="footer-link">CARTO Basemaps</span>
-            <span class="footer-link">OpenStreetMap</span>
+            <div class="footer-col-title">About Us</div>
+            <span class="footer-link">SolarMap is a FIT5120 project built by Team TP06,<br>exploring rooftop solar potential across Melbourne's CBD.</span>
+            <a class="footer-link footer-link--url footer-link--eportfolio" href="https://bit.ly/SolarMapTP06" target="_blank" rel="noopener noreferrer">
+              View E-Portfolio →
+            </a>
           </div>
         </div>
 
-        <div class="footer-cta">
-          <p class="footer-cta-text">Ready to explore Melbourne's solar potential?</p>
-          <button class="btn-primary footer-cta-btn" @click="goToExplore" aria-label="Open 3D Solar Map">
-            Open 3D Solar Map →
-          </button>
-        </div>
       </div>
 
-      <div class="footer-bottom">
-        <span>© 2023 City of Melbourne · Data for research purposes only</span>
-        <span class="footer-dot">·</span>
-        <span>FIT5120 Iteration 1</span>
-      </div>
     </footer>
   </div>
 </template>
@@ -397,7 +398,7 @@ onMounted(async () => {
 .footer-inner {
   display: flex;
   align-items: flex-start;
-  gap: 48px;
+  gap: 56px;
   max-width: 1200px;
   margin: 0 auto;
   padding: 48px 64px 40px;
@@ -409,7 +410,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   flex: 0 0 auto;
-  min-width: 200px;
+  min-width: 180px;
 }
 
 .footer-logo {
@@ -439,6 +440,12 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.footer-col-group {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
 .footer-col {
   display: flex;
   flex-direction: column;
@@ -460,45 +467,39 @@ onMounted(async () => {
   color: #9CA3AF;
   line-height: 1.4;
   cursor: default;
+  text-decoration: none;
 }
 
-.footer-cta {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  align-items: flex-start;
-  justify-content: center;
-  min-width: 200px;
+.footer-link--url {
+  cursor: pointer;
+  transition: color 0.15s;
 }
 
-.footer-cta-text {
-  font-size: 14px;
-  color: #E5E7EB;
-  line-height: 1.5;
-  max-width: 220px;
+.footer-link--url:hover {
+  color: #FB923C;
+  text-decoration: underline;
 }
 
-.footer-cta-btn {
-  white-space: nowrap;
+.footer-link--url:focus-visible {
+  outline: 2px solid #FB923C;
+  outline-offset: 2px;
+  border-radius: 2px;
+  color: #FB923C;
 }
 
-.footer-bottom {
-  border-top: 1px solid #3F3F3F;
-  padding: 14px 64px;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  font-size: 11px;
-  color: #6B7280;
-  flex-wrap: wrap;
-  max-width: 100%;
+.footer-link--eportfolio {
+  display: inline-block;
+  margin-top: 6px;
+  color: #FB923C;
+  font-weight: 600;
+  font-size: 13px;
 }
 
-.footer-dot {
-  color: #4B5563;
+.footer-link--eportfolio:hover {
+  color: #FDBA74;
+  text-decoration: underline;
 }
+
 
 /* Responsive */
 @media (max-width: 900px) {

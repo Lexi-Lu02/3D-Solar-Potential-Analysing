@@ -36,7 +36,6 @@
         <button type="submit" class="pw-btn" :disabled="!password" :aria-disabled="!password">Enter</button>
       </form>
     </div>
-    <div class="pw-footer">© City of Melbourne 2023 · Data for research purposes</div>
   </div>
 </template>
 
@@ -216,12 +215,6 @@ function submit() {
 }
 .pw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.pw-footer {
-  margin-top: 24px;
-  font-size: 11px;
-  color: #A8A29E;
-  text-align: center;
-}
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
