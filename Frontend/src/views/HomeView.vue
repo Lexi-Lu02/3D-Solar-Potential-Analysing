@@ -185,8 +185,18 @@ onMounted(async () => {
     let annualKwhTotal = 0
     let highPotentialCount = 0
 
+    const seenIds = new Set()
+
     for (const feature of features) {
       const properties = feature.properties || {}
+      const structureId = properties.structure_id
+
+      // Skip duplicate structure IDs
+      if (structureId != null) {
+        if (seenIds.has(structureId)) continue
+        seenIds.add(structureId)
+      }
+
       const score = Number(properties.solar_score || 0)
       const usableArea = Number(properties.usable_roof_area || 0)
       const annualKwh = Number(properties.kwh_annual || 0)
@@ -199,7 +209,7 @@ onMounted(async () => {
     }
 
     stats.value = [
-      { value: features.length.toLocaleString(), label: 'Buildings analysed' },
+      { value: seenIds.size.toLocaleString(), label: 'Buildings analysed' },
       { value: formatAreaM2(usableAreaTotal), label: 'Usable rooftop area' },
       { value: formatGWhFromKwh(annualKwhTotal), label: 'Est. annual yield' },
       { value: highPotentialCount.toLocaleString(), label: 'High-potential sites' },
