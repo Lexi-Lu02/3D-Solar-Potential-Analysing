@@ -28,6 +28,9 @@
           </div>
         </div>
       </div>
+      <div class="hero-photo-credit">
+        Photo by <a href="https://unsplash.com/photos/ZXJKUWUIjSM" target="_blank" rel="noopener">Unsplash</a>
+      </div>
     </section>
 
     <!-- Feature cards -->
@@ -183,6 +186,7 @@ onMounted(async () => {
 .hero {
   padding: 72px 64px;
   width: 100%;
+  position: relative;
   background-image:
     linear-gradient(90deg, rgba(247, 245, 240, 0.88) 0%, rgba(247, 245, 240, 0.72) 45%, rgba(247, 245, 240, 0.52) 100%),
     url('../pictures/Home Pge Background.jpg');
@@ -201,6 +205,24 @@ onMounted(async () => {
 }
 
 .hero-content { flex: 1; }
+
+.hero-photo-credit {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-size: 10px;
+  color: rgba(28, 25, 23, 0.45);
+  background: rgba(247, 245, 240, 0.6);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.hero-photo-credit a {
+  color: inherit;
+  text-decoration: none;
+}
+.hero-photo-credit a:hover {
+  text-decoration: underline;
+}
 
 .hero-eyebrow {
   font-size: 12px; font-weight: 600;

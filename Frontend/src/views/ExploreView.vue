@@ -169,6 +169,10 @@
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
               </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6abc224c0ff444f694d7d9bbe1e2bf814f67d762
               <div class="metrics-grid">
                 <div class="metric-card">
                   <div class="metric-val">
@@ -212,7 +216,6 @@
                 </span>
               </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
-              <div class="info-row"><span class="info-key">Current coverage</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
               <div class="section-title">Monthly Output</div>
               <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
               <div v-else class="monthly-chart">
