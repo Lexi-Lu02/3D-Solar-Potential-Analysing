@@ -22,7 +22,6 @@
     </nav>
 
     <div class="main-nav-right">
-      <span class="main-nav-badge">Iteration 1 · MVP</span>
     </div>
   </header>
 </template>

@@ -169,13 +169,6 @@
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
               </div>
-              <!-- Data source badge -->
-              <div class="data-source-row">
-                <span v-if="solarApiLoading" class="data-badge data-badge--loading">⟳ Fetching live data…</span>
-                <span v-else-if="solarApiData" class="data-badge data-badge--live">★ Google Solar API</span>
-                <span v-else class="data-badge data-badge--local">~ Estimated (local data)</span>
-              </div>
-
               <div class="metrics-grid">
                 <div class="metric-card">
                   <div class="metric-val">
