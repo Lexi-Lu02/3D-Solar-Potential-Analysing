@@ -1,46 +1,60 @@
 <template>
   <div class="map-page">
     <MainNavbar />
-    <div class="main">
-      <div id="map">
-        <div v-if="isLoading" class="loading">
-          <div class="loading-spinner"></div>
+    <main id="main-content" class="main">
+      <div id="map" role="application" aria-label="Interactive 3D solar map of Melbourne buildings">
+        <div v-if="isLoading" class="loading" role="status" aria-live="polite" aria-atomic="true" :aria-label="loadingText">
+          <div class="loading-spinner" aria-hidden="true"></div>
           <div class="loading-text">{{ loadingText }}</div>
         </div>
-        <div class="map-controls">
+        <div class="map-controls" role="group" aria-label="Map filters">
           <div class="control-card">
-            <button class="control-card-toggle" @click="solarFilterOpen = !solarFilterOpen">
+            <button
+              class="control-card-toggle"
+              @click="solarFilterOpen = !solarFilterOpen"
+              :aria-expanded="solarFilterOpen"
+              aria-controls="solar-filter-group"
+            >
               <span class="control-title">Filter by Solar Potential</span>
-              <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
-            <div v-show="solarFilterOpen" class="filter-group">
+            <div id="solar-filter-group" v-show="solarFilterOpen" class="filter-group" role="group" aria-label="Solar potential filter options">
               <button
                 v-for="t in solarTiers"
                 :key="t.id"
                 class="filter-btn"
                 :class="{ active: activeSolarFilter === t.id }"
+                :aria-pressed="activeSolarFilter === t.id"
+                :aria-label="`${t.label} solar potential, score range ${t.range}`"
                 @click="filterSolar(t.id)"
               >
-                <div class="legend-dot" :style="{ background: t.color }"></div>
+                <div class="legend-dot" :style="{ background: t.color }" aria-hidden="true"></div>
                 {{ t.label }}<span class="tier-range">&nbsp;({{ t.range }})</span>
               </button>
             </div>
           </div>
           <div class="control-card">
-            <button class="control-card-toggle" @click="roofFilterOpen = !roofFilterOpen">
+            <button
+              class="control-card-toggle"
+              @click="roofFilterOpen = !roofFilterOpen"
+              :aria-expanded="roofFilterOpen"
+              aria-controls="roof-filter-group"
+            >
               <span class="control-title">Filter by Roof Type</span>
-              <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
-            <div v-show="roofFilterOpen" class="filter-group">
+            <div id="roof-filter-group" v-show="roofFilterOpen" class="filter-group" role="group" aria-label="Roof type filter options">
               <button
                 v-for="f in filters"
                 :key="f.type"
                 class="filter-btn"
                 :class="{ active: activeFilter === f.type }"
+                :aria-pressed="activeFilter === f.type"
+                :aria-label="`${f.label} filter`"
                 @click="filterRoof(f.type)"
               >
                 <svg width="28" height="12" class="filter-dash-icon" aria-hidden="true">
@@ -63,15 +77,15 @@
 
         <!-- Comparison panel — slides up from bottom of map area -->
         <Transition name="compare-slide">
-          <div v-if="compareVisible" class="comparison-panel">
+          <div v-if="compareVisible" class="comparison-panel" role="region" aria-label="Building comparison panel" aria-live="polite">
             <div class="comparison-header">
-              <span class="comparison-title">
+              <span class="comparison-title" id="compare-panel-title">
                 Compare Buildings
-                <span class="comparison-count">{{ compareBuildings.length }}/2</span>
+                <span class="comparison-count" :aria-label="`${compareBuildings.length} of 2 buildings selected`">{{ compareBuildings.length }}/2</span>
               </span>
-              <button class="comparison-close-btn" @click="clearCompare" title="Close">✕</button>
+              <button class="comparison-close-btn" @click="clearCompare" aria-label="Close comparison panel">✕</button>
             </div>
-            <div class="comparison-body">
+            <div class="comparison-body" aria-labelledby="compare-panel-title">
               <div
                 v-for="(item, col) in compareBuildings"
                 :key="item.building.structure_id"
@@ -79,7 +93,7 @@
               >
                 <div class="comparison-col-header">
                   <span class="comparison-building-id">Structure {{ item.building.structure_id }}</span>
-                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" title="Remove">✕</button>
+                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">✕</button>
                 </div>
                 <!-- Score bar -->
                 <div class="comparison-score-row">
@@ -118,13 +132,15 @@
         </Transition>
       </div>
 
-      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }">
+      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Building details panel">
         <button
           class="sidebar-strip-btn"
           @click="sidebarOpen = !sidebarOpen"
-          :title="sidebarOpen ? 'Collapse panel' : 'Expand panel'"
+          :aria-label="sidebarOpen ? 'Collapse building details panel' : 'Expand building details panel'"
+          :aria-expanded="sidebarOpen"
+          aria-controls="sidebar-body"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path
               :d="sidebarOpen ? 'M10 4l-4 4 4 4' : 'M6 4l4 4-4 4'"
               stroke="currentColor"
@@ -134,23 +150,26 @@
             />
           </svg>
         </button>
-        <div class="sidebar-body">
+        <div id="sidebar-body" class="sidebar-body">
           <div class="sidebar-header">
-            <div class="sidebar-title">Building Details</div>
-            <div class="sidebar-sub">
+            <div class="sidebar-title" id="sidebar-title">Building Details</div>
+            <div class="sidebar-sub" aria-live="polite">
               {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
             </div>
-            <div class="search-row">
+            <div class="search-row" role="search">
+              <label for="search-structure-id" class="visually-hidden">Search by Structure ID</label>
               <input
+                id="search-structure-id"
                 v-model="searchId"
-                type="text"
+                type="search"
                 class="search-input"
                 placeholder="Search by Structure ID…"
                 @keyup.enter="searchBuilding"
+                :aria-describedby="searchError ? 'search-error-msg' : undefined"
               />
-              <button class="search-btn" @click="searchBuilding">→</button>
+              <button class="search-btn" @click="searchBuilding" aria-label="Search for building by Structure ID">→</button>
             </div>
-            <div v-if="searchError" class="search-error">{{ searchError }}</div>
+            <div v-if="searchError" id="search-error-msg" class="search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
           </div>
           <div class="sidebar-content">
             <div v-if="!selectedBuilding" class="empty-state">
@@ -214,23 +233,30 @@
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
               <div class="section-title">Monthly Output</div>
               <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
-              <div v-else class="monthly-chart">
-                <div class="monthly-bars">
+              <div v-else class="monthly-chart" role="img" :aria-label="`Monthly solar output chart. ${monthlyOutput.map(m => `${m.month}: ${m.kwh.toLocaleString()} kWh`).join(', ')}`">
+                <div class="monthly-bars" role="list">
                   <div
                     v-for="(m, i) in monthlyOutput"
                     :key="m.month"
                     class="monthly-bar-col"
                     :class="{ 'monthly-bar-col--hovered': hoveredMonthIdx === i }"
+                    role="listitem"
+                    tabindex="0"
+                    :aria-label="`${m.month}: ${m.kwh.toLocaleString()} kWh`"
                     @mouseenter="hoveredMonthIdx = i"
                     @mouseleave="hoveredMonthIdx = null"
+                    @focus="hoveredMonthIdx = i"
+                    @blur="hoveredMonthIdx = null"
+                    @keydown.enter="hoveredMonthIdx = hoveredMonthIdx === i ? null : i"
+                    @keydown.space.prevent="hoveredMonthIdx = hoveredMonthIdx === i ? null : i"
                   >
-                    <div class="monthly-tooltip" v-if="hoveredMonthIdx === i">
+                    <div class="monthly-tooltip" v-if="hoveredMonthIdx === i" aria-hidden="true">
                       {{ m.kwh.toLocaleString() }} kWh
                     </div>
                     <div class="monthly-bar-wrap">
-                      <div class="monthly-bar" :style="{ height: m.pct + '%' }"></div>
+                      <div class="monthly-bar" :style="{ height: m.pct + '%' }" aria-hidden="true"></div>
                     </div>
-                    <div class="monthly-bar-label">{{ m.month }}</div>
+                    <div class="monthly-bar-label" aria-hidden="true">{{ m.month }}</div>
                   </div>
                 </div>
               </div>
@@ -242,17 +268,19 @@
                 <div v-if="compareBuildings.length === 0" style="font-size:12px;color:var(--text-muted);padding:4px 0 8px;">
                   Add up to 2 buildings to compare side by side
                 </div>
-                <div v-else class="compare-slots-mini">
-                  <div v-for="(item, i) in compareBuildings" :key="item.building.structure_id" class="compare-slot-mini">
+                <div v-else class="compare-slots-mini" role="list" aria-label="Buildings in comparison">
+                  <div v-for="(item, i) in compareBuildings" :key="item.building.structure_id" class="compare-slot-mini" role="listitem">
                     <span class="compare-slot-mini-id">#{{ item.building.structure_id }}</span>
-                    <span class="compare-slot-mini-score" :style="{ color: scoreColor(item.building.solar_score) }">{{ item.building.solar_score }}</span>
-                    <button class="compare-slot-remove" @click="removeFromCompare(i)">✕</button>
+                    <span class="compare-slot-mini-score" :style="{ color: scoreColor(item.building.solar_score) }" :aria-label="`Solar score: ${item.building.solar_score}`">{{ item.building.solar_score }}</span>
+                    <button class="compare-slot-remove" @click="removeFromCompare(i)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">✕</button>
                   </div>
                 </div>
                 <button
                   class="compare-add-btn"
                   @click="addToCompare"
                   :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
+                  :aria-disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
+                  :aria-label="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Building already in comparison' : 'Add current building to comparison'"
                 >
                   {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? '✓ Already in comparison' : '+ Add to Compare' }}
                 </button>
@@ -262,9 +290,9 @@
           </div>
         </div>
       </aside>
-    </div>
+    </main>
 
-    <div class="toast" :class="{ show: toastVisible }">{{ toastMessage }}</div>
+    <div class="toast" role="status" aria-live="polite" aria-atomic="true" :class="{ show: toastVisible }">{{ toastMessage }}</div>
   </div>
 </template>
 

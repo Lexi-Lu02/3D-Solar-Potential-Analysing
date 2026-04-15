@@ -19,13 +19,21 @@
             :class="{ shake: shaking }"
             placeholder="Password"
             autocomplete="current-password"
+            :aria-describedby="errorMsg ? 'pw-error-msg' : undefined"
+            aria-required="true"
           />
-          <button type="button" class="pw-toggle" @click="showPw = !showPw" tabindex="-1">
-            {{ showPw ? '🙈' : '👁️' }}
+          <button
+            type="button"
+            class="pw-toggle"
+            @click="showPw = !showPw"
+            :aria-label="showPw ? 'Hide password' : 'Show password'"
+            :aria-pressed="showPw"
+          >
+            <span aria-hidden="true">{{ showPw ? '🙈' : '👁️' }}</span>
           </button>
         </div>
-        <div v-if="errorMsg" class="pw-error">{{ errorMsg }}</div>
-        <button type="submit" class="pw-btn" :disabled="!password">Enter</button>
+        <div v-if="errorMsg" id="pw-error-msg" class="pw-error" role="alert" aria-live="assertive">{{ errorMsg }}</div>
+        <button type="submit" class="pw-btn" :disabled="!password" :aria-disabled="!password">Enter</button>
       </form>
     </div>
     <div class="pw-footer">© City of Melbourne 2023 · Data for research purposes</div>
@@ -171,6 +179,12 @@ function submit() {
 }
 
 .pw-toggle:hover { opacity: 1; }
+.pw-toggle:focus-visible {
+  opacity: 1;
+  outline: 3px solid #EA580C;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 .pw-error {
   font-size: 12px;
@@ -196,6 +210,10 @@ function submit() {
 }
 
 .pw-btn:hover:not(:disabled) { background: #C2410C; }
+.pw-btn:focus-visible {
+  outline: 3px solid #EA580C;
+  outline-offset: 2px;
+}
 .pw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .pw-footer {

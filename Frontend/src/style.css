@@ -337,3 +337,55 @@ body {
 }
 .compare-add-btn:hover:not(:disabled) { background: var(--accent-light); }
 .compare-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Accessibility utilities ─────────────────────────────── */
+
+/* Visually hidden but accessible to screen readers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus-visible styles — keyboard-only visible focus indicators */
+.control-card-toggle:focus-visible,
+.filter-btn:focus-visible,
+.sidebar-strip-btn:focus-visible,
+.search-btn:focus-visible,
+.share-btn:focus-visible,
+.compare-add-btn:focus-visible,
+.compare-clear:focus-visible,
+.comparison-close-btn:focus-visible,
+.comparison-remove-btn:focus-visible,
+.compare-slot-remove:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.monthly-bar-col:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+.monthly-bar-col {
+  cursor: default;
+}
+
+.search-input:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+  background: var(--surface);
+}
+
+/* Ensure nav-home-btn has a visible focus state */
+.nav-home-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
