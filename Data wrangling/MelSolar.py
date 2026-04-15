@@ -135,19 +135,18 @@ buildings_table.rename(columns={
 }, inplace=True)
  
  
-# Step 7: Deduplicate buildings
-# One building can have multiple records (tower, podium, setbacks).
-# Keep the row with the highest building_height per structure_id.
-print("[7] Deduplicating buildings...")
- 
-buildings_table = (
-    buildings_table
-    .sort_values('building_height', ascending=False)
-    .drop_duplicates(subset='structure_id', keep='first')
-    .sort_values('structure_id')
-    .reset_index(drop=True)
-)
-print(f"  After dedup: {len(buildings_table)} rows")
+# Step 7: generate id as primary key
+print("[7] Adding surrogate primary key id...")
+
+# Sort by structure_id and building_height to keep records organised
+# All parts (tower, podium, setbacks) are preserved — no deduplication
+buildings_table = buildings_table.sort_values(
+    ['structure_id', 'building_height'], ascending=[True, False]
+).reset_index(drop=True)
+
+# Insert id as first column (auto-increment surrogate primary key)
+buildings_table.insert(0, 'id', range(1, len(buildings_table) + 1))
+print(f"  buildings rows (all parts): {len(buildings_table)}")
  
  
 # Step 8: Filter rooftop_solar to valid structure_ids only

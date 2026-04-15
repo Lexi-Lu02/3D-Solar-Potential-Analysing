@@ -169,12 +169,6 @@
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
               </div>
-              <!-- Data source badge -->
-              <div class="data-source-row">
-                <span v-if="solarApiLoading" class="data-badge data-badge--loading">⟳ Fetching live data…</span>
-                <span v-else-if="solarApiData" class="data-badge data-badge--live">★ Google Solar API</span>
-                <span v-else class="data-badge data-badge--local">~ Estimated (local data)</span>
-              </div>
 
               <div class="metrics-grid">
                 <div class="metric-card">
@@ -219,7 +213,6 @@
                 </span>
               </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
-              <div class="info-row"><span class="info-key">Current coverage</span><span class="info-val">{{ selectedBuilding.dominant_rating || 'No data' }}</span></div>
               <div class="section-title">Monthly Output</div>
               <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
               <div v-else class="monthly-chart">
