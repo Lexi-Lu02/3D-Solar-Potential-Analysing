@@ -79,53 +79,82 @@
         <Transition name="compare-slide">
           <div v-if="compareVisible" class="comparison-panel" role="region" aria-label="Building comparison panel" aria-live="polite">
             <div class="comparison-header">
-              <span class="comparison-title" id="compare-panel-title">
-                Compare Buildings
-                <span class="comparison-count" :aria-label="`${compareBuildings.length} of 2 buildings selected`">{{ compareBuildings.length }}/2</span>
-              </span>
-              <button class="comparison-close-btn" @click="clearCompare" aria-label="Close comparison panel">✕</button>
+              <div class="comparison-header-left">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" class="comparison-header-icon">
+                  <rect x="1" y="3" width="6" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                  <rect x="9" y="3" width="6" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span class="comparison-title" id="compare-panel-title">Building Comparison</span>
+                <span class="comparison-count" :aria-label="`${compareBuildings.length} of 2 buildings selected`">{{ compareBuildings.length }} / 2</span>
+              </div>
+              <button class="comparison-close-btn" @click="clearCompare" aria-label="Close comparison panel">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </button>
             </div>
+
             <div class="comparison-body" aria-labelledby="compare-panel-title">
+              <!-- Building columns -->
               <div
                 v-for="(item, col) in compareBuildings"
                 :key="item.building.structure_id"
                 class="comparison-col"
               >
+                <!-- Column header -->
                 <div class="comparison-col-header">
-                  <span class="comparison-building-id">Structure {{ item.building.structure_id }}</span>
-                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">✕</button>
-                </div>
-                <!-- Score bar -->
-                <div class="comparison-score-row">
-                  <div class="comparison-score-val" :style="{ color: scoreColor(item.building.solar_score) }">
-                    {{ item.building.solar_score }}
+                  <div class="comparison-col-label">Building {{ col + 1 }}</div>
+                  <div class="comparison-building-id">
+                    {{ item.building.structure_id }}
                   </div>
-                  <div class="comparison-score-bar-wrap">
-                    <div class="comparison-score-bar">
-                      <div class="comparison-score-fill" :style="{ width: Math.min(100, item.building.solar_score || 0) + '%', background: scoreColor(item.building.solar_score) }"></div>
+                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+
+                <!-- Score hero -->
+                <div class="comparison-score-hero">
+                  <div class="comparison-score-circle" :style="{ '--score-color': scoreColor(item.building.solar_score) }">
+                    <span class="comparison-score-num">{{ item.building.solar_score ?? '—' }}</span>
+                    <span class="comparison-score-unit">/100</span>
+                  </div>
+                  <div class="comparison-score-meta">
+                    <div class="comparison-tier-badge" :style="{ background: scoreColor(item.building.solar_score) + '22', color: scoreColor(item.building.solar_score), borderColor: scoreColor(item.building.solar_score) + '55' }">
+                      {{ scoreTier(item.building.solar_score) }}
                     </div>
-                    <div class="comparison-tier-label" :style="{ color: scoreColor(item.building.solar_score) }">{{ scoreTier(item.building.solar_score) }}</div>
+                    <div class="comparison-score-bar-track">
+                      <div class="comparison-score-bar-fill" :style="{ width: Math.min(100, item.building.solar_score || 0) + '%', background: scoreColor(item.building.solar_score) }"></div>
+                    </div>
                   </div>
                 </div>
+
                 <!-- Metric rows -->
-                <div
-                  v-for="(metric, mi) in compareMetrics(item)"
-                  :key="metric.label"
-                  class="comparison-metric-row"
-                  :class="{ 'comparison-winner': compareWinners[mi]?.[col] }"
-                >
-                  <span class="comparison-metric-label">{{ metric.label }}</span>
-                  <span class="comparison-metric-val">
-                    {{ metric.display }}
-                    <span v-if="compareWinners[mi]?.[col]" class="comparison-winner-badge">▲</span>
-                  </span>
+                <div class="comparison-metrics">
+                  <div
+                    v-for="(metric, mi) in compareMetrics(item)"
+                    :key="metric.label"
+                    class="comparison-metric-row"
+                    :class="{ 'comparison-winner': compareWinners[mi]?.[col] }"
+                  >
+                    <span class="comparison-metric-label">{{ metric.label }}</span>
+                    <span class="comparison-metric-val">
+                      {{ metric.display }}
+                      <span v-if="compareWinners[mi]?.[col]" class="comparison-winner-badge" aria-label="Winner">★</span>
+                    </span>
+                  </div>
                 </div>
               </div>
-              <!-- Empty slot when only 1 building added -->
+
+              <!-- VS divider (only when 2 buildings) -->
+              <div v-if="compareBuildings.length === 2" class="comparison-vs" aria-hidden="true">VS</div>
+
+              <!-- Empty slot -->
               <div v-if="compareBuildings.length < 2" class="comparison-empty-col">
-                <div class="comparison-empty-hint">
-                  Click a building,<br>then "Add to Compare"
-                </div>
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true" class="comparison-empty-icon">
+                  <rect x="2" y="2" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <path d="M14 9v10M9 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <div class="comparison-empty-hint">Click a building,<br>then <strong>Add to Compare</strong></div>
               </div>
             </div>
           </div>
@@ -262,27 +291,47 @@
               </div>
               <div class="compare-section">
                 <div class="compare-header">
-                  <span class="compare-title">Comparison</span>
-                  <button v-if="compareBuildings.length > 0" class="compare-clear" @click="clearCompare">Clear all</button>
+                  <span class="compare-title">
+                    <img :src="iconCompare" alt="" aria-hidden="true" class="compare-title-icon" />
+                    Compare
+                  </span>
+                  <button v-if="compareBuildings.length > 0" class="compare-clear" @click="clearCompare" aria-label="Clear all comparison buildings">Clear all</button>
                 </div>
-                <div v-if="compareBuildings.length === 0" style="font-size:12px;color:var(--text-muted);padding:4px 0 8px;">
+
+                <div v-if="compareBuildings.length === 0" class="compare-empty-hint-sidebar">
                   Add up to 2 buildings to compare side by side
                 </div>
+
                 <div v-else class="compare-slots-mini" role="list" aria-label="Buildings in comparison">
-                  <div v-for="(item, i) in compareBuildings" :key="item.building.structure_id" class="compare-slot-mini" role="listitem">
-                    <span class="compare-slot-mini-id">#{{ item.building.structure_id }}</span>
+                  <div
+                    v-for="(item, i) in compareBuildings"
+                    :key="item.building.structure_id"
+                    class="compare-slot-mini"
+                    role="listitem"
+                  >
+                    <div class="compare-slot-mini-label">B{{ i + 1 }}</div>
+                    <div class="compare-slot-mini-info">
+                      <span class="compare-slot-mini-id">#{{ item.building.structure_id }}</span>
+                      <span class="compare-slot-mini-tier" :style="{ color: scoreColor(item.building.solar_score) }">{{ scoreTier(item.building.solar_score) }}</span>
+                    </div>
                     <span class="compare-slot-mini-score" :style="{ color: scoreColor(item.building.solar_score) }" :aria-label="`Solar score: ${item.building.solar_score}`">{{ item.building.solar_score }}</span>
-                    <button class="compare-slot-remove" @click="removeFromCompare(i)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">✕</button>
+                    <button class="compare-slot-remove" @click="removeFromCompare(i)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
                   </div>
                 </div>
+
                 <button
                   class="compare-add-btn"
                   @click="addToCompare"
                   :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
                   :aria-disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
                   :aria-label="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Building already in comparison' : 'Add current building to comparison'"
+                  :class="{ 'compare-add-btn--added': compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) }"
                 >
-                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? '✓ Already in comparison' : '+ Add to Compare' }}
+                  <svg v-if="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id)" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 6.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg v-else width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Added to Compare' : 'Add to Compare' }}
                 </button>
               </div>
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
@@ -304,13 +353,16 @@ export default { name: 'ExploreView' }
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
+import iconCompare from '../pictures/Compare.png'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
 const GEOJSON_PATH = '/combined-buildings.geojson'
-const SELECTED_BUILDING_COLOR = '#7F93B2'
-const SELECTED_BUILDING_OPACITY = 0.82
+const SELECTED_BUILDING_COLOR = '#1C1C28'
+const SELECTED_BUILDING_OPACITY = 0.95
+const COMPARE_BUILDING_COLOR = '#1C1C28'
+const COMPARE_BUILDING_OPACITY = 0.85
 
 // Google Solar API — key loaded from .env (VITE_SOLAR_API_KEY).
 // If blank the app works entirely on local data at no cost.
@@ -557,17 +609,21 @@ function scoreTier(score) {
   return 'Very Poor'
 }
 
-// Returns the 4 comparable metrics for a compare entry
+// Returns the comparable metrics for a compare entry
 function compareMetrics(item) {
   const b = item.building
   const api = item.apiData
   const kwh = api?.kwhAnnual ?? (b.has_solar_data ? Math.round(Number(b.kwh_annual) || 0) : null)
   const area = api?.usableAreaM2 ?? (b.has_solar_data ? Number(b.usable_roof_area) : null)
+  const roofArea = api?.roofAreaM2 ?? Number(b.footprint_area) ?? null
+  const usableRatio = area != null && roofArea ? Math.round((area / roofArea) * 100) : null
+  const maxPanels = api?.maxPanels ?? null
   return [
-    { label: 'Annual kWh',  display: kwh  != null ? Number(kwh).toLocaleString()         + ' kWh' : '—', raw: kwh  ?? 0 },
-    { label: 'Usable Area', display: area != null ? Number(area).toFixed(1)               + ' m²'  : '—', raw: area ?? 0 },
-    { label: 'Roof Type',   display: b.roof_type || '—',                                              raw: null },
-    { label: 'Height',      display: b.building_height ? Number(b.building_height).toFixed(1) + ' m' : '—', raw: Number(b.building_height) || 0 },
+    { label: 'Roof Type',       display: b.roof_type || '—',                                                         raw: null },
+    { label: 'Annual kWh',      display: kwh        != null ? Number(kwh).toLocaleString()        + ' kWh' : '—',    raw: kwh        ?? 0 },
+    { label: 'Usable Area',     display: area       != null ? Number(area).toFixed(1)              + ' m²'  : '—',    raw: area       ?? 0 },
+    { label: 'Usable Ratio',    display: usableRatio != null ? usableRatio                         + '%'    : '—',    raw: usableRatio ?? 0 },
+    { label: 'Max Solar Panels',display: maxPanels  != null ? Number(maxPanels).toLocaleString()              : '—',  raw: maxPanels  ?? 0 },
   ]
 }
 
@@ -584,6 +640,12 @@ const compareWinners = computed(() => {
   })
 })
 
+function updateCompareHighlight() {
+  if (!map) return
+  const ids = compareBuildings.value.map(c => c.building.structure_id)
+  map.setFilter('building-compare', ['in', ['get', 'structure_id'], ['literal', ids.length ? ids : [-1]]])
+}
+
 function addToCompare() {
   if (!selectedBuilding.value) return
   const sid = selectedBuilding.value.structure_id
@@ -598,14 +660,17 @@ function addToCompare() {
   if (compareBuildings.value.length >= 2) compareBuildings.value.shift() // replace oldest
   compareBuildings.value.push(entry)
   showToast('Added to comparison')
+  updateCompareHighlight()
 }
 
 function removeFromCompare(idx) {
   compareBuildings.value.splice(idx, 1)
+  updateCompareHighlight()
 }
 
 function clearCompare() {
   compareBuildings.value = []
+  updateCompareHighlight()
 }
 // Generates a shareable URL for the currently selected building and copies it to clipboard
 function shareBuilding() {
@@ -728,7 +793,21 @@ function initMap() {
           },
         })
 
-        // Selected building highlight
+        // Compare buildings highlight (rendered below selected so selected stays on top)
+        map.addLayer({
+          id: 'building-compare',
+          type: 'fill-extrusion',
+          source: 'melbourne-buildings',
+          filter: ['in', ['get', 'structure_id'], ['literal', [-1]]],
+          paint: {
+            'fill-extrusion-color': COMPARE_BUILDING_COLOR,
+            'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': COMPARE_BUILDING_OPACITY,
+          },
+        })
+
+        // Selected building highlight (on top of compare layer)
         map.addLayer({
           id: 'building-selected',
           type: 'fill-extrusion',
