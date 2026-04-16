@@ -187,38 +187,61 @@
             </div>
             <div class="search-row" role="search">
               <label for="search-address" class="visually-hidden">Search buildings by address</label>
-              <div class="search-input-wrap">
+              <div class="search-input-wrap" ref="searchWrapRef">
                 <input
                   id="search-address"
                   v-model="searchId"
-                  type="search"
+                  type="text"
                   class="search-input"
                   placeholder="Search by address…"
                   autocomplete="off"
-                  @input="onSearchInput"
-                  @keydown.escape="searchResults = []"
-                  @keyup.enter="searchResults.length ? selectSearchResult(searchResults[0]) : null"
+                  role="combobox"
+                  :aria-expanded="searchResults.length > 0 || searchLoading"
+                  aria-autocomplete="list"
+                  aria-controls="search-listbox"
+                  :aria-activedescendant="searchFocusedIdx >= 0 ? `search-option-${searchFocusedIdx}` : undefined"
                   :aria-describedby="searchError ? 'search-error-msg' : undefined"
+                  @input="onSearchInput"
+                  @keydown="onSearchKeydown"
                 />
                 <button
                   class="search-icon-btn"
-                  @click="searchResults.length ? selectSearchResult(searchResults[0]) : onSearchInput()"
+                  @click="searchResults.length ? selectSearchResult(searchResults[searchFocusedIdx >= 0 ? searchFocusedIdx : 0]) : onSearchInput()"
                   aria-label="Search"
                   type="button"
                 >
                   <img :src="iconSearch" alt="" aria-hidden="true" class="search-icon-img" />
                 </button>
-                <ul v-if="searchResults.length" class="search-dropdown" role="listbox" aria-label="Address search results">
-                  <li
-                    v-for="result in searchResults"
-                    :key="result.structure_id"
-                    class="search-dropdown-item"
-                    role="option"
-                    @click="selectSearchResult(result)"
-                  >
-                    <span class="search-result-address">{{ result.address }}</span>
-                    <span class="search-result-id">#{{ result.structure_id }}</span>
+                <!-- Dropdown: loading -->
+                <ul v-if="searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
+                  <li class="search-dropdown-loading" aria-live="polite">
+                    <span class="search-loading-dot"></span>
+                    <span class="search-loading-dot"></span>
+                    <span class="search-loading-dot"></span>
                   </li>
+                </ul>
+                <!-- Dropdown: results -->
+                <ul v-else-if="searchResults.length" class="search-dropdown" role="listbox" id="search-listbox" aria-label="Address search results">
+                  <li
+                    v-for="(result, i) in searchResults"
+                    :key="result.structure_id"
+                    :id="`search-option-${i}`"
+                    class="search-dropdown-item"
+                    :class="{ 'search-dropdown-item--focused': searchFocusedIdx === i }"
+                    role="option"
+                    :aria-selected="searchFocusedIdx === i"
+                    @mousedown.prevent="selectSearchResult(result)"
+                    @mouseover="searchFocusedIdx = i"
+                  >
+                    <svg class="search-result-pin" width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
+                      <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 6 3.5a1.5 1.5 0 0 1 0 3z" fill="currentColor"/>
+                    </svg>
+                    <span class="search-result-address">{{ result.address }}</span>
+                  </li>
+                </ul>
+                <!-- Dropdown: no results -->
+                <ul v-else-if="searchId.trim().length >= 2 && !searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
+                  <li class="search-dropdown-empty">No matching addresses found</li>
                 </ul>
               </div>
             </div>
@@ -407,6 +430,9 @@ const solarApiLoading = ref(false)
 const searchId = ref('')
 const searchError = ref('')
 const searchResults = ref([])   // [{ id, structure_id, lat, lng, address }]
+const searchLoading = ref(false)
+const searchFocusedIdx = ref(-1)
+const searchWrapRef = ref(null)
 let searchDebounceTimer = null
 const sidebarOpen = ref(true)
 const solarFilterOpen = ref(true)
@@ -576,16 +602,54 @@ function filterSolar(tierId) {
   applyFilters()
 }
 
-async function onSearchInput() {
-  const q = searchId.value.trim()
-  if (q.length < 2) { searchResults.value = []; return }
+function closeSearchDropdown() {
+  searchResults.value = []
+  searchLoading.value = false
+  searchFocusedIdx.value = -1
+}
+
+function onSearchClickOutside(e) {
+  if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
+    closeSearchDropdown()
+  }
+}
+
+function onSearchKeydown(e) {
+  const len = searchResults.value.length
+  if (e.key === 'Escape') { closeSearchDropdown(); return }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    searchFocusedIdx.value = len ? (searchFocusedIdx.value + 1) % len : -1
+    return
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    searchFocusedIdx.value = len ? (searchFocusedIdx.value - 1 + len) % len : -1
+    return
+  }
+  if (e.key === 'Enter') {
+    const idx = searchFocusedIdx.value >= 0 ? searchFocusedIdx.value : 0
+    if (len) selectSearchResult(searchResults.value[idx])
+    return
+  }
+}
+
+function onSearchInput() {
+  searchFocusedIdx.value = -1
   clearTimeout(searchDebounceTimer)
+  const q = searchId.value.trim()
+  if (q.length < 2) { closeSearchDropdown(); return }
+  searchLoading.value = true
   searchDebounceTimer = setTimeout(async () => {
     try {
-      const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(q)}`)
-      if (res.ok) searchResults.value = await res.json()
-    } catch { searchResults.value = [] }
-  }, 300)
+      const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(searchId.value.trim())}`)
+      searchResults.value = res.ok ? await res.json() : []
+    } catch {
+      searchResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }, 250)
 }
 
 async function selectSearchResult(result) {
@@ -909,9 +973,11 @@ onMounted(() => {
   setTimeout(() => {
     if (!map) initMap()
   }, 50)
+  document.addEventListener('mousedown', onSearchClickOutside)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('mousedown', onSearchClickOutside)
   if (toastTimer) clearTimeout(toastTimer)
   if (map) {
     map.remove()
