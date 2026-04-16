@@ -1,0 +1,439 @@
+.venv) ubuntu@ip-172-31-31-115:~/3D-Solar-Potential-Analysing/Frontend$ sudo journalctl -u solarmap-api -f
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/pydantic/main.py", line 212, in __init__
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]: pydantic_core._pydantic_core.ValidationError: 2 validation errors for SolarCacheResponse
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]: roof_segment_stats
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'stats': {'areaMeters2'...enterMeters': 85.38101}], input_type=list]
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]: solar_panel_configs
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'panelsCount': 4, 'year...rgyDcKwh': 165015.03}]}], input_type=list]
+Apr 16 05:24:35 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: 2026-04-16 05:25:51,054 ERROR app.errors Unhandled exception (request_id=a3b85cce-cefb-4c90-b753-b114661f5cc4) on GET /api/v1/buildings/structure/815678/solar
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   + Exception Group Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 77, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     yield
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 186, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     async with anyio.create_task_group() as task_group:
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 799, in __aexit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     raise BaseExceptionGroup(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   +-+---------------- 1 ----------------
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, _send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/main.py", line 92, in attach_request_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/slowapi/middleware.py", line 136, in dispatch
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await route.handle(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await f(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raw_response = await run_endpoint_function(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await run_in_threadpool(dependant.call, **values)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 39, in run_in_threadpool
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await anyio.to_thread.run_sync(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await get_async_backend().run_sync_in_worker_thread(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await future
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     result = context.run(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |              ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/routers/solar.py", line 45, in get_solar_by_structure
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     result = fetch_solar_by_structure_id(conn, structure_id)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 35, in fetch_solar_by_structure_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return _row_to_response(row)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 56, in _row_to_response
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return SolarCacheResponse(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/pydantic/main.py", line 212, in __init__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | pydantic_core._pydantic_core.ValidationError: 2 validation errors for SolarCacheResponse
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | roof_segment_stats
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   Input should be a valid dictionary [type=dict_type, input_value=[{'stats': {'areaMeters2'...nterMeters': 105.85988}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | solar_panel_configs
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   Input should be a valid dictionary [type=dict_type, input_value=[{'panelsCount': 4, 'year...rgyDcKwh': 1850.3275}]}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     +------------------------------------
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: During handling of the above exception, another exception occurred:
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, _send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/main.py", line 92, in attach_request_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/slowapi/middleware.py", line 136, in dispatch
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await route.handle(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await f(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raw_response = await run_endpoint_function(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await run_in_threadpool(dependant.call, **values)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 39, in run_in_threadpool
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await anyio.to_thread.run_sync(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await get_async_backend().run_sync_in_worker_thread(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await future
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     result = context.run(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:              ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/routers/solar.py", line 45, in get_solar_by_structure
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     result = fetch_solar_by_structure_id(conn, structure_id)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 35, in fetch_solar_by_structure_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return _row_to_response(row)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 56, in _row_to_response
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return SolarCacheResponse(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/pydantic/main.py", line 212, in __init__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: pydantic_core._pydantic_core.ValidationError: 2 validation errors for SolarCacheResponse
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: roof_segment_stats
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'stats': {'areaMeters2'...nterMeters': 105.85988}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: solar_panel_configs
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'panelsCount': 4, 'year...rgyDcKwh': 1850.3275}]}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: [2026-04-16 05:25:51 +0000] [69396] [ERROR] Exception in ASGI application
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   + Exception Group Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 77, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     yield
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 186, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     async with anyio.create_task_group() as task_group:
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 799, in __aexit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   |     raise BaseExceptionGroup(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   +-+---------------- 1 ----------------
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     result = await app(  # type: ignore[func-returns-value]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await super().__call__(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, _send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/main.py", line 92, in attach_request_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/slowapi/middleware.py", line 136, in dispatch
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await route.handle(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     response = await f(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                ^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     raw_response = await run_endpoint_function(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await run_in_threadpool(dependant.call, **values)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 39, in run_in_threadpool
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await anyio.to_thread.run_sync(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await get_async_backend().run_sync_in_worker_thread(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return await future
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     result = context.run(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |              ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/routers/solar.py", line 45, in get_solar_by_structure
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     result = fetch_solar_by_structure_id(conn, structure_id)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 35, in fetch_solar_by_structure_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return _row_to_response(row)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 56, in _row_to_response
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     return SolarCacheResponse(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |            ^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/pydantic/main.py", line 212, in __init__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | pydantic_core._pydantic_core.ValidationError: 2 validation errors for SolarCacheResponse
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | roof_segment_stats
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   Input should be a valid dictionary [type=dict_type, input_value=[{'stats': {'areaMeters2'...nterMeters': 105.85988}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     | solar_panel_configs
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |   Input should be a valid dictionary [type=dict_type, input_value=[{'panelsCount': 4, 'year...rgyDcKwh': 1850.3275}]}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     |     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     +------------------------------------
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: During handling of the above exception, another exception occurred:
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: Traceback (most recent call last):
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     result = await app(  # type: ignore[func-returns-value]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await super().__call__(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, _send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/main.py", line 92, in attach_request_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     with collapse_excgroups():
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/usr/lib/python3.11/contextlib.py", line 158, in __exit__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     self.gen.throw(typ, value, traceback)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await self.dispatch_func(request, call_next)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/slowapi/middleware.py", line 136, in dispatch
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await call_next(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise app_exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive_or_disconnect, send_no_error)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.middleware_stack(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await route.handle(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await self.app(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raise exc
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     await app(scope, receive, sender)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     response = await f(request)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                ^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     raw_response = await run_endpoint_function(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await run_in_threadpool(dependant.call, **values)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 39, in run_in_threadpool
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await anyio.to_thread.run_sync(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await get_async_backend().run_sync_in_worker_thread(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return await future
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     result = context.run(func, *args)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:              ^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/routers/solar.py", line 45, in get_solar_by_structure
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     result = fetch_solar_by_structure_id(conn, structure_id)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 35, in fetch_solar_by_structure_id
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return _row_to_response(row)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/app/services/solar_query.py", line 56, in _row_to_response
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     return SolarCacheResponse(
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:            ^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   File "/home/ubuntu/3D-Solar-Potential-Analysing/Backend/api/.venv/lib/python3.11/site-packages/pydantic/main.py", line 212, in __init__
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: pydantic_core._pydantic_core.ValidationError: 2 validation errors for SolarCacheResponse
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: roof_segment_stats
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'stats': {'areaMeters2'...nterMeters': 105.85988}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]: solar_panel_configs
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:   Input should be a valid dictionary [type=dict_type, input_value=[{'panelsCount': 4, 'year...rgyDcKwh': 1850.3275}]}], input_type=list]
+Apr 16 05:25:51 ip-172-31-31-115 gunicorn[69396]:     For further information visit https://errors.pydantic.dev/2.9/v/dict_type
