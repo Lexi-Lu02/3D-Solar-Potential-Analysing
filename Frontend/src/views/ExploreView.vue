@@ -186,17 +186,41 @@
               {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
             </div>
             <div class="search-row" role="search">
-              <label for="search-structure-id" class="visually-hidden">Search by Structure ID</label>
-              <input
-                id="search-structure-id"
-                v-model="searchId"
-                type="search"
-                class="search-input"
-                placeholder="Search by Structure ID…"
-                @keyup.enter="searchBuilding"
-                :aria-describedby="searchError ? 'search-error-msg' : undefined"
-              />
-              <button class="search-btn" @click="searchBuilding" aria-label="Search for building by Structure ID">→</button>
+              <label for="search-address" class="visually-hidden">Search buildings by address</label>
+              <div class="search-input-wrap">
+                <input
+                  id="search-address"
+                  v-model="searchId"
+                  type="search"
+                  class="search-input"
+                  placeholder="Search by address…"
+                  autocomplete="off"
+                  @input="onSearchInput"
+                  @keydown.escape="searchResults = []"
+                  @keyup.enter="searchResults.length ? selectSearchResult(searchResults[0]) : null"
+                  :aria-describedby="searchError ? 'search-error-msg' : undefined"
+                />
+                <button
+                  class="search-icon-btn"
+                  @click="searchResults.length ? selectSearchResult(searchResults[0]) : onSearchInput()"
+                  aria-label="Search"
+                  type="button"
+                >
+                  <img :src="iconSearch" alt="" aria-hidden="true" class="search-icon-img" />
+                </button>
+                <ul v-if="searchResults.length" class="search-dropdown" role="listbox" aria-label="Address search results">
+                  <li
+                    v-for="result in searchResults"
+                    :key="result.structure_id"
+                    class="search-dropdown-item"
+                    role="option"
+                    @click="selectSearchResult(result)"
+                  >
+                    <span class="search-result-address">{{ result.address }}</span>
+                    <span class="search-result-id">#{{ result.structure_id }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
             <div v-if="searchError" id="search-error-msg" class="search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
           </div>
@@ -354,6 +378,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
 import iconCompare from '../pictures/Compare.png'
+import iconSearch  from '../pictures/Search.png'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -364,10 +389,8 @@ const SELECTED_BUILDING_OPACITY = 0.95
 const COMPARE_BUILDING_COLOR = '#1C1C28'
 const COMPARE_BUILDING_OPACITY = 0.85
 
-// Google Solar API — key loaded from .env (VITE_SOLAR_API_KEY).
-// If blank the app works entirely on local data at no cost.
-const SOLAR_API_KEY = import.meta.env.VITE_SOLAR_API_KEY || ''
-const SOLAR_API_BASE = 'https://solar.googleapis.com/v1/buildingInsights:findClosest'
+// Backend API base URL (same-origin in production, localhost in dev)
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 // Session cache: structure_id → result object | null (null = known failure, skip retry)
 const solarApiCache = new Map()
@@ -383,6 +406,8 @@ const solarApiData = ref(null)   // { maxPanels, usableAreaM2, kwhAnnual } | nul
 const solarApiLoading = ref(false)
 const searchId = ref('')
 const searchError = ref('')
+const searchResults = ref([])   // [{ id, structure_id, lat, lng, address }]
+let searchDebounceTimer = null
 const sidebarOpen = ref(true)
 const solarFilterOpen = ref(true)
 const roofFilterOpen = ref(true)
@@ -474,40 +499,30 @@ const tierColor = computed(() => {
   return 'var(--solar-very-low)'
 })
 
-// Fetch live solar data for one building from Google Solar API.
-// Returns { maxPanels, usableAreaM2, kwhAnnual } on success, null on any failure.
-// Results are cached for the session so the same building is never billed twice.
-async function fetchSolarApiData(structureId, lat, lng) {
-  if (!SOLAR_API_KEY) return null                          // no key → free fallback
+// Fetch solar cache data from the backend for one building.
+// Returns { maxPanels, usableAreaM2, roofAreaM2, kwhAnnual } on success, null on any failure.
+// Results are session-cached so the same building is only fetched once.
+async function fetchSolarApiData(structureId) {
   if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
 
   try {
-    const url = `${SOLAR_API_BASE}?location.latitude=${lat}&location.longitude=${lng}&requiredQuality=LOW&key=${SOLAR_API_KEY}`
-    const res = await fetch(url)
+    const res = await fetch(`${API_BASE}/buildings/structure/${structureId}/solar`)
 
     if (!res.ok) {
-      // 404 = building not in Google's coverage; 429 = quota hit — both are silent fallbacks
       solarApiCache.set(structureId, null)
       return null
     }
 
     const body = await res.json()
-    const solar = body.solarPotential
-    if (!solar) { solarApiCache.set(structureId, null); return null }
-
-    // solarPanelConfigs is sorted ascending by panel count; last entry = maximum config
-    const maxConfig = solar.solarPanelConfigs?.at(-1)
-
     const result = {
-      maxPanels:    solar.maxArrayPanelsCount  ?? null,
-      usableAreaM2: solar.maxArrayAreaMeters2  != null ? Math.round(solar.maxArrayAreaMeters2 * 10) / 10 : null,
-      roofAreaM2:   solar.wholeRoofStats?.areaMeters2 != null ? Math.round(solar.wholeRoofStats.areaMeters2 * 10) / 10 : null,
-      kwhAnnual:    maxConfig?.yearlyEnergyDcKwh != null ? Math.round(maxConfig.yearlyEnergyDcKwh) : null,
+      maxPanels:    body.max_panels ?? null,
+      usableAreaM2: body.max_array_area_m2 != null ? Math.round(body.max_array_area_m2 * 10) / 10 : null,
+      roofAreaM2:   body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
+      kwhAnnual:    body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
     }
     solarApiCache.set(structureId, result)
     return result
   } catch {
-    // Network error, CORS, parse failure — never crash the UI
     solarApiCache.set(structureId, null)
     return null
   }
@@ -561,33 +576,42 @@ function filterSolar(tierId) {
   applyFilters()
 }
 
-async function searchBuilding() {
-  const id = parseInt(searchId.value.trim(), 10)
-  if (isNaN(id)) { searchError.value = 'Please enter a valid Structure ID'; return }
+async function onSearchInput() {
+  const q = searchId.value.trim()
+  if (q.length < 2) { searchResults.value = []; return }
+  clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(q)}`)
+      if (res.ok) searchResults.value = await res.json()
+    } catch { searchResults.value = [] }
+  }, 300)
+}
 
-  const props = buildingIndex.get(id)
-  if (!props) { searchError.value = `Structure ${id} not found`; return }
-
+async function selectSearchResult(result) {
+  searchResults.value = []
   searchError.value = ''
+  searchId.value = result.address || String(result.structure_id)
+
+  const props = buildingIndex.get(Number(result.structure_id))
+  if (!props) { searchError.value = 'Building not found in map data'; return }
+
   selectedBuilding.value = props
   solarApiData.value = null
   solarApiLoading.value = true
 
   if (map) {
-    map.setFilter('building-selected', ['==', ['get', 'structure_id'], id])
-    const lng = Number(props.lng)
-    const lat = Number(props.lat)
-    if (lat && lng) {
-      map.flyTo({
-        center: [lng, lat],
-        zoom: Math.max(map.getZoom(), 15.5),
-        pitch: 55,
-        duration: 1200,
-        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-      })
-    }
-    solarApiData.value = await fetchSolarApiData(id, Number(props.lat), Number(props.lng))
+    map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(result.structure_id)])
+    map.flyTo({
+      center: [result.lng, result.lat],
+      zoom: Math.max(map.getZoom(), 15.5),
+      pitch: 55,
+      duration: 1200,
+      easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+    })
   }
+
+  solarApiData.value = await fetchSolarApiData(Number(result.structure_id))
   solarApiLoading.value = false
 }
 
@@ -716,7 +740,7 @@ async function openBuildingFromUrl() {
       })
     }
 
-    solarApiData.value = await fetchSolarApiData(id, lat, lng)
+    solarApiData.value = await fetchSolarApiData(id)
   }
 
   solarApiLoading.value = false
@@ -860,8 +884,8 @@ function initMap() {
             })
           }
 
-          // Fetch live data — falls back silently if API key missing or call fails
-          solarApiData.value = await fetchSolarApiData(Number(props.structure_id), lat, lng)
+          // Fetch solar cache data from backend
+          solarApiData.value = await fetchSolarApiData(Number(props.structure_id))
           solarApiLoading.value = false
         })
 

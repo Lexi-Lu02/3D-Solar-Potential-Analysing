@@ -112,19 +112,39 @@ body {
 }
 .sidebar-header { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sidebar-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
-.search-row { display: flex; gap: 6px; margin-top: 10px; }
+.search-row { display: block; margin-top: 10px; }
+.search-input-wrap { position: relative; width: 100%; }
+.search-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  list-style: none; margin: 0; padding: 4px 0; z-index: 200;
+  max-height: 200px; overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+.search-dropdown-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 12px; cursor: pointer; gap: 8px;
+  transition: background 0.12s;
+}
+.search-dropdown-item:hover { background: var(--surface2); }
+.search-result-address { font-size: 12px; color: var(--text-primary); flex: 1; }
+.search-result-id { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 .search-input {
-  flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px;
+  width: 100%; padding: 7px 36px 7px 10px; border: 1px solid var(--border); border-radius: 7px;
   font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-primary);
   background: var(--surface2); outline: none; transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 .search-input:focus { border-color: var(--accent); background: var(--surface); }
 .search-input::placeholder { color: var(--text-muted); }
-.search-btn {
-  padding: 7px 13px; background: var(--accent); color: #fff; border: none;
-  border-radius: 7px; font-size: 14px; cursor: pointer; transition: background 0.15s; flex-shrink: 0;
+.search-icon-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; padding: 4px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; transition: opacity 0.15s;
 }
-.search-btn:hover { background: #C2410C; }
+.search-icon-btn:hover { opacity: 0.7; }
+.search-icon-img { width: 16px; height: 16px; object-fit: contain; display: block; }
 .search-error { font-size: 11px; color: #DC2626; margin-top: 5px; }
 .sidebar-title { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 4px; }
 .sidebar-sub { font-size: 12px; color: var(--text-muted); }
