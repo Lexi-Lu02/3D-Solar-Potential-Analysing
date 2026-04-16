@@ -19,6 +19,22 @@ from ..sql import load
 logger = logging.getLogger(__name__)
 
 
+def fetch_solar_by_structure_id(conn: Connection, structure_id: int) -> SolarCacheResponse | None:
+    """
+    Return the solar_api_cache row for the given City of Melbourne structure_id.
+    Returns None if no matching record exists (router converts to 404).
+    """
+    sql = load("solar_by_structure_id")
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"structure_id": structure_id})
+        row = cur.fetchone()
+
+    if row is None:
+        return None
+
+    return _row_to_response(row)
+
+
 def fetch_solar(conn: Connection, id: int) -> SolarCacheResponse | None:
     """
     Return the solar_api_cache row for the building with the given buildings.id.
