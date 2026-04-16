@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import logging
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
 from psycopg import Connection
 
@@ -22,7 +24,6 @@ from ..models.schemas import BuildingResponse, BuildingSearchItem
 from ..services.building_query import BuildingNotFound, fetch_building, search_buildings
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
-
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +47,11 @@ def get_buildings_search(
     conn: Connection = Depends(get_conn),
 ) -> list[BuildingSearchItem]:
     response.headers["Cache-Control"] = "public, max-age=300"
-    return search_buildings(conn, q)
+    try:
+        return search_buildings(conn, q)
+    except Exception as exc:
+        logger.exception("search_buildings failed for q=%r: %s", q, exc)
+        raise HTTPException(status_code=503, detail="Search temporarily unavailable")
 
 
 @router.get(

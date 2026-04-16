@@ -73,8 +73,8 @@ def search_buildings(conn: Connection, q: str) -> list[BuildingSearchItem]:
         BuildingSearchItem(
             id=int(row["id"]),
             structure_id=int(row["structure_id"]),
-            lat=float(row["lat"]),
-            lng=float(row["lng"]),
+            lat=_safe_float(row.get("lat")),
+            lng=_safe_float(row.get("lng")),
             address=_safe_str(row.get("address")),
         )
         for row in rows
