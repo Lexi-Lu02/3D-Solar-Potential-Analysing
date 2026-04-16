@@ -5,8 +5,8 @@
 --   %(id)s :: integer  (buildings.id surrogate PK)
 --
 -- Returns at most one row. s.usable_roof_area is NULL when the building has
--- no matching rooftop_solar survey record (~5% of buildings); the service
--- layer treats that as has_data=false and returns zero kWh.
+-- no matching rooftop_solar survey record (roughly 5 percent of buildings);
+-- the service layer treats that as has_data=false and returns zero kWh.
 SELECT
     b.structure_id,
     s.usable_roof_area
