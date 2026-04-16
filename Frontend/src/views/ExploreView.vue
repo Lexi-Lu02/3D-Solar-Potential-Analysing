@@ -296,7 +296,7 @@
                 </div>
               </div>
               <div class="section-title">Building Info</div>
-              <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ shortAddress(selectedBuilding.address || solarApiData?.address) }}</span></div>
+              <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ shortAddress(selectedAddress) }}</span></div>
               <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
@@ -427,6 +427,7 @@ const toastMessage = ref('')
 const toastVisible = ref(false)
 const solarApiData = ref(null)   // { maxPanels, usableAreaM2, kwhAnnual } | null
 const solarApiLoading = ref(false)
+const selectedAddress = ref(null)
 const searchId = ref('')
 const searchError = ref('')
 const searchResults = ref([])   // [{ id, structure_id, lat, lng, address }]
@@ -556,6 +557,17 @@ async function fetchSolarApiData(structureId) {
   }
 }
 
+async function fetchAddressForBuilding(structureId) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/address`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.address || null
+  } catch {
+    return null
+  }
+}
+
 function showToast(message) {
   if (toastTimer) clearTimeout(toastTimer)
   toastMessage.value = message
@@ -671,22 +683,33 @@ async function selectSearchResult(result) {
   const props = buildingIndex.get(Number(result.structure_id))
   if (!props) { searchError.value = 'Building not found in map data'; return }
 
+  // Use the structure_id from GeoJSON props (same source as map features) for the filter
+  const sid = Number(props.structure_id)
+
   selectedBuilding.value = props
   solarApiData.value = null
+  selectedAddress.value = result.address || null
   solarApiLoading.value = true
 
   if (map) {
-    map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(result.structure_id)])
-    map.flyTo({
-      center: [result.lng, result.lat],
-      zoom: Math.max(map.getZoom(), 15.5),
-      pitch: 55,
-      duration: 1200,
-      easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-    })
+    map.setFilter('building-selected', ['==', ['get', 'structure_id'], sid])
+    const lng = Number(result.lng) || Number(props.lng)
+    const lat = Number(result.lat) || Number(props.lat)
+    if (lat && lng) {
+      map.flyTo({
+        center: [lng, lat],
+        zoom: Math.max(map.getZoom(), 15.5),
+        pitch: 55,
+        duration: 1200,
+        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+      })
+    }
   }
 
-  solarApiData.value = await fetchSolarApiData(Number(result.structure_id))
+  solarApiData.value = await fetchSolarApiData(sid)
+  if (!selectedAddress.value) {
+    selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
+  }
   solarApiLoading.value = false
 }
 
@@ -797,6 +820,7 @@ async function openBuildingFromUrl() {
 
   selectedBuilding.value = props
   solarApiData.value = null
+  selectedAddress.value = null
   solarApiLoading.value = true
 
   // highlight
@@ -816,6 +840,7 @@ async function openBuildingFromUrl() {
     }
 
     solarApiData.value = await fetchSolarApiData(id)
+    selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(id)
   }
 
   solarApiLoading.value = false
@@ -941,6 +966,7 @@ function initMap() {
           const props = event.features[0].properties
           selectedBuilding.value = props
           solarApiData.value = null
+          selectedAddress.value = null
           solarApiLoading.value = true
 
           // Highlight the clicked building
@@ -959,8 +985,10 @@ function initMap() {
             })
           }
 
-          // Fetch solar cache data from backend
-          solarApiData.value = await fetchSolarApiData(Number(props.structure_id))
+          // Fetch solar cache data and address from backend
+          const sid = Number(props.structure_id)
+          solarApiData.value = await fetchSolarApiData(sid)
+          selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
           solarApiLoading.value = false
         })
 

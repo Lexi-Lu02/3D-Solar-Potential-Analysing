@@ -20,8 +20,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from psycopg import Connection
 
 from ..db import get_conn
-from ..models.schemas import BuildingResponse, BuildingSearchItem
-from ..services.building_query import BuildingNotFound, fetch_building, search_buildings
+from ..models.schemas import BuildingAddressItem, BuildingResponse, BuildingSearchItem
+from ..services.building_query import BuildingNotFound, fetch_building, fetch_building_address, search_buildings
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 logger = logging.getLogger(__name__)
@@ -52,6 +52,29 @@ def get_buildings_search(
     except Exception as exc:
         logger.exception("search_buildings failed for q=%r: %s", q, exc)
         raise HTTPException(status_code=503, detail="Search temporarily unavailable")
+
+
+@router.get(
+    "/by-structure/{structure_id}/address",
+    response_model=BuildingAddressItem,
+    summary="Fetch the street address for a building by City of Melbourne structure_id",
+    responses={
+        200: {"description": "Address for the building (may be null if not yet geocoded)"},
+    },
+)
+def get_building_address_by_structure(
+    response: Response,
+    structure_id: int = Path(
+        ...,
+        ge=1,
+        description="City of Melbourne structure_id",
+        examples=[1234567],
+    ),
+    conn: Connection = Depends(get_conn),
+) -> BuildingAddressItem:
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    address = fetch_building_address(conn, structure_id)
+    return BuildingAddressItem(structure_id=structure_id, address=address)
 
 
 @router.get(

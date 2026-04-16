@@ -106,6 +106,14 @@ class BuildingResponse(BaseModel):
     )
 
 
+# --- /buildings/by-structure/{structure_id}/address --------------------------
+
+
+class BuildingAddressItem(BaseModel):
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
+    address: str | None = Field(None, description="Street address (from solar_api_cache or buildings)")
+
+
 # --- /buildings/search -------------------------------------------------------
 
 

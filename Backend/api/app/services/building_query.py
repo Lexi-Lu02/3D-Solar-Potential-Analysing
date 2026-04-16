@@ -58,6 +58,20 @@ def fetch_building(conn: Connection, id: int) -> BuildingResponse:
     return _row_to_response(row)
 
 
+def fetch_building_address(conn: Connection, structure_id: int) -> str | None:
+    """
+    Return the address for the given structure_id, preferring solar_api_cache.address
+    and falling back to buildings.address. Returns None if not found or no address.
+    """
+    sql = load("building_address_by_structure_id")
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"structure_id": structure_id})
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _safe_str(row.get("address"))
+
+
 def search_buildings(conn: Connection, q: str) -> list[BuildingSearchItem]:
     """
     Return up to 20 buildings whose address matches the query string.
