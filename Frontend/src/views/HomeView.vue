@@ -67,10 +67,21 @@
           <div class="footer-col-group">
             <div class="footer-col">
               <div class="footer-col-title">Platform</div>
-              <span class="footer-link">Home</span>
-              <span class="footer-link">3D Explore</span>
-              <span class="footer-link">Precincts</span>
-              <span class="footer-link">AI Insights</span>
+                <RouterLink class="footer-link footer-link--url" to="/">
+                  Home
+                </RouterLink>
+
+                <RouterLink class="footer-link footer-link--url" to="/explore">
+                  3D Explore
+                </RouterLink>
+
+                <RouterLink class="footer-link footer-link--url" to="/precincts">
+                  Precincts
+                </RouterLink>
+
+                <RouterLink class="footer-link footer-link--url" to="/insights">
+                  AI Insights
+                </RouterLink>
             </div>
             <div class="footer-col">
               <div class="footer-col-title">Built With</div>

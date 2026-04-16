@@ -41,9 +41,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { setAuthenticated } from '../router'
 import logoUrl from '../pictures/Project logo.png'
+import { useRouter, useRoute } from 'vue-router'
 
 const CORRECT_PASSWORD = 'tp06888'
 
@@ -53,6 +53,7 @@ const errorMsg = ref('')
 const shaking = ref(false)
 const inputRef = ref(null)
 const router = useRouter()
+const route = useRoute()
 
 onMounted(() => {
   inputRef.value?.focus()
@@ -62,7 +63,7 @@ function submit() {
   if (password.value === CORRECT_PASSWORD) {
     setAuthenticated(true)
 
-    router.replace('/')
+    router.replace(route.query.redirect || '/')
   } else {
     errorMsg.value = 'Incorrect password. Please try again.'
     shaking.value = true
