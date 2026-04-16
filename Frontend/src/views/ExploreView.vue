@@ -240,7 +240,7 @@
                   </li>
                 </ul>
                 <!-- Dropdown: no results -->
-                <ul v-else-if="searchId.trim().length >= 2 && !searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
+                <ul v-else-if="searchDropdownOpen && searchId.trim().length >= 2 && !searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
                   <li class="search-dropdown-empty">No matching addresses found</li>
                 </ul>
               </div>
@@ -296,7 +296,7 @@
                 </div>
               </div>
               <div class="section-title">Building Info</div>
-              <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ selectedBuilding.address || solarApiData?.address || '—' }}</span></div>
+              <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ shortAddress(selectedBuilding.address || solarApiData?.address) }}</span></div>
               <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
@@ -432,6 +432,7 @@ const searchError = ref('')
 const searchResults = ref([])   // [{ id, structure_id, lat, lng, address }]
 const searchLoading = ref(false)
 const searchFocusedIdx = ref(-1)
+const searchDropdownOpen = ref(false)
 const searchWrapRef = ref(null)
 let searchDebounceTimer = null
 const sidebarOpen = ref(true)
@@ -593,6 +594,12 @@ function applyFilters() {
   })
 }
 
+function shortAddress(addr) {
+  if (!addr) return '—'
+  const parts = addr.split(',')
+  return parts.slice(0, 3).join(',').trim()
+}
+
 function filterRoof(type) {
   activeFilter.value = activeFilter.value === type ? 'all' : type
   applyFilters()
@@ -607,6 +614,7 @@ function closeSearchDropdown() {
   searchResults.value = []
   searchLoading.value = false
   searchFocusedIdx.value = -1
+  searchDropdownOpen.value = false
 }
 
 function onSearchClickOutside(e) {
@@ -640,6 +648,7 @@ function onSearchInput() {
   clearTimeout(searchDebounceTimer)
   const q = searchId.value.trim()
   if (q.length < 2) { closeSearchDropdown(); return }
+  searchDropdownOpen.value = true
   searchLoading.value = true
   searchDebounceTimer = setTimeout(async () => {
     try {
@@ -655,6 +664,7 @@ function onSearchInput() {
 
 async function selectSearchResult(result) {
   searchResults.value = []
+  searchDropdownOpen.value = false
   searchError.value = ''
   searchId.value = result.address || String(result.structure_id)
 
