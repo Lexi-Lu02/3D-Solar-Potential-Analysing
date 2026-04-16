@@ -35,6 +35,15 @@ class FakeCursor:
         self.executed: list[tuple[str, Any]] = []
 
     def execute(self, sql: str, params: Any = None) -> None:
+        # Run SQL through psycopg's real placeholder parser so stray '%'
+        # in .sql files (e.g. in comments) surface in CI instead of
+        # crashing in production. Uses psycopg's private query-parsing
+        # API — stable across 3.2.x and what psycopg's own tests use.
+        from psycopg._queries import PostgresQuery
+        from psycopg.adapt import Transformer
+
+        query = sql.encode() if isinstance(sql, str) else sql
+        PostgresQuery(Transformer()).convert(query, params)
         self.executed.append((sql, params))
 
     def fetchone(self) -> Any | None:

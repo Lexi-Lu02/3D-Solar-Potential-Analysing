@@ -75,12 +75,12 @@ def fetch_building_address(conn: Connection, structure_id: int) -> str | None:
 def search_buildings(conn: Connection, q: str) -> list[BuildingSearchItem]:
     """
     Return up to 20 buildings whose address matches the query string.
-    The search is case-insensitive and partial (ILIKE %q%).
+    The search is case-insensitive and partial (substring match).
     Only buildings with a populated address in solar_api_cache are returned.
     """
     sql = load("buildings_search")
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, {"q": f"%{q}%"})
+        cur.execute(sql, {"q": _escape_like(q)})
         rows = cur.fetchall()
 
     return [
@@ -188,3 +188,9 @@ def _score_0_100(score_1_to_5: float | None) -> int:
     if score_1_to_5 < 1 or score_1_to_5 > 5:
         return 0
     return round((score_1_to_5 - 1) / 4 * 100)
+
+
+def _escape_like(s: str) -> str:
+    """Escape LIKE/ILIKE metacharacters so user input matches literally.
+    Pairs with ESCAPE '\\' in buildings_search.sql."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

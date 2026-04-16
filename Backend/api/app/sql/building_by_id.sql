@@ -6,7 +6,8 @@
 --   %(id)s :: integer  (buildings.id surrogate PK)
 --
 -- Returns at most one row. solar_api_cache and rooftop_solar columns are NULL
--- when the building has no matching record (~5% of buildings for solar data).
+-- when the building has no matching record (roughly 5 percent of buildings
+-- have no solar data).
 SELECT
     b.id,
     b.structure_id,
