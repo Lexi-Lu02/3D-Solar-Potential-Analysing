@@ -8,7 +8,7 @@
     <section class="hero">
       <div class="hero-inner">
         <div class="hero-content">
-          <div class="hero-eyebrow">Melbourne CBD · 2023 Data</div>
+          <div class="hero-eyebrow">FIT5120 · TP06</div>
           <h1 class="hero-title">Discover Your Building's<br><span class="hero-accent">Solar Potential</span></h1>
           <p class="hero-desc">
             Explore an interactive 3D model of Melbourne's CBD buildings, each analysed for rooftop solar viability.
