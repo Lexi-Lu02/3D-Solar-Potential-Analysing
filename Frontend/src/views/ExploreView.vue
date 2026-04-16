@@ -403,7 +403,6 @@ import MainNavbar from '../components/MainNavbar.vue'
 import iconCompare from '../pictures/Compare.png'
 import iconSearch  from '../pictures/Search.png'
 import { useRoute } from 'vue-router'
-import { watch } from 'vue'
 
 const route = useRoute()
 
