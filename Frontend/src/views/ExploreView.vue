@@ -403,6 +403,7 @@ import MainNavbar from '../components/MainNavbar.vue'
 import iconCompare from '../pictures/Compare.png'
 import iconSearch  from '../pictures/Search.png'
 import { useRoute } from 'vue-router'
+import { watch } from 'vue'
 
 const route = useRoute()
 
@@ -795,7 +796,7 @@ function clearCompare() {
   updateCompareHighlight()
 }
 // Generates a shareable URL for the currently selected building and copies it to clipboard
-function shareBuilding() {
+async function shareBuilding() {
   if (!selectedBuilding.value) {
     showToast('Select a building first')
     return
@@ -804,9 +805,35 @@ function shareBuilding() {
   const id = selectedBuilding.value.structure_id
   const url = `${window.location.origin}/explore?buildingId=${id}`
 
-  navigator.clipboard.writeText(url).then(() => {
-    showToast('Shareable link copied!')
-  })
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url)
+      showToast('Shareable link copied!')
+      return
+    }
+
+    // fallback
+    const textArea = document.createElement('textarea')
+    textArea.value = url
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+
+    const success = document.execCommand('copy')
+    document.body.removeChild(textArea)
+
+    if (success) {
+      showToast('Shareable link copied!')
+    } else {
+      showToast('Copy failed')
+    }
+  } catch (err) {
+    console.error('Clipboard copy failed:', err)
+    showToast('Copy failed')
+  }
 }
 // On page load, check if URL has ?buildingId= and if so open that building's details
 async function openBuildingFromUrl() {
