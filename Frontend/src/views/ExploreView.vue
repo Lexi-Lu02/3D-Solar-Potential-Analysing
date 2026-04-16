@@ -183,7 +183,7 @@
           <div class="sidebar-header">
             <div class="sidebar-title" id="sidebar-title">Building Details</div>
             <div class="sidebar-sub" aria-live="polite">
-              {{ selectedBuilding ? `Structure ${selectedBuilding.structure_id || '—'}` : 'Click any building on the map' }}
+              {{ selectedBuilding ? '' : 'Click any building on the map' }}
             </div>
             <div class="search-row" role="search">
               <label for="search-address" class="visually-hidden">Search buildings by address</label>
@@ -296,7 +296,7 @@
                 </div>
               </div>
               <div class="section-title">Building Info</div>
-              <div class="info-row"><span class="info-key">Structure ID</span><span class="info-val">{{ selectedBuilding.structure_id || '—' }}</span></div>
+              <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ selectedBuilding.address || solarApiData?.address || '—' }}</span></div>
               <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
@@ -545,6 +545,7 @@ async function fetchSolarApiData(structureId) {
       usableAreaM2: body.max_array_area_m2 != null ? Math.round(body.max_array_area_m2 * 10) / 10 : null,
       roofAreaM2:   body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
       kwhAnnual:    body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
+      address:      body.address || null,
     }
     solarApiCache.set(structureId, result)
     return result
