@@ -9,7 +9,7 @@ Why duplicate the shape vs. dumping a raw dict from psycopg:
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -140,8 +140,8 @@ class SolarCacheResponse(BaseModel):
         None, ge=0, description="Carbon offset factor (kg CO₂ per MWh)"
     )
     whole_roof_area_m2: float | None = Field(None, ge=0, description="Total roof area from solar API (m²)")
-    roof_segment_stats: dict | None = Field(None, description="Per-segment solar statistics (jsonb)")
-    solar_panel_configs: dict | None = Field(None, description="Panel configuration options (jsonb)")
+    roof_segment_stats: Union[list, dict, None] = Field(None, description="Per-segment solar statistics (jsonb)")
+    solar_panel_configs: Union[list, dict, None] = Field(None, description="Panel configuration options (jsonb)")
 
 
 # --- /buildings/{id}/yield ---------------------------------------------------
