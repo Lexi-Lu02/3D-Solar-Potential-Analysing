@@ -14,6 +14,16 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, Field
 
 
+# --- /buildings/stats ---------------------------------------------------------
+
+
+class BuildingStatsResponse(BaseModel):
+    total_buildings: int = Field(..., ge=0, description="Total number of buildings with data")
+    usable_area_m2: float = Field(..., ge=0, description="Total usable rooftop area (m²)")
+    kwh_annual: float = Field(..., ge=0, description="Estimated annual solar yield (kWh)")
+    high_potential_count: int = Field(..., ge=0, description="Buildings with solar score ≥ 60")
+
+
 # --- /health ------------------------------------------------------------------
 
 

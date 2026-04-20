@@ -63,7 +63,7 @@
                     y1="6"
                     x2="26"
                     y2="6"
-                    stroke="#374151"
+                    stroke="currentColor"
                     stroke-width="2.5"
                     :stroke-dasharray="f.svgDash || 'none'"
                     stroke-linecap="round"
@@ -406,11 +406,25 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-const GEOJSON_PATH = '/combined-buildings.geojson'
-const SELECTED_BUILDING_COLOR = '#1C1C28'
-const SELECTED_BUILDING_OPACITY = 0.95
-const COMPARE_BUILDING_COLOR = '#1C1C28'
-const COMPARE_BUILDING_OPACITY = 0.85
+const GEOJSON_PATH = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.geojson'
+
+// MapLibre GL requires hex values — CSS variables are not supported in GL paint specs.
+// These mirror the CSS variables defined in style.css :root for a single source of truth.
+const MAP_COLORS = {
+  solarExcellent:  '#09332C',  // --solar-very-high
+  solarGood:       '#5A9072',  // --solar-high
+  solarModerate:   '#F8EDDB',  // --solar-med
+  solarPoor:       '#F8AB90',  // --solar-low
+  solarVeryPoor:   '#F0531C',  // --solar-very-low
+  selected:        '#FFD966',  // warm gold highlight
+  compare:         '#8CA28F',  // muted sage highlight
+  lineStroke:      '#1C1710',  // --text-primary
+}
+
+const SELECTED_BUILDING_COLOR = MAP_COLORS.selected
+const SELECTED_BUILDING_OPACITY = 0.98
+const COMPARE_BUILDING_COLOR = MAP_COLORS.compare
+const COMPARE_BUILDING_OPACITY = 0.90
 
 // Backend API base URL (same-origin in production, localhost in dev)
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -497,11 +511,11 @@ const filters = [
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
 const solarTiers = [
-  { id: 'very-high', label: 'Excellent',  range: '80-100', color: '#5B1F0A', min: 80, max: null },
-  { id: 'high',      label: 'Good',       range: '60-79',  color: '#9A3412', min: 60, max: 80 },
-  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: '#F97316', min: 40, max: 60 },
-  { id: 'low',       label: 'Poor',       range: '20-39',  color: '#F59E0B', min: 20, max: 40 },
-  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: '#FEF3C7', min: 0,  max: 20 },
+  { id: 'very-high', label: 'Excellent',  range: '80-100', color: MAP_COLORS.solarExcellent, min: 80, max: null },
+  { id: 'high',      label: 'Good',       range: '60-79',  color: MAP_COLORS.solarGood,      min: 60, max: 80 },
+  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: MAP_COLORS.solarModerate,  min: 40, max: 60 },
+  { id: 'low',       label: 'Poor',       range: '20-39',  color: MAP_COLORS.solarPoor,      min: 20, max: 40 },
+  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20 },
 ]
 
 const score = computed(() => {
@@ -875,23 +889,7 @@ async function openBuildingFromUrl() {
 function initMap() {
   map = new maplibregl.Map({
     container: 'map',
-    style: {
-      version: 8,
-      sources: {
-        osm: {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-          ],
-          tileSize: 256,
-          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
-        },
-      },
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-    },
+    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
     center: [144.9631, -37.814],
     zoom: 12.2,
     pitch: 48,
@@ -936,7 +934,7 @@ function initMap() {
           type: 'fill-extrusion',
           source: 'melbourne-buildings',
           paint: {
-            'fill-extrusion-color': ['step', ['get', 'solar_score'], '#FEF3C7', 20, '#F59E0B', 40, '#F97316', 60, '#9A3412', 80, '#5B1F0A'],
+            'fill-extrusion-color': ['step', ['get', 'solar_score'], MAP_COLORS.solarVeryPoor, 20, MAP_COLORS.solarPoor, 40, MAP_COLORS.solarModerate, 60, MAP_COLORS.solarGood, 80, MAP_COLORS.solarExcellent],
             'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.85,
@@ -973,7 +971,7 @@ function initMap() {
 
         filters.slice(1).forEach((roofFilter) => {
           const paint = {
-            'line-color': '#1C1917',
+            'line-color': MAP_COLORS.lineStroke,
             'line-width': 1.2,
             'line-opacity': 0.55,
           }

@@ -7,22 +7,22 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero-inner">
-        <div class="hero-content">
-          <div class="hero-eyebrow">FIT5120 · TP06</div>
-          <h1 class="hero-title">Discover Your Building's<br><span class="hero-accent">Solar Potential</span></h1>
-          <p class="hero-desc">
-            Explore an interactive 3D model of Melbourne's CBD buildings, each analysed for rooftop solar viability.
-            Identify high-yield sites, estimate annual energy generation, and support sustainable urban planning.
-          </p>
-          <div class="hero-actions">
-            <button class="btn-primary" @click="goToExplore" aria-label="Explore the 3D Solar Map">
-              Explore the Map →
-            </button>
-            <a class="btn-ghost" href="#about" aria-label="Learn more about SolarMap features">Learn more</a>
+        <div class="hero-content hero-content-card">
+          <div class="hero-text">
+            <div class="hero-eyebrow">Melbourne CBD · 2023 Data</div>
+            <h1 class="hero-title">Discover Your Building's<br><span class="hero-accent">Solar Potential</span></h1>
+            <p class="hero-desc">
+              Explore an interactive 3D model of Melbourne's CBD buildings, each analysed for rooftop solar viability.
+              Identify high-yield sites, estimate annual energy generation, and support sustainable urban planning.
+            </p>
+            <div class="hero-actions">
+              <button class="btn-primary" @click="goToExplore" aria-label="Explore the 3D Solar Map">
+                Explore the Map →
+              </button>
+              <a class="btn-ghost" href="#about" aria-label="Learn more about SolarMap features">Learn more</a>
+            </div>
           </div>
-        </div>
-        <div class="hero-visual" aria-label="Key statistics">
-          <dl class="stat-grid">
+          <dl class="stat-grid" aria-label="Key statistics">
             <div class="stat-card" v-for="s in stats" :key="s.label">
               <dd class="stat-val">{{ s.value }}</dd>
               <dt class="stat-label">{{ s.label }}</dt>
@@ -120,7 +120,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainNavbar from '../components/MainNavbar.vue'
-import logoUrl          from '../pictures/Project logo.png'
+import logoUrl          from '../pictures/Logo.png'
 import icon3DBuilding    from '../pictures/3D Building Extrusion.png'
 import iconSolarScore    from '../pictures/Solar Score Ranking.png'
 import iconRoofType      from '../pictures/Roof Type Filtering.png'
@@ -129,7 +129,7 @@ import iconClickInspect  from '../pictures/Click-to-Inspect.png'
 import iconComparison    from '../pictures/Comparison View.png'
 
 const router = useRouter()
-const GEOJSON_PATH = '/combined-buildings.geojson'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 const stats = ref([
   { value: '500+',    label: 'Buildings analysed' },
@@ -175,56 +175,24 @@ function goToExplore() {
   router.push('/explore')
 }
 
-function formatAreaM2(value) {
-  if (!Number.isFinite(value)) return '—'
-  if (value >= 1000) return `${Math.round(value / 1000)}K m²`
-  return `${Math.round(value).toLocaleString()} m²`
-}
-
-function formatGWhFromKwh(value) {
-  if (!Number.isFinite(value)) return '—'
-  return `${(value / 1_000_000).toFixed(1)} GWh`
-}
-
 onMounted(async () => {
   try {
-    const response = await fetch(GEOJSON_PATH)
-    if (!response.ok) return
-    const data = await response.json()
-    const features = data.features || []
+    const res = await fetch(`${API_BASE}/buildings/stats`)
+    if (!res.ok) return
+    const d = await res.json()
 
-    let usableAreaTotal = 0
-    let annualKwhTotal = 0
-    let highPotentialCount = 0
-
-    const seenIds = new Set()
-
-    for (const feature of features) {
-      const properties = feature.properties || {}
-      const structureId = properties.structure_id
-
-      // Skip duplicate structure IDs
-      if (structureId != null) {
-        if (seenIds.has(structureId)) continue
-        seenIds.add(structureId)
-      }
-
-      const score = Number(properties.solar_score || 0)
-      const usableArea = Number(properties.usable_roof_area || 0)
-      const annualKwh = Number(properties.kwh_annual || 0)
-
-      if (score >= 60) highPotentialCount += 1
-      if (properties.has_solar_data) {
-        usableAreaTotal += usableArea
-        annualKwhTotal += annualKwh
-      }
-    }
+    const area = d.usable_area_m2
+    const areaFmt = Number.isFinite(area)
+      ? (area >= 1000 ? `${Math.round(area / 1000)}K m²` : `${Math.round(area).toLocaleString()} m²`)
+      : '—'
+    const kwh = d.kwh_annual
+    const yieldFmt = Number.isFinite(kwh) ? `${(kwh / 1_000_000).toFixed(1)} GWh` : '—'
 
     stats.value = [
-      { value: seenIds.size.toLocaleString(), label: 'Buildings analysed' },
-      { value: formatAreaM2(usableAreaTotal), label: 'Usable rooftop area' },
-      { value: formatGWhFromKwh(annualKwhTotal), label: 'Est. annual yield' },
-      { value: highPotentialCount.toLocaleString(), label: 'High-potential sites' },
+      { value: Number.isFinite(d.total_buildings)      ? d.total_buildings.toLocaleString()      : '—', label: 'Buildings analysed' },
+      { value: areaFmt,                                                                                   label: 'Usable rooftop area' },
+      { value: yieldFmt,                                                                                  label: 'Est. annual yield' },
+      { value: Number.isFinite(d.high_potential_count) ? d.high_potential_count.toLocaleString() : '—', label: 'High-potential sites' },
     ]
   } catch {
     // Keep default fallback values when data cannot be fetched.
@@ -237,43 +205,81 @@ onMounted(async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #F7F5F0;
+  background: var(--bg);
   font-family: 'DM Sans', sans-serif;
-  color: #1C1917;
+  color: var(--text-primary);
   overflow-y: auto;
 }
 
 /* Hero */
 .hero {
-  padding: 72px 64px;
+  padding: 110px 64px 100px;
+  min-height: 72vh;
   width: 100%;
   position: relative;
+  display: flex;
+  align-items: center;
   background-image:
-    linear-gradient(90deg, rgba(247, 245, 240, 0.88) 0%, rgba(247, 245, 240, 0.72) 45%, rgba(247, 245, 240, 0.52) 100%),
-    url('../pictures/Home Pge Background.jpg');
+    linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.10) 100%),
+    url('../pictures/Home Page Background.jpg');
   background-size: cover;
   background-repeat: no-repeat;
-  background-position: center 24%;
+  background-position: center center;
 }
 
 .hero-inner {
-  display: flex;
-  align-items: center;
-  gap: 48px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
-.hero-content { flex: 1; }
+.hero-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 56px;
+  width: 100%;
+}
+
+.hero-content-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+}
+
+.hero-text {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  padding: 36px 40px;
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
 
 .hero-photo-credit {
   position: absolute;
   bottom: 6px;
   right: 8px;
   font-size: 10px;
-  color: rgba(28, 25, 23, 0.45);
-  background: rgba(247, 245, 240, 0.6);
+  color: rgba(var(--text-primary-rgb), 0.45);
+  background: rgba(var(--bg-rgb), 0.6);
   padding: 2px 6px;
   border-radius: 3px;
 }
@@ -288,84 +294,101 @@ onMounted(async () => {
 .hero-eyebrow {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 1px;
-  color: #EA580C; margin-bottom: 14px;
+  color: var(--city-light); margin-bottom: 14px;
 }
 
 .hero-title {
   font-family: 'DM Serif Display', serif;
   font-size: 46px; line-height: 1.15;
-  margin-bottom: 18px; color: #1C1917;
+  margin-bottom: 18px; color: var(--nav-text);
 }
 
-.hero-accent { color: #EA580C; }
+.hero-accent { color: var(--city-light); }
 
 .hero-desc {
   font-size: 15px; line-height: 1.7;
-  color: #6B6560; max-width: 480px;
+  color: rgba(255, 255, 255, 0.90);
+  max-width: 480px;
   margin-bottom: 28px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
 .hero-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 .btn-primary {
   padding: 12px 24px;
-  background: #EA580C; color: white;
+  background: var(--city-light); color: var(--ink);
   border: none; border-radius: 8px;
   font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
   cursor: pointer; transition: background 0.15s;
   text-decoration: none;
 }
-.btn-primary:hover { background: #C2410C; }
+.btn-primary:hover { background: var(--city-light-dim); color: white; }
 .btn-primary:focus-visible {
-  outline: 3px solid #1C1917;
+  outline: 3px solid var(--city-light);
   outline-offset: 3px;
-  background: #C2410C;
+  background: var(--city-light-dim);
+  color: white;
 }
 
 .btn-ghost {
   padding: 12px 20px;
-  color: #6B6560; text-decoration: none;
+  color: var(--nav-link); text-decoration: none;
   font-size: 14px; font-weight: 500;
-  border: 1px solid #E2DDD4; border-radius: 8px;
-  transition: background 0.15s, color 0.15s;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   display: inline-block;
 }
-.btn-ghost:hover { background: #ffffff; color: #1C1917; }
+.btn-ghost:hover { background: rgba(255,255,255,0.10); color: var(--nav-text); border-color: rgba(255,255,255,0.45); }
 .btn-ghost:focus-visible {
-  outline: 3px solid #EA580C;
+  outline: 3px solid var(--city-light);
   outline-offset: 3px;
-  background: #ffffff;
-  color: #1C1917;
+  background: rgba(255,255,255,0.10);
+  color: var(--nav-text);
 }
 
-/* Stat grid (hero right side) */
-.hero-visual { flex: 0 0 auto; }
+/* Stat grid (inside hero, right side) */
 .stat-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  flex: 2;
+  min-width: 0;
 }
 
 .stat-card {
-  background: #ffffff; border: 1px solid #E2DDD4;
-  border-radius: 12px; padding: 20px 22px;
-  min-width: 140px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  padding: 20px 22px;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  transition: background 0.2s;
+}
+
+.stat-card:hover {
+  background: rgba(255, 255, 255, 0.19);
 }
 
 .stat-val {
   font-family: 'DM Serif Display', serif;
-  font-size: 28px; color: #1C1917;
-  margin-bottom: 4px;
+  font-size: 30px; color: #ffffff;
+  margin-bottom: 5px;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.25);
 }
 
 .stat-label {
-  font-size: 12px; color: #A8A29E; line-height: 1.4;
+  font-size: 12px; color: rgba(255,255,255,0.72); line-height: 1.4;
 }
 
 /* Features */
 .features {
-  background: #ffffff;
-  border-top: 1px solid #E2DDD4;
-  border-bottom: 1px solid #E2DDD4;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: 64px 64px;
 }
 
@@ -374,12 +397,12 @@ onMounted(async () => {
 .section-eyebrow {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 1px;
-  color: #EA580C; margin-bottom: 10px;
+  color: var(--city-light); margin-bottom: 10px;
 }
 
 .section-title {
   font-family: 'DM Serif Display', serif;
-  font-size: 32px; margin-bottom: 40px; color: #1C1917;
+  font-size: 32px; margin-bottom: 40px; color: var(--text-primary);
 }
 
 .feature-grid {
@@ -389,19 +412,19 @@ onMounted(async () => {
 }
 
 .feature-card {
-  background: #F7F5F0; border: 1px solid #E2DDD4;
+  background: var(--surface2); border: 1px solid var(--border);
   border-radius: 12px; padding: 22px 20px;
 }
 
 .feature-icon { margin-bottom: 10px; }
 .feature-icon img { width: 40px; height: 40px; object-fit: contain; }
 .feature-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-.feature-desc { font-size: 13px; color: #6B6560; line-height: 1.6; }
+.feature-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
 
 /* Footer */
 .home-footer {
-  background: #2C2C2C;
-  color: #D1D5DB;
+  background: var(--ink);
+  color: var(--nav-link);
   font-family: 'DM Sans', sans-serif;
   flex-shrink: 0;
 }
@@ -434,13 +457,13 @@ onMounted(async () => {
 .footer-brand-name {
   font-family: 'DM Serif Display', serif;
   font-size: 16px;
-  color: #FFFFFF;
+  color: var(--nav-text);
   line-height: 1.2;
 }
 
 .footer-brand-sub {
   font-size: 11px;
-  color: #9CA3AF;
+  color: var(--nav-text-muted);
   margin-top: 2px;
 }
 
@@ -469,13 +492,13 @@ onMounted(async () => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: #FB923C;
+  color: var(--city-light);
   margin-bottom: 2px;
 }
 
 .footer-link {
   font-size: 13px;
-  color: #9CA3AF;
+  color: var(--nav-text-muted);
   line-height: 1.4;
   cursor: default;
   text-decoration: none;
@@ -487,37 +510,38 @@ onMounted(async () => {
 }
 
 .footer-link--url:hover {
-  color: #FB923C;
+  color: var(--accent-warm);
   text-decoration: underline;
 }
 
 .footer-link--url:focus-visible {
-  outline: 2px solid #FB923C;
+  outline: 2px solid var(--accent-warm);
   outline-offset: 2px;
   border-radius: 2px;
-  color: #FB923C;
+  color: var(--accent-warm);
 }
 
 .footer-link--eportfolio {
   display: inline-block;
   margin-top: 6px;
-  color: #FB923C;
+  color: var(--city-light);
   font-weight: 600;
   font-size: 13px;
 }
 
 .footer-link--eportfolio:hover {
-  color: #FDBA74;
+  color: var(--city-light-dim);
   text-decoration: underline;
 }
 
 
 /* Responsive */
 @media (max-width: 900px) {
-  .hero { padding: 48px 24px; }
-  .hero-inner { flex-direction: column; gap: 32px; }
+  .hero { padding: 64px 24px; min-height: unset; }
+  .hero-content-card { flex-direction: column; gap: 36px; }
+  .hero-text { max-width: 100%; padding-right: 0; }
+  .stat-grid { width: 100%; grid-template-columns: 1fr 1fr; }
   .hero-title { font-size: 34px; }
-  .stat-grid { grid-template-columns: 1fr 1fr; }
   .feature-grid { grid-template-columns: 1fr 1fr; }
   .features { padding: 48px 24px; }
   .footer-inner { padding: 40px 24px 32px; gap: 32px; }
