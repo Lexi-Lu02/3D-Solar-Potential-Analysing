@@ -6,7 +6,7 @@ warnings.filterwarnings('ignore')
  
  
 
-SOLAR_SHP         = 'mga55_gda95_green_roof_solar.shp'
+SOLAR_SHP         = 'green roof solar data/mga55_gda95_green_roof_solar.shp'
 BUILDINGS_CSV     = '2023-building-footprints.csv'
 OUTPUT_BUILDINGS  = 'buildings.csv'
 OUTPUT_SOLAR      = 'rooftop_solar.csv'

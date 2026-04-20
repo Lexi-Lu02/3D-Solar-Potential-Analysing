@@ -4,7 +4,7 @@ import PasswordView from '../views/PasswordView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import FeaturePlaceholderView from '../views/FeaturePlaceholderView.vue'
 
-let isAuthenticated = false
+let isAuthenticated = sessionStorage.getItem('auth') === 'true'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -54,7 +54,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  if (to.meta.requiresAuth && sessionStorage.getItem('auth') !== 'true') {
     return {
       path: '/login',
       query: {
@@ -72,7 +72,12 @@ router.beforeEach((to) => {
 
 function setAuthenticated(value) {
   isAuthenticated = value
+  sessionStorage.setItem('auth', value ? 'true' : 'false')
 }
 
+function logout() {
+  isAuthenticated = false
+  sessionStorage.removeItem('auth')
+}
 export { setAuthenticated }
 export default router
