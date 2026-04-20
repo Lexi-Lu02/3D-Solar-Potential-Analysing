@@ -20,11 +20,33 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from psycopg import Connection
 
 from ..db import get_conn
-from ..models.schemas import BuildingAddressItem, BuildingResponse, BuildingSearchItem
+from ..models.schemas import BuildingAddressItem, BuildingResponse, BuildingSearchItem, BuildingStatsResponse
 from ..services.building_query import BuildingNotFound, fetch_building, fetch_building_address, search_buildings
+from ..sql import load
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 logger = logging.getLogger(__name__)
+
+
+@router.get(
+    "/stats",
+    response_model=BuildingStatsResponse,
+    summary="Aggregate solar statistics across all buildings",
+)
+def get_buildings_stats(
+    response: Response,
+    conn: Connection = Depends(get_conn),
+) -> BuildingStatsResponse:
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    with conn.cursor() as cur:
+        cur.execute(load("buildings_stats"))
+        row = cur.fetchone()
+    return BuildingStatsResponse(
+        total_buildings=int(row[0] or 0),
+        usable_area_m2=float(row[1] or 0),
+        kwh_annual=float(row[2] or 0),
+        high_potential_count=int(row[3] or 0),
+    )
 
 
 @router.get(

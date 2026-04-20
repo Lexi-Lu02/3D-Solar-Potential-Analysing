@@ -43,7 +43,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { setAuthenticated } from '../router'
-import logoUrl from '../pictures/Project logo.png'
+import logoUrl from '../pictures/Logo.png'
 
 const CORRECT_PASSWORD = 'tp06888'
 
@@ -80,18 +80,20 @@ function submit() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #FFF7ED 0%, #F7F5F0 50%, #EFF6FF 100%);
+  background: linear-gradient(135deg, #D6EDCA 0%, #EAF4E0 40%, #C8E6B8 100%);
   padding: 24px;
 }
 
 .pw-card {
-  background: #ffffff;
-  border: 1px solid #E2DDD4;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(154, 211, 91, 0.35);
   border-radius: 16px;
   padding: 40px 36px;
   width: 100%;
   max-width: 380px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 8px 32px rgba(37, 63, 41, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .pw-logo {
@@ -112,13 +114,13 @@ function submit() {
 .pw-logo-text {
   font-family: 'DM Serif Display', serif;
   font-size: 22px;
-  color: #1C1917;
+  color: #1E3A1E;
   margin-bottom: 4px;
 }
 
 .pw-logo-sub {
   font-size: 13px;
-  color: #A8A29E;
+  color: #5A7A5A;
 }
 
 .pw-form {
@@ -132,7 +134,7 @@ function submit() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #6B6560;
+  color: #4A6A4A;
 }
 
 .pw-input-row {
@@ -144,25 +146,25 @@ function submit() {
 .pw-input {
   width: 100%;
   padding: 11px 40px 11px 14px;
-  border: 1px solid #E2DDD4;
+  border: 1px solid #B8D8A0;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
-  color: #1C1917;
-  background: #FAFAF9;
+  color: #1E3A1E;
+  background: rgba(255, 255, 255, 0.80);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .pw-input:focus {
-  border-color: #EA580C;
-  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+  border-color: #9AD35B;
+  box-shadow: 0 0 0 3px rgba(154, 211, 91, 0.18);
   background: #fff;
 }
 
 .pw-input.shake {
   animation: shake 0.4s ease;
-  border-color: #DC2626;
+  border-color: var(--error);
 }
 
 .pw-toggle {
@@ -180,16 +182,16 @@ function submit() {
 .pw-toggle:hover { opacity: 1; }
 .pw-toggle:focus-visible {
   opacity: 1;
-  outline: 3px solid #EA580C;
+  outline: 3px solid #9AD35B;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 .pw-error {
   font-size: 12px;
-  color: #DC2626;
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
+  color: var(--error);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 6px;
   padding: 8px 10px;
 }
@@ -197,8 +199,8 @@ function submit() {
 .pw-btn {
   margin-top: 4px;
   padding: 11px;
-  background: #EA580C;
-  color: white;
+  background: #253F29;
+  color: #D6EDCA;
   border: none;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
@@ -208,9 +210,9 @@ function submit() {
   transition: background 0.15s;
 }
 
-.pw-btn:hover:not(:disabled) { background: #C2410C; }
+.pw-btn:hover:not(:disabled) { background: #111F11; color: #9AD35B; }
 .pw-btn:focus-visible {
-  outline: 3px solid #EA580C;
+  outline: 3px solid #9AD35B;
   outline-offset: 2px;
 }
 .pw-btn:disabled { opacity: 0.4; cursor: not-allowed; }

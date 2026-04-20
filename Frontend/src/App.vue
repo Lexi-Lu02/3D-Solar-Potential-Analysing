@@ -14,8 +14,8 @@
   top: -100%;
   left: 8px;
   z-index: 9999;
-  background: #EA580C;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--surface-white);
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -26,7 +26,7 @@
 }
 .skip-link:focus {
   top: 0;
-  outline: 3px solid #1C1917;
+  outline: 3px solid var(--text-primary);
   outline-offset: 2px;
 }
 </style>

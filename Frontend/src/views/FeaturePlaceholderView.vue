@@ -29,7 +29,7 @@ defineProps({
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f7f5f0;
+  background: var(--bg);
 }
 
 .placeholder-content {
@@ -46,12 +46,12 @@ defineProps({
 h1 {
   font-family: 'DM Serif Display', serif;
   font-size: 42px;
-  color: #1c1917;
+  color: var(--text-primary);
 }
 
 p {
   max-width: 640px;
-  color: #6b6560;
+  color: var(--text-secondary);
   font-size: 16px;
   line-height: 1.7;
 }
@@ -62,8 +62,8 @@ p {
   padding: 10px 18px;
   border-radius: 8px;
   text-decoration: none;
-  background: #ea580c;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--surface-white);
   font-weight: 600;
 }
 </style>

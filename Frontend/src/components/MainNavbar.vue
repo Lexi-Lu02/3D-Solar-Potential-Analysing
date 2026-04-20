@@ -39,7 +39,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
-import logoUrl       from '../pictures/Project logo.png'
+import logoUrl       from '../pictures/Logo.png'
 import iconHome      from '../pictures/home.png'
 import iconExplore   from '../pictures/3d explore.png'
 import iconPrecincts from '../pictures/precinct.png'
@@ -50,15 +50,15 @@ const route = useRoute()
 const navItems = [
   { label: 'Home',        to: '/',          icon: iconHome      },
   { label: '3D Explore',  to: '/explore',   icon: iconExplore   },
-  { label: 'Precincts',   to: '/precincts', icon: iconPrecincts, disabled: true },
+  { label: 'Precincts',   to: '/precincts', icon: iconPrecincts },
   { label: 'AI Insights', to: '/insights',  icon: iconInsights,  disabled: true },
 ]
 </script>
 
 <style scoped>
 .main-nav {
-  background: #3A3A3A;
-  border-bottom: 1px solid #555555;
+  background: var(--ink);
+  border-bottom: 1px solid var(--ink-border);
   padding: 10px 20px;
   display: flex;
   align-items: center;
@@ -91,12 +91,12 @@ const navItems = [
   font-family: 'DM Serif Display', serif;
   font-size: 20px;
   line-height: 1;
-  color: #FFFFFF;
+  color: var(--nav-text);
 }
 
 .main-nav-subtitle {
   font-size: 11px;
-  color: #A0A0A0;
+  color: var(--nav-text-muted);
   margin-top: 2px;
 }
 
@@ -109,7 +109,7 @@ const navItems = [
 
 .main-nav-link {
   text-decoration: none;
-  color: #D1D5DB;
+  color: var(--nav-link);
   font-size: 13px;
   font-weight: 500;
   padding: 7px 12px;
@@ -129,15 +129,15 @@ const navItems = [
 }
 
 .main-nav-link:hover {
-  background: #505050;
-  color: #FFFFFF;
+  background: var(--ink2);
+  color: var(--nav-text);
 }
 
 .main-nav-link:focus-visible {
-  outline: 3px solid #FB923C;
+  outline: 3px solid var(--accent-warm);
   outline-offset: 2px;
-  background: #505050;
-  color: #FFFFFF;
+  background: var(--ink2);
+  color: var(--nav-text);
 }
 
 .main-nav-link--disabled {
@@ -147,9 +147,9 @@ const navItems = [
 }
 
 .main-nav-link.is-active {
-  background: #4A3728;
-  border-color: #C2601A;
-  color: #FB923C;
+  background: var(--ink-active);
+  border-color: var(--ink-active-border);
+  color: var(--nav-active-color);
   font-weight: 600;
 }
 
@@ -158,9 +158,9 @@ const navItems = [
 }
 
 .main-nav-badge {
-  background: #4A3728;
-  color: #FB923C;
-  border: 1px solid #C2601A;
+  background: var(--ink-active);
+  color: var(--nav-active-color);
+  border: 1px solid var(--ink-active-border);
   border-radius: 999px;
   font-size: 10px;
   font-weight: 700;
