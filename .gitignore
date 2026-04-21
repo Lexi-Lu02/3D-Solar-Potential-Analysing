@@ -4,6 +4,10 @@ Frontend/node_modules/
 dist/
 node_modules/.vite/
 
+# Large GeoJSON data files
+**/combined-buildings.geojson
+**/melbourne_cbd_precincts.geojson
+
 # Environment variables — match in any subdirectory
 .env
 .env.local

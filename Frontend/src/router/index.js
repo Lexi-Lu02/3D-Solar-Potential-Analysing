@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import PasswordView from '../views/PasswordView.vue'
 import ExploreView from '../views/ExploreView.vue'
+import PrecinctsView from '../views/PrecinctsView.vue'
 import FeaturePlaceholderView from '../views/FeaturePlaceholderView.vue'
 
 let isAuthenticated = sessionStorage.getItem('auth') === 'true'
@@ -29,11 +30,7 @@ const router = createRouter({
     {
       path: '/precincts',
       name: 'precincts',
-      component: FeaturePlaceholderView,
-      props: {
-        title: 'Precincts',
-        description: 'This section will group buildings into analysis precincts for easier planning and reporting.',
-      },
+      component: PrecinctsView,
       meta: { requiresAuth: true },
     },
     {

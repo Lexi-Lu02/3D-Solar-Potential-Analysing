@@ -413,7 +413,7 @@ const GEOJSON_PATH = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.ge
 const MAP_COLORS = {
   solarExcellent:  '#09332C',  // --solar-very-high
   solarGood:       '#5A9072',  // --solar-high
-  solarModerate:   '#F8EDDB',  // --solar-med
+  solarModerate:   '#C8A870',  // --solar-med
   solarPoor:       '#F8AB90',  // --solar-low
   solarVeryPoor:   '#F0531C',  // --solar-very-low
   selected:        '#FFD966',  // warm gold highlight
