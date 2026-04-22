@@ -1,6 +1,8 @@
 import httpx
 from app.config import get_settings
-
+import os
+os.environ["NO_PROXY"] = "solar.googleapis.com"
+os.environ["no_proxy"] = "solar.googleapis.com"
 SOLAR_BASE = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 
 
@@ -17,7 +19,7 @@ async def fetch_solar_from_google(lat: float, lng: float) -> dict:
         "key":                settings.solar_api_key,
     }
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(SOLAR_BASE, params=params)
         resp.raise_for_status()
         data = resp.json()
