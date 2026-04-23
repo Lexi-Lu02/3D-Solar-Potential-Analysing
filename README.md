@@ -57,8 +57,9 @@ The platform visualises every building in Melbourne CBD as a true-to-scale 3D ex
 │   │   ├── views/
 │   │   │   ├── HomeView.vue              # Landing page with stats and feature cards
 │   │   │   ├── ExploreView.vue           # Main 3D map, sidebar, filters, comparison
+│   │   │   ├── PrecinctsView.vue         # Precinct rankings map with solar aggregation
 │   │   │   ├── PasswordView.vue          # Access code gate
-│   │   │   └── FeaturePlaceholderView.vue # Coming-soon page for Precincts / AI Insights
+│   │   │   └── FeaturePlaceholderView.vue # Coming-soon page for AI Insights
 │   │   ├── components/
 │   │   │   └── MainNavbar.vue            # Shared navigation bar
 │   │   ├── router/index.js               # Routes: /, /explore, /precincts, /insights, /login
@@ -126,16 +127,29 @@ npm run dev
 # Password: tp06888
 ```
 
+`npm install` installs all packages listed in `package.json`:
+
+| Package | Version | Purpose |
+|---|---|---|
+| `vue` | ^3.4 | UI framework |
+| `vue-router` | ^5.0 | Client-side routing |
+| `maplibre-gl` | ^4.7 | 3D WebGL map rendering |
+| `esbuild` | ^0.28 | JS bundler used by Vite |
+| `vite` | ^5.0 | Dev server and build tool |
+| `@vitejs/plugin-vue` | ^5.0 | Vue single-file component support |
+
 ### Environment variables
 
 Create `Frontend/.env`:
 
 ```env
-# URL of the backend API. Omit in production (nginx proxies /api/* same-origin).
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://<ec2-ip>/api/v1
+VITE_GEOJSON_URL=http://<ec2-ip>/combined-buildings.geojson
+VITE_PRECINCTS_URL=http://<ec2-ip>/melbourne_cbd_precincts.geojson
+VITE_SOLAR_API_KEY=<your-google-solar-api-key>
 ```
 
-If `VITE_API_BASE_URL` is not set, the frontend defaults to `/api/v1` (same-origin, used in production).
+In production these are set in `Frontend/.env.production` using relative paths so nginx serves them same-origin.
 
 ### Run the backend locally
 
@@ -255,5 +269,4 @@ Monthly kWh is distributed using NASA POWER monthly PSH values (BOM-scaled), ens
 
 ## Planned Features (Coming Soon)
 
-- **Precincts** — group buildings into planning precincts for aggregate analysis
 - **AI Insights** — explainable AI recommendations from building-level and precinct-level data

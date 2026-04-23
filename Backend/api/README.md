@@ -64,6 +64,9 @@ curl -sf http://localhost:8000/api/v1/health
 
 # 7. 运行单元测试
 pytest
+
+# 8. Frondend .env
+cp .env.production .env
 ```
 
 打开浏览器访问 `http://localhost:8000/api/v1/docs` 即可看到自动生成的 Swagger UI。
