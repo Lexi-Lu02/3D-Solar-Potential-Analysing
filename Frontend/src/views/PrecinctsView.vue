@@ -8,22 +8,6 @@
           <div class="loading-text">{{ loadingText }}</div>
         </div>
 
-        <!-- Sort controls overlay -->
-        <div class="map-controls" role="group" aria-label="Precinct sort controls">
-          <div class="control-card">
-            <div class="control-title" style="margin-bottom: 8px;">Sort Precincts By</div>
-            <div class="filter-group" role="group" aria-label="Sort options">
-              <button
-                v-for="s in sortOptions"
-                :key="s.id"
-                class="filter-btn"
-                :class="{ active: sortBy === s.id }"
-                :aria-pressed="sortBy === s.id"
-                @click="sortBy = s.id"
-              >{{ s.label }}</button>
-            </div>
-          </div>
-        </div>
       </div>
 
       <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Precinct details panel">
@@ -46,9 +30,22 @@
         </button>
 
         <div id="sidebar-body" class="sidebar-body">
+          <!-- Header -->
           <div class="sidebar-header">
-            <div class="sidebar-title">Precinct Rankings</div>
-            <div class="sidebar-sub">{{ isLoading ? loadingText : `${sortedPrecincts.length} precincts with data · Melbourne CBD` }}</div>
+            <div class="rankings-label">Rankings</div>
+            <div class="sidebar-title">Precinct Solar Rankings</div>
+          </div>
+
+          <!-- Sort tabs — full width, one per sort option -->
+          <div class="sort-tabs" role="group" aria-label="Sort options">
+            <button
+              v-for="s in sortOptions"
+              :key="s.id"
+              class="sort-tab"
+              :class="{ active: sortBy === s.id }"
+              :aria-pressed="sortBy === s.id"
+              @click="sortBy = s.id"
+            >{{ s.label }}</button>
           </div>
 
           <div class="sidebar-content">
@@ -83,7 +80,7 @@
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKwh(selectedPrecinct.adoption_gap) }}</div>
-                  <div class="metric-label">Adoption Gap (kWh)</div>
+                  <div class="metric-label">Adoption Gap</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ selectedPrecinct.building_count.toLocaleString() }}</div>
@@ -94,40 +91,63 @@
               <button class="share-btn" @click="selectedPrecinct = null" style="margin-top: 4px;">← Back to Rankings</button>
             </div>
 
-            <!-- Ranked list -->
+            <!-- Ranked table -->
             <div v-else>
               <div v-if="sortedPrecincts.length === 0 && !isLoading" class="empty-state">
-                <div class="empty-icon">Precinct</div>
+                <div class="empty-icon">☀</div>
                 <div class="empty-text">No precinct data available</div>
               </div>
 
-              <div
-                v-for="p in sortedPrecincts"
-                :key="p.precinct_id"
-                class="precinct-row"
-                :class="{ 'precinct-row--top5': p.rank <= 5, 'precinct-row--selected': selectedPrecinct?.precinct_id === p.precinct_id }"
-                role="button"
-                tabindex="0"
-                :aria-label="`${p.name}, rank ${p.rank}`"
-                @click="selectPrecinct(p)"
-                @keydown.enter="selectPrecinct(p)"
-                @keydown.space.prevent="selectPrecinct(p)"
-              >
-                <div class="precinct-rank" :class="{ 'precinct-rank--top5': p.rank <= 5 }">
-                  <span v-if="p.rank <= 5">★</span>
-                  <span v-else>#{{ p.rank }}</span>
+              <template v-else>
+                <!-- Column headers — active sort column highlighted -->
+                <div class="precinct-table-head">
+                  <div class="pt-col-name">Precinct Name</div>
+                  <div class="pt-col-kwh"       :class="{ 'col-active': sortBy === 'kwh'       }">Annual kWh</div>
+                  <div class="pt-col-area"      :class="{ 'col-active': sortBy === 'area'      }">Roof Area</div>
+                  <div class="pt-col-bldg"      :class="{ 'col-active': sortBy === 'buildings' }">Buildings</div>
+                  <div class="pt-col-stat"      :class="{ 'col-active': sortBy === 'gap'       }">Adoption Gap</div>
                 </div>
-                <div class="precinct-row-info">
-                  <div class="precinct-row-name">{{ p.name }}</div>
-                  <div class="precinct-row-metric">{{ formatRowMetric(p) }}</div>
+
+                <!-- Rows -->
+                <div
+                  v-for="p in sortedPrecincts"
+                  :key="p.precinct_id"
+                  class="precinct-row"
+                  :class="{ 'precinct-row--top5': p.rank <= 5 }"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`${p.name}, rank ${p.rank}`"
+                  @click="selectPrecinct(p)"
+                  @keydown.enter="selectPrecinct(p)"
+                  @keydown.space.prevent="selectPrecinct(p)"
+                >
+                  <!-- Precinct name + rank -->
+                  <div class="pt-col-name">
+                    <div class="p-rank" :class="{ 'p-rank--top5': p.rank <= 5 }">{{ p.rank }}</div>
+                    <div class="p-dot" :style="{ background: tierColor(p.tier) }"></div>
+                    <div class="p-name">{{ p.name }}</div>
+                  </div>
+                  <!-- kWh -->
+                  <div class="pt-col-kwh" :class="{ 'p-val-active': sortBy === 'kwh' }">
+                    {{ formatKwhCompact(p.total_kwh) }}
+                  </div>
+                  <!-- Area -->
+                  <div class="pt-col-area" :class="{ 'p-val-active': sortBy === 'area' }">
+                    {{ formatAreaCompact(p.total_area) }}
+                  </div>
+                  <!-- Buildings -->
+                  <div class="pt-col-bldg" :class="{ 'p-val-active': sortBy === 'buildings' }">
+                    {{ p.building_count.toLocaleString() }}
+                  </div>
+                  <!-- Gap bar -->
+                  <div class="pt-col-stat" :class="{ 'p-val-active': sortBy === 'gap' }">
+                    <div class="mini-bar-track">
+                      <div class="mini-bar mini-bar--gap" :style="{ width: gapPct(p) + '%' }"></div>
+                    </div>
+                    <span class="mini-pct">{{ gapPct(p) }}%</span>
+                  </div>
                 </div>
-                <div class="precinct-row-bar-wrap">
-                  <div
-                    class="precinct-row-bar"
-                    :style="{ width: Math.max(4, (p.norm_score * 100)) + '%', background: tierColor(p.tier) }"
-                  ></div>
-                </div>
-              </div>
+              </template>
             </div>
           </div>
         </div>
@@ -199,14 +219,18 @@ let toastTimer      = null
 let map             = null
 
 const sortOptions = [
-  { id: 'kwh',  label: 'Annual kWh' },
-  { id: 'area', label: 'Roof Area'  },
-  { id: 'gap',  label: 'Adoption Gap' },
+  { id: 'kwh',       label: 'Annual kWh'   },
+  { id: 'area',      label: 'Roof Area'    },
+  { id: 'buildings', label: 'Buildings'    },
+  { id: 'gap',       label: 'Adoption Gap' },
 ]
 
 // ── Sorted / ranked list ──────────────────────────────────────────────────────
 const sortedPrecincts = computed(() => {
-  const key = sortBy.value === 'kwh' ? 'total_kwh' : sortBy.value === 'area' ? 'total_area' : 'adoption_gap'
+  const key = sortBy.value === 'kwh' ? 'total_kwh'
+            : sortBy.value === 'area' ? 'total_area'
+            : sortBy.value === 'buildings' ? 'building_count'
+            : 'adoption_gap'
   const sorted = [...precincts.value]
     .filter(p => p.building_count > 0)
     .sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0))
@@ -244,6 +268,28 @@ function formatRowMetric(p) {
   if (sortBy.value === 'area') return formatArea(p.total_area)
   return formatKwh(p.adoption_gap)
 }
+function formatKwhCompact(val) {
+  if (!val) return '—'
+  if (val >= 1_000_000_000) return (val / 1_000_000_000).toFixed(1) + ' TWh'
+  if (val >= 1_000_000)     return (val / 1_000_000).toFixed(1) + ' GWh'
+  if (val >= 1_000)         return (val / 1_000).toFixed(1) + ' MWh'
+  return Math.round(val) + ' kWh'
+}
+function formatAreaCompact(val) {
+  if (!val) return '—'
+  if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M m²'
+  if (val >= 1_000)     return Math.round(val / 1_000) + 'K m²'
+  return Math.round(val) + ' m²'
+}
+function adoptionPct(p) {
+  if (!p.max_kwh) return 0
+  return Math.round((p.total_kwh / p.max_kwh) * 100)
+}
+function gapPct(p) {
+  if (!p.max_kwh) return 0
+  return Math.round((p.adoption_gap / p.max_kwh) * 100)
+}
+const currentSortLabel = computed(() => sortOptions.find(s => s.id === sortBy.value)?.label ?? '')
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg) {
@@ -348,6 +394,7 @@ async function aggregateBuildings(buildingFeatures, precinctFeatures) {
     name:           feat.properties.name || feat.properties.precinct_id,
     total_kwh:      Math.round(accum[i].total_kwh),
     total_area:     Math.round(accum[i].total_area),
+    max_kwh:        Math.round(accum[i].max_kwh),
     adoption_gap:   Math.round(Math.max(0, accum[i].max_kwh - accum[i].total_kwh)),
     building_count: accum[i].building_count,
   }))
@@ -543,279 +590,135 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Reuse map-page / main / sidebar layout identical to ExploreView */
-.map-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-.main {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-#precinct-map {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
+/* ── Layout ───────────────────────────────────────────────── */
+.map-page { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.main { display: flex; flex: 1; overflow: hidden; }
+#precinct-map { flex: 1; position: relative; overflow: hidden; }
 
-/* Loading overlay */
+/* ── Loading overlay ──────────────────────────────────────── */
 .loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(26, 26, 24, 0.72);
-  z-index: 20;
-  gap: 16px;
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(26, 26, 24, 0.72); z-index: 20; gap: 16px;
 }
 .loading-spinner {
-  width: 36px;
-  height: 36px;
+  width: 36px; height: 36px;
   border: 3px solid rgba(255, 255, 255, 0.15);
   border-top-color: var(--city-light);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 .loading-text { color: var(--nav-text); font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Controls overlay (top-left) */
-.map-controls {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: calc(100% - 24px);
-  overflow-y: auto;
-}
-.control-card {
-  background: var(--ink);
-  border: 1px solid var(--ink-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  min-width: 200px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-}
-.control-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  color: var(--nav-text-muted);
-}
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.filter-btn {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 6px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--nav-link);
-  cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-  text-align: left;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.filter-btn:hover { background: var(--ink2); color: var(--nav-text); }
-.filter-btn.active {
-  background: var(--ink-active);
-  border-color: var(--ink-active-border);
-  color: var(--nav-active-color);
-  font-weight: 600;
+/* ── Sidebar width ────────────────────────────────────────── */
+.sidebar { width: 640px !important; }
+
+/* ── Header: rankings label + title ──────────────────────── */
+.rankings-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.9px; color: var(--city-light); margin-bottom: 5px;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 320px;
-  flex-shrink: 0;
+/* ── Sort tabs (full-width underline tab style) ───────────── */
+.sort-tabs {
+  display: flex; border-bottom: 2px solid var(--border);
   background: var(--surface);
-  border-left: 1px solid var(--border);
-  display: flex;
-  overflow: hidden;
-  transition: width 0.25s ease;
-  position: relative;
 }
-.sidebar--collapsed { width: 32px; }
-.sidebar-strip-btn {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 48px;
-  background: var(--surface2);
-  border: none;
-  border-right: 1px solid var(--border);
-  cursor: pointer;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  flex-shrink: 0;
+.sort-tab {
+  flex: 1; padding: 13px 8px; text-align: center;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
+  font-family: 'DM Sans', sans-serif; white-space: nowrap;
 }
-.sidebar-strip-btn:hover { background: var(--border); color: var(--text-primary); }
-.sidebar-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  margin-left: 32px;
-}
-.sidebar--collapsed .sidebar-body { visibility: hidden; }
-.sidebar-header {
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.sidebar-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-.sidebar-sub { font-size: 12px; color: var(--text-muted); }
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
+.sort-tab:hover:not(.active) { color: var(--city-light); }
+.sort-tab.active {
+  color: var(--city-light); font-weight: 700;
+  border-bottom-color: var(--city-light);
 }
 
-/* Precinct ranked rows */
+/* ── Sidebar content: rows span full width ────────────────── */
+.sidebar-content { padding: 0; }
+
+/* ── Column header row ────────────────────────────────────── */
+.precinct-table-head {
+  display: flex; align-items: center;
+  padding: 8px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface2); position: sticky; top: 0; z-index: 1;
+}
+.precinct-table-head > div {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: var(--text-muted); transition: color 0.15s;
+  justify-content: flex-end;
+}
+.precinct-table-head .col-active { color: var(--city-light); }
+
+/* ── Column widths ────────────────────────────────────────── */
+.pt-col-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; justify-content: flex-start; text-align: left; }
+.pt-col-kwh  { width: 94px; flex-shrink: 0; text-align: right; padding-right: 14px; }
+.pt-col-area { width: 86px; flex-shrink: 0; text-align: right; padding-right: 14px; }
+.pt-col-bldg { width: 80px; flex-shrink: 0; text-align: right; padding-right: 14px; }
+.pt-col-stat { width: 110px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* ── Rows ─────────────────────────────────────────────────── */
 .precinct-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
+  display: flex; align-items: center;
+  padding: 13px 20px; cursor: pointer;
+  border-bottom: 1px solid var(--border); transition: background 0.15s;
 }
 .precinct-row:hover { background: var(--surface2); }
-.precinct-row--top5 { background: rgba(212, 116, 58, 0.06); }
-.precinct-row--top5:hover { background: rgba(212, 116, 58, 0.12); }
-.precinct-row--selected { background: rgba(255, 217, 102, 0.12); }
-.precinct-rank {
-  width: 28px;
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-align: center;
-}
-.precinct-rank--top5 { color: var(--city-light); font-size: 14px; }
-.precinct-row-info { flex: 1; min-width: 0; }
-.precinct-row-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.precinct-row-metric { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-.precinct-row-bar-wrap {
-  width: 48px;
-  height: 4px;
-  background: var(--surface2);
-  border-radius: 2px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.precinct-row-bar { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+.precinct-row--top5 { background: rgba(212, 116, 58, 0.05); }
+.precinct-row--top5:hover { background: rgba(212, 116, 58, 0.10); }
 
-/* Detail panel (reuses ExploreView metric styles via global css) */
-.precinct-detail-panel { padding: 0 16px 16px; }
-.panel-id {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-  padding-top: 12px;
+/* Rank badge */
+.p-rank {
+  width: 28px; height: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; font-size: 12px; font-weight: 700;
+  color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
 }
-.score-bar-wrap { margin-bottom: 16px; }
-.score-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.score-label { font-size: 12px; color: var(--text-secondary); }
-.score-value { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.score-bar {
-  height: 6px;
-  background: var(--surface2);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-.score-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-.score-tier { font-size: 11px; font-weight: 600; }
-.metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.metric-card {
-  background: var(--surface2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-}
-.metric-val { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
-.metric-label { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.4px; }
+.p-rank--top5 { background: var(--ink); color: #fff; border-color: var(--ink); }
 
-/* Empty state */
-.empty-state {
-  padding: 48px 24px;
-  text-align: center;
-}
-.empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
-.empty-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+/* Tier color dot */
+.p-dot { width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; }
 
-/* Share / back button */
-.share-btn {
-  width: 100%;
-  padding: 9px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, color 0.15s;
+/* Precinct name */
+.p-name {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.share-btn:hover { background: var(--border); color: var(--text-primary); }
 
-/* Toast */
+/* Data values — default muted, active sort column stands out */
+.pt-col-kwh, .pt-col-area, .pt-col-bldg {
+  font-size: 13px; color: var(--text-secondary); white-space: nowrap;
+}
+.pt-col-stat { font-size: 13px; color: var(--text-secondary); }
+.p-val-active {
+  font-size: 14px !important; font-weight: 700 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Mini bar */
+.mini-bar-track {
+  flex: 1; height: 6px; background: var(--border);
+  border-radius: 3px; overflow: hidden;
+}
+.mini-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.mini-bar--gap { background: #C0392B; }
+.mini-pct { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+
+/* ── Precinct detail panel ────────────────────────────────── */
+.precinct-detail-panel { padding: 0 20px 16px; }
+
+/* ── Toast ────────────────────────────────────────────────── */
 .toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
+  position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(12px);
-  background: var(--ink);
-  color: var(--nav-text);
-  border: 1px solid var(--ink-border);
-  border-radius: 8px;
-  padding: 9px 18px;
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 9999;
+  background: var(--ink); color: var(--nav-text);
+  border: 1px solid var(--ink-border); border-radius: 8px;
+  padding: 9px 18px; font-size: 13px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease; z-index: 9999;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>

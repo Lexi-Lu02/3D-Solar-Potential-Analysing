@@ -26,8 +26,9 @@ async def fetch_solar_from_google(lat: float, lng: float) -> dict:
 
     si = data.get("solarPotential", {})
 
-    # Pick the first (maximum) solar panel configuration
-    best_config = si.get("solarPanelConfigs", [{}])[0]
+    # solarPanelConfigs is ordered fewest → most panels; [-1] is the maximum configuration
+    configs = si.get("solarPanelConfigs") or [{}]
+    best_config = configs[-1]
 
     return {
         "api_building_name":           data.get("name", ""),
