@@ -1,7 +1,7 @@
 <template>
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <RouterView v-slot="{ Component }">
-    <KeepAlive include="ExploreView">
+    <KeepAlive include="ExploreView,PrecinctsView">
       <component :is="Component" />
     </KeepAlive>
   </RouterView>
