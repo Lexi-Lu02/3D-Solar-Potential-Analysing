@@ -1,13 +1,128 @@
 <template>
   <div class="map-page">
     <MainNavbar />
+
+    <!-- Sub-navigation bar for Explore page -->
+    <div class="explore-subnav" role="toolbar" aria-label="Explore controls">
+      <!-- Left: panel toggles -->
+      <div class="subnav-actions">
+        <button
+          class="subnav-btn"
+          :class="{ 'subnav-btn--active': filtersOpen }"
+          @click="filtersOpen = !filtersOpen"
+          :aria-pressed="filtersOpen"
+          aria-label="Toggle map filters"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          Filter
+        </button>
+        <button
+          class="subnav-btn"
+          :class="{ 'subnav-btn--active': sidebarOpen }"
+          @click="sidebarOpen = !sidebarOpen"
+          :aria-pressed="sidebarOpen"
+          aria-label="Toggle building info panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M9 1v12" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          Building Info
+        </button>
+        <button
+          class="subnav-btn"
+          :class="{ 'subnav-btn--active': comparePanelOpen }"
+          @click="comparePanelOpen = !comparePanelOpen"
+          :aria-pressed="comparePanelOpen"
+          aria-label="Toggle comparison panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <rect x="1" y="3" width="5" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="8" y="3" width="5" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          Comparison
+          <span v-if="compareBuildings.length > 0" class="subnav-badge">{{ compareBuildings.length }}</span>
+        </button>
+      </div>
+
+      <!-- Right: Search by Address -->
+      <div class="subnav-search-wrap" ref="searchWrapRef" role="search">
+        <label for="search-address" class="visually-hidden">Search buildings by address</label>
+        <div class="subnav-search-inner">
+          <img :src="iconSearch" alt="" aria-hidden="true" class="subnav-search-icon" />
+          <input
+            id="search-address"
+            v-model="searchId"
+            type="text"
+            class="subnav-search-input"
+            placeholder="Search by address…"
+            autocomplete="off"
+            role="combobox"
+            :aria-expanded="searchResults.length > 0 || searchLoading"
+            aria-autocomplete="list"
+            aria-controls="search-listbox"
+            :aria-activedescendant="searchFocusedIdx >= 0 ? `search-option-${searchFocusedIdx}` : undefined"
+            @input="onSearchInput"
+            @keydown="onSearchKeydown"
+          />
+          <button
+            class="subnav-search-clear"
+            v-if="searchId.length"
+            @click="searchId = ''; closeSearchDropdown()"
+            aria-label="Clear search"
+            type="button"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <!-- Dropdown: loading -->
+        <ul v-if="searchLoading" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox">
+          <li class="search-dropdown-loading" aria-live="polite">
+            <span class="search-loading-dot"></span>
+            <span class="search-loading-dot"></span>
+            <span class="search-loading-dot"></span>
+          </li>
+        </ul>
+        <!-- Dropdown: results -->
+        <ul v-else-if="searchResults.length" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox" aria-label="Address search results">
+          <li
+            v-for="(result, i) in searchResults"
+            :key="result.structure_id"
+            :id="`search-option-${i}`"
+            class="search-dropdown-item"
+            :class="{ 'search-dropdown-item--focused': searchFocusedIdx === i }"
+            role="option"
+            :aria-selected="searchFocusedIdx === i"
+            @mousedown.prevent="selectSearchResult(result)"
+            @mouseover="searchFocusedIdx = i"
+          >
+            <svg class="search-result-pin" width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
+              <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 6 3.5a1.5 1.5 0 0 1 0 3z" fill="currentColor"/>
+            </svg>
+            <span class="search-result-address">{{ result.address }}</span>
+          </li>
+        </ul>
+        <!-- Dropdown: no results -->
+        <ul v-else-if="searchDropdownOpen && searchId.trim().length >= 2 && !searchLoading" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox">
+          <li class="search-dropdown-empty">No matching addresses found</li>
+        </ul>
+        <div v-if="searchError" id="search-error-msg" class="search-error subnav-search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
+      </div>
+
+    </div>
+
     <main id="main-content" class="main">
+      <div class="map-area">
       <div id="map" role="application" aria-label="Interactive 3D solar map of Melbourne buildings">
         <div v-if="isLoading" class="loading" role="status" aria-live="polite" aria-atomic="true" :aria-label="loadingText">
           <div class="loading-spinner" aria-hidden="true"></div>
           <div class="loading-text">{{ loadingText }}</div>
         </div>
-        <div class="map-controls" role="group" aria-label="Map filters">
+      </div>
+
+      <div v-show="filtersOpen" class="map-controls" role="group" aria-label="Map filters">
           <div class="control-card">
             <button
               class="control-card-toggle"
@@ -86,8 +201,19 @@
                 </svg>
                 <span class="comparison-title" id="compare-panel-title">Building Comparison</span>
                 <span class="comparison-count" :aria-label="`${compareBuildings.length} of 2 buildings selected`">{{ compareBuildings.length }} / 2</span>
+                <button
+                  class="compare-add-btn"
+                  @click="addToCompare"
+                  :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
+                  :class="{ 'compare-add-btn--added': compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) }"
+                  :aria-label="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Building already in comparison' : 'Add selected building to comparison'"
+                >
+                  <svg v-if="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id)" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 6.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg v-else width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Added to Compare' : 'Add to Compare' }}
+                </button>
               </div>
-              <button class="comparison-close-btn" @click="clearCompare" aria-label="Close comparison panel">
+              <button class="comparison-close-btn" @click="comparePanelOpen = false" aria-label="Close comparison panel">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                   <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
@@ -105,7 +231,7 @@
                 <div class="comparison-col-header">
                   <div class="comparison-col-label">Building {{ col + 1 }}</div>
                   <div class="comparison-building-id">
-                    {{ item.building.structure_id }}
+                    {{ shortAddress(item.apiData?.address) || '#' + item.building.structure_id }}
                   </div>
                   <button class="comparison-remove-btn" @click="removeFromCompare(col)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -157,9 +283,10 @@
                 <div class="comparison-empty-hint">Click a building,<br>then <strong>Add to Compare</strong></div>
               </div>
             </div>
+
           </div>
         </Transition>
-      </div>
+      </div><!-- end .map-area -->
 
       <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Building details panel">
         <button
@@ -185,67 +312,6 @@
             <div class="sidebar-sub" aria-live="polite">
               {{ selectedBuilding ? '' : 'Click any building on the map' }}
             </div>
-            <div class="search-row" role="search">
-              <label for="search-address" class="visually-hidden">Search buildings by address</label>
-              <div class="search-input-wrap" ref="searchWrapRef">
-                <input
-                  id="search-address"
-                  v-model="searchId"
-                  type="text"
-                  class="search-input"
-                  placeholder="Search by address…"
-                  autocomplete="off"
-                  role="combobox"
-                  :aria-expanded="searchResults.length > 0 || searchLoading"
-                  aria-autocomplete="list"
-                  aria-controls="search-listbox"
-                  :aria-activedescendant="searchFocusedIdx >= 0 ? `search-option-${searchFocusedIdx}` : undefined"
-                  :aria-describedby="searchError ? 'search-error-msg' : undefined"
-                  @input="onSearchInput"
-                  @keydown="onSearchKeydown"
-                />
-                <button
-                  class="search-icon-btn"
-                  @click="searchResults.length ? selectSearchResult(searchResults[searchFocusedIdx >= 0 ? searchFocusedIdx : 0]) : onSearchInput()"
-                  aria-label="Search"
-                  type="button"
-                >
-                  <img :src="iconSearch" alt="" aria-hidden="true" class="search-icon-img" />
-                </button>
-                <!-- Dropdown: loading -->
-                <ul v-if="searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
-                  <li class="search-dropdown-loading" aria-live="polite">
-                    <span class="search-loading-dot"></span>
-                    <span class="search-loading-dot"></span>
-                    <span class="search-loading-dot"></span>
-                  </li>
-                </ul>
-                <!-- Dropdown: results -->
-                <ul v-else-if="searchResults.length" class="search-dropdown" role="listbox" id="search-listbox" aria-label="Address search results">
-                  <li
-                    v-for="(result, i) in searchResults"
-                    :key="result.structure_id"
-                    :id="`search-option-${i}`"
-                    class="search-dropdown-item"
-                    :class="{ 'search-dropdown-item--focused': searchFocusedIdx === i }"
-                    role="option"
-                    :aria-selected="searchFocusedIdx === i"
-                    @mousedown.prevent="selectSearchResult(result)"
-                    @mouseover="searchFocusedIdx = i"
-                  >
-                    <svg class="search-result-pin" width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
-                      <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 6 3.5a1.5 1.5 0 0 1 0 3z" fill="currentColor"/>
-                    </svg>
-                    <span class="search-result-address">{{ result.address }}</span>
-                  </li>
-                </ul>
-                <!-- Dropdown: no results -->
-                <ul v-else-if="searchDropdownOpen && searchId.trim().length >= 2 && !searchLoading" class="search-dropdown" role="listbox" id="search-listbox">
-                  <li class="search-dropdown-empty">No matching addresses found</li>
-                </ul>
-              </div>
-            </div>
-            <div v-if="searchError" id="search-error-msg" class="search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
           </div>
           <div class="sidebar-content">
             <div v-if="!selectedBuilding" class="empty-state">
@@ -268,9 +334,8 @@
                 <div class="metric-card">
                   <div class="metric-val">
                     {{ solarApiData?.kwhAnnual != null
-                        ? solarApiData.kwhAnnual.toLocaleString()
-                        : (selectedBuilding.has_solar_data ? Math.round(selectedBuilding.kwh_annual || 0).toLocaleString() : '—') }}
-                    {{ (solarApiData?.kwhAnnual != null || selectedBuilding.has_solar_data) ? ' kWh' : '' }}
+                        ? solarApiData.kwhAnnual.toLocaleString() + ' kWh'
+                        : (solarApiLoading ? '…' : '—') }}
                   </div>
                   <div class="metric-label">Est. Annual kWh</div>
                 </div>
@@ -278,7 +343,7 @@
                   <div class="metric-val">
                     {{ solarApiData?.usableAreaM2 != null
                         ? solarApiData.usableAreaM2.toFixed(1) + ' m²'
-                        : (selectedBuilding.has_solar_data ? (selectedBuilding.usable_roof_area || 0).toFixed(1) + ' m²' : 'No data') }}
+                        : (solarApiLoading ? '…' : '—') }}
                   </div>
                   <div class="metric-label">Usable Roof Area</div>
                 </div>
@@ -286,7 +351,7 @@
                   <div class="metric-val">
                     {{ solarApiData?.roofAreaM2 != null
                         ? solarApiData.roofAreaM2.toFixed(1) + ' m²'
-                        : (selectedBuilding.footprint_area || 0).toFixed(1) + ' m²' }}
+                        : (solarApiLoading ? '…' : '—') }}
                   </div>
                   <div class="metric-label">Roof Footprint</div>
                 </div>
@@ -301,9 +366,9 @@
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
                 <span class="info-val">
-                  {{ solarApiData?.usableAreaM2 != null
-                      ? Math.round(solarApiData.usableAreaM2 / (solarApiData.roofAreaM2 ?? selectedBuilding.footprint_area) * 100) + '%'
-                      : selectedBuilding.has_solar_data ? Math.round(selectedBuilding.usable_ratio * 100) + '%' : '—' }}
+                  {{ solarApiData?.usableAreaM2 != null && solarApiData?.roofAreaM2 != null
+                      ? Math.round(solarApiData.usableAreaM2 / solarApiData.roofAreaM2 * 100) + '%'
+                      : (solarApiLoading ? '…' : '—') }}
                 </span>
               </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
@@ -335,51 +400,6 @@
                     <div class="monthly-bar-label" aria-hidden="true">{{ m.month }}</div>
                   </div>
                 </div>
-              </div>
-              <div class="compare-section">
-                <div class="compare-header">
-                  <span class="compare-title">
-                    <img :src="iconCompare" alt="" aria-hidden="true" class="compare-title-icon" />
-                    Compare
-                  </span>
-                  <button v-if="compareBuildings.length > 0" class="compare-clear" @click="clearCompare" aria-label="Clear all comparison buildings">Clear all</button>
-                </div>
-
-                <div v-if="compareBuildings.length === 0" class="compare-empty-hint-sidebar">
-                  Add up to 2 buildings to compare side by side
-                </div>
-
-                <div v-else class="compare-slots-mini" role="list" aria-label="Buildings in comparison">
-                  <div
-                    v-for="(item, i) in compareBuildings"
-                    :key="item.building.structure_id"
-                    class="compare-slot-mini"
-                    role="listitem"
-                  >
-                    <div class="compare-slot-mini-label">B{{ i + 1 }}</div>
-                    <div class="compare-slot-mini-info">
-                      <span class="compare-slot-mini-id">#{{ item.building.structure_id }}</span>
-                      <span class="compare-slot-mini-tier" :style="{ color: scoreColor(item.building.solar_score) }">{{ scoreTier(item.building.solar_score) }}</span>
-                    </div>
-                    <span class="compare-slot-mini-score" :style="{ color: scoreColor(item.building.solar_score) }" :aria-label="`Solar score: ${item.building.solar_score}`">{{ item.building.solar_score }}</span>
-                    <button class="compare-slot-remove" @click="removeFromCompare(i)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  class="compare-add-btn"
-                  @click="addToCompare"
-                  :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
-                  :aria-disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
-                  :aria-label="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Building already in comparison' : 'Add current building to comparison'"
-                  :class="{ 'compare-add-btn--added': compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) }"
-                >
-                  <svg v-if="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id)" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 6.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <svg v-else width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Added to Compare' : 'Add to Compare' }}
-                </button>
               </div>
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
             </div>
@@ -413,7 +433,7 @@ const GEOJSON_PATH = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.ge
 const MAP_COLORS = {
   solarExcellent:  '#09332C',  // --solar-very-high
   solarGood:       '#5A9072',  // --solar-high
-  solarModerate:   '#C8A870',  // --solar-med
+  solarModerate:   '#BED4C7',  // --solar-med
   solarPoor:       '#F8AB90',  // --solar-low
   solarVeryPoor:   '#F0531C',  // --solar-very-low
   selected:        '#FFD966',  // warm gold highlight
@@ -451,11 +471,13 @@ const searchDropdownOpen = ref(false)
 const searchWrapRef = ref(null)
 let searchDebounceTimer = null
 const sidebarOpen = ref(true)
+const filtersOpen = ref(true)
+const comparePanelOpen = ref(false)
 const solarFilterOpen = ref(true)
 const roofFilterOpen = ref(true)
 const compareBuildings = ref([]) // [{ building, apiData }] — max 2
 
-const compareVisible = computed(() => compareBuildings.value.length > 0)
+const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
 
 // NASA POWER monthly PSH scaled to BOM annual baseline of 4.1 PSH/day
@@ -477,10 +499,7 @@ const MONTHLY_PSH = [
 const monthlyOutput = computed(() => {
   if (!selectedBuilding.value) return []
 
-  // Prefer API annual total (consistent with the kWh card above);
-  // fall back to the pre-computed kwh_annual already in the GeoJSON.
-  const annualKwh = solarApiData.value?.kwhAnnual
-    ?? Number(selectedBuilding.value.kwh_annual) ?? 0
+  const annualKwh = solarApiData.value?.kwhAnnual ?? 0
 
   if (annualKwh <= 0) return []
 
@@ -749,9 +768,9 @@ function scoreTier(score) {
 function compareMetrics(item) {
   const b = item.building
   const api = item.apiData
-  const kwh = api?.kwhAnnual ?? (b.has_solar_data ? Math.round(Number(b.kwh_annual) || 0) : null)
-  const area = api?.usableAreaM2 ?? (b.has_solar_data ? Number(b.usable_roof_area) : null)
-  const roofArea = api?.roofAreaM2 ?? Number(b.footprint_area) ?? null
+  const kwh = api?.kwhAnnual ?? null
+  const area = api?.usableAreaM2 ?? null
+  const roofArea = api?.roofAreaM2 ?? null
   const usableRatio = area != null && roofArea ? Math.round((area / roofArea) * 100) : null
   const maxPanels = api?.maxPanels ?? null
   return [
@@ -795,6 +814,7 @@ function addToCompare() {
   }
   if (compareBuildings.value.length >= 2) compareBuildings.value.shift() // replace oldest
   compareBuildings.value.push(entry)
+  comparePanelOpen.value = true
   showToast('Added to comparison')
   updateCompareHighlight()
 }
@@ -992,6 +1012,7 @@ function initMap() {
           solarApiData.value = null
           selectedAddress.value = null
           solarApiLoading.value = true
+          sidebarOpen.value = true
 
           // Highlight the clicked building
           map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(props.structure_id)])

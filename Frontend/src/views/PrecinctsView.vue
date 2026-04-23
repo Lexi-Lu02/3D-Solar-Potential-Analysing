@@ -150,11 +150,17 @@ import MainNavbar from '../components/MainNavbar.vue'
 const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.geojson'
 const PRECINCTS_PATH  = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 
+// Module-level session caches — survive component unmount/remount within the same tab.
+// Avoids re-fetching large GeoJSON files and re-running the expensive PIP aggregation.
+let _cachedPrecinctGeoJSON = null
+let _cachedBuildingData    = null
+let _cachedAggregation     = null
+
 // MapLibre hex colours (mirrors CSS variables — GL paint doesn't accept CSS vars)
 const MAP_COLORS = {
   solarExcellent: '#09332C',
   solarGood:      '#5A9072',
-  solarModerate:  '#C8A870',
+  solarModerate:  '#BED4C7',
   solarPoor:      '#F8AB90',
   solarVeryPoor:  '#F0531C',
   buildingBase:   '#2A2A26',
@@ -443,18 +449,23 @@ function initMap(precinctGeoJSON) {
     })
 
     // ── Load buildings (background) ───────────────────────────────────────────
-    loadingText.value = 'Loading buildings…'
     let buildingData
-    try {
-      const res = await fetch(BUILDINGS_PATH)
-      if (!res.ok) throw new Error(res.statusText)
-      buildingData = await res.json()
-    } catch (err) {
-      console.error('Failed to load buildings:', err)
-      loadingText.value = 'Buildings unavailable — showing precinct outlines only'
-      isLoading.value = false
-      updateMapLayers()
-      return
+    if (_cachedBuildingData) {
+      buildingData = _cachedBuildingData
+    } else {
+      loadingText.value = 'Loading buildings…'
+      try {
+        const res = await fetch(BUILDINGS_PATH)
+        if (!res.ok) throw new Error(res.statusText)
+        buildingData = await res.json()
+        _cachedBuildingData = buildingData
+      } catch (err) {
+        console.error('Failed to load buildings:', err)
+        loadingText.value = 'Buildings unavailable — showing precinct outlines only'
+        isLoading.value = false
+        updateMapLayers()
+        return
+      }
     }
 
     // Add building extrusions (low opacity background context)
@@ -472,8 +483,14 @@ function initMap(precinctGeoJSON) {
     }, 'precinct-fill')   // insert below precinct layers
 
     // ── Aggregate ─────────────────────────────────────────────────────────────
-    loadingText.value = 'Aggregating solar data…'
-    const enriched = await aggregateBuildings(buildingData.features, precinctGeoJSON.features)
+    let enriched
+    if (_cachedAggregation) {
+      enriched = _cachedAggregation
+    } else {
+      loadingText.value = 'Aggregating solar data…'
+      enriched = await aggregateBuildings(buildingData.features, precinctGeoJSON.features)
+      _cachedAggregation = enriched
+    }
     precincts.value = enriched
     isLoading.value = false
     updateMapLayers()
@@ -493,15 +510,27 @@ function initMap(precinctGeoJSON) {
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  loadingText.value = 'Loading precinct boundaries…'
+  // If we already have aggregated data from a previous visit, show the sidebar
+  // immediately and suppress the loading overlay — MapLibre initialises in the background.
+  if (_cachedAggregation) {
+    precincts.value = _cachedAggregation
+    isLoading.value = false
+  }
+
   let precinctGeoJSON
-  try {
-    const res = await fetch(PRECINCTS_PATH)
-    if (!res.ok) throw new Error(res.statusText)
-    precinctGeoJSON = await res.json()
-  } catch (err) {
-    loadingText.value = `Failed to load precincts: ${err.message}`
-    return
+  if (_cachedPrecinctGeoJSON) {
+    precinctGeoJSON = _cachedPrecinctGeoJSON
+  } else {
+    loadingText.value = 'Loading precinct boundaries…'
+    try {
+      const res = await fetch(PRECINCTS_PATH)
+      if (!res.ok) throw new Error(res.statusText)
+      precinctGeoJSON = await res.json()
+      _cachedPrecinctGeoJSON = precinctGeoJSON
+    } catch (err) {
+      loadingText.value = `Failed to load precincts: ${err.message}`
+      return
+    }
   }
 
   setTimeout(() => { if (!map) initMap(precinctGeoJSON) }, 50)
