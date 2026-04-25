@@ -58,6 +58,7 @@ def _row_to_response(row: dict[str, Any]) -> SolarCacheResponse:
         address=_safe_str(row.get("address")),
         max_panels=_safe_int(row.get("max_panels")),
         max_array_area_m2=_safe_float(row.get("max_array_area_m2")),
+        min_panels_kwh_annual=_safe_float(row.get("min_panels_kwh_annual")),
         max_panels_kwh_annual=_safe_float(row.get("max_panels_kwh_annual")),
         max_sunshine_hours_per_year=_safe_float(row.get("max_sunshine_hours_per_year")),
         carbon_offset_kg_per_mwh=_safe_float(row.get("carbon_offset_kg_per_mwh")),

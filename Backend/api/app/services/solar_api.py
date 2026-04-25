@@ -26,8 +26,9 @@ async def fetch_solar_from_google(lat: float, lng: float) -> dict:
 
     si = data.get("solarPotential", {})
 
-    # Pick the first (maximum) solar panel configuration
-    best_config = si.get("solarPanelConfigs", [{}])[0]
+    configs = si.get("solarPanelConfigs", [{}])
+    min_config = configs[0]
+    max_config = configs[-1]
 
     return {
         "api_building_name":           data.get("name", ""),
@@ -51,8 +52,9 @@ async def fetch_solar_from_google(lat: float, lng: float) -> dict:
         "whole_roof_ground_area_m2":   si.get("wholeRoofStats", {}).get("groundAreaMeters2"),
         # List of sunshine quantiles across the whole roof surface
         "whole_roof_sunshine_quantiles": si.get("wholeRoofStats", {}).get("sunshineQuantiles"),
-        # Annual DC energy yield for the best panel configuration
-        "max_panels_kwh_annual":       best_config.get("yearlyEnergyDcKwh"),
+        # Annual DC energy yield for min and max panel configurations
+        "min_panels_kwh_annual":       min_config.get("yearlyEnergyDcKwh"),
+        "max_panels_kwh_annual":       max_config.get("yearlyEnergyDcKwh"),
         # Full JSON blobs stored as JSONB in Postgres
         "roof_segment_stats":          si.get("roofSegmentStats"),
         "solar_panel_configs":         si.get("solarPanelConfigs"),
