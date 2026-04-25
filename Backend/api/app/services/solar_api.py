@@ -26,7 +26,7 @@ async def fetch_solar_from_google(lat: float, lng: float) -> dict:
 
     si = data.get("solarPotential", {})
 
-    configs = si.get("solarPanelConfigs", [{}])
+    configs = si.get("solarPanelConfigs") or [{}]
     min_config = configs[0]
     max_config = configs[-1]
 
