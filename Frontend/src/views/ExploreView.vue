@@ -124,13 +124,51 @@
 
       <div v-show="filtersOpen" class="map-controls" role="group" aria-label="Map filters">
           <div class="control-card">
+
+            <!-- Panel header -->
+            <div class="filter-panel-header">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <span class="filter-panel-title">Filters</span>
+              <button class="filter-panel-close" @click="filtersOpen = false" aria-label="Close filter panel">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Applied filters -->
+            <div v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'" class="applied-filters-section">
+              <div class="applied-filters-row">
+                <span class="applied-filters-label">Applied filters</span>
+                <button class="filter-clear-all" @click="clearAllFilters" aria-label="Clear all filters">
+                  Clear all
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+              <div class="applied-chips" role="list" aria-label="Active filters">
+                <span v-if="activeSolarFilter !== 'all'" class="filter-chip" role="listitem">
+                  <span class="filter-chip-dot" :style="{ background: solarTiers.find(t => t.id === activeSolarFilter)?.color }"></span>
+                  {{ solarTiers.find(t => t.id === activeSolarFilter)?.label }}
+                  <button class="filter-chip-remove" @click="filterSolar(activeSolarFilter)" :aria-label="`Remove ${solarTiers.find(t => t.id === activeSolarFilter)?.label} filter`">×</button>
+                </span>
+                <span v-if="activeFilter !== 'all'" class="filter-chip" role="listitem">
+                  {{ filters.find(f => f.type === activeFilter)?.label }}
+                  <button class="filter-chip-remove" @click="filterRoof(activeFilter)" :aria-label="`Remove ${filters.find(f => f.type === activeFilter)?.label} filter`">×</button>
+                </span>
+              </div>
+            </div>
+
+            <!-- Solar Potential section -->
+            <div class="filter-section-divider" v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'"></div>
             <button
               class="control-card-toggle"
               @click="solarFilterOpen = !solarFilterOpen"
               :aria-expanded="solarFilterOpen"
               aria-controls="solar-filter-group"
             >
-              <span class="control-title">Filter by Solar Potential</span>
+              <span class="control-title">Solar Potential</span>
               <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -149,15 +187,16 @@
                 {{ t.label }}<span class="tier-range">&nbsp;({{ t.range }})</span>
               </button>
             </div>
-          </div>
-          <div class="control-card">
+
+            <!-- Roof Type section -->
+            <div class="filter-section-divider"></div>
             <button
               class="control-card-toggle"
               @click="roofFilterOpen = !roofFilterOpen"
               :aria-expanded="roofFilterOpen"
               aria-controls="roof-filter-group"
             >
-              <span class="control-title">Filter by Roof Type</span>
+              <span class="control-title">Roof Type</span>
               <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -173,20 +212,12 @@
                 @click="filterRoof(f.type)"
               >
                 <svg width="28" height="12" class="filter-dash-icon" aria-hidden="true">
-                  <line
-                    x1="2"
-                    y1="6"
-                    x2="26"
-                    y2="6"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    :stroke-dasharray="f.svgDash || 'none'"
-                    stroke-linecap="round"
-                  />
+                  <line x1="2" y1="6" x2="26" y2="6" stroke="currentColor" stroke-width="2.5" :stroke-dasharray="f.svgDash || 'none'" stroke-linecap="round"/>
                 </svg>
                 {{ f.label }}
               </button>
             </div>
+
           </div>
         </div>
 
@@ -329,40 +360,16 @@
                   <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
-              </div>
-              <div class="metrics-grid">
-                <div class="metric-card">
-                  <div class="metric-val">
-                    {{ solarApiData?.kwhAnnual != null
-                        ? solarApiData.kwhAnnual.toLocaleString() + ' kWh'
-                        : (solarApiLoading ? '…' : '—') }}
-                  </div>
-                  <div class="metric-label">Est. Annual kWh</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val">
-                    {{ solarApiData?.usableAreaM2 != null
-                        ? solarApiData.usableAreaM2.toFixed(1) + ' m²'
-                        : (solarApiLoading ? '…' : '—') }}
-                  </div>
-                  <div class="metric-label">Usable Roof Area</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val">
-                    {{ solarApiData?.roofAreaM2 != null
-                        ? solarApiData.roofAreaM2.toFixed(1) + ' m²'
-                        : (solarApiLoading ? '…' : '—') }}
-                  </div>
-                  <div class="metric-label">Roof Footprint</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val">{{ (selectedBuilding.building_height || 0).toFixed(1) }} m</div>
-                  <div class="metric-label">Building Height</div>
+                <div class="score-explanation">
+                  Composite of <strong>roof quality</strong> (sunshine intensity per m²)
+                  and <strong>energy output</strong> (annual kWh), each normalised 0–100
+                  and weighted equally.
                 </div>
               </div>
               <div class="section-title">Building Info</div>
               <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ shortAddress(selectedAddress) }}</span></div>
               <div class="info-row"><span class="info-key">Roof Type</span><span class="info-val">{{ selectedBuilding.roof_type || 'Unknown' }}</span></div>
+              <div class="info-row"><span class="info-key">Building Height</span><span class="info-val">{{ (selectedBuilding.building_height || 0).toFixed(1) }} m</span></div>
               <div class="info-row">
                 <span class="info-key">Usable Ratio</span>
                 <span class="info-val">
@@ -372,6 +379,78 @@
                 </span>
               </div>
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-label">Est. Annual kWh</div>
+                  <div class="metric-val">
+                    {{ formulaKwhAnnual > 0
+                        ? formulaKwhAnnual.toLocaleString() + ' kWh'
+                        : '—' }}
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Peak Sun Hours/Day</div>
+                  <div class="metric-val">
+                    {{ solarApiData?.sunshineHours != null
+                        ? (Math.round(solarApiData.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
+                        : (solarApiLoading ? '…' : '—') }}
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Roof Footprint</div>
+                  <div class="metric-val">
+                    {{ solarApiData?.roofAreaM2 != null
+                        ? solarApiData.roofAreaM2.toFixed(1) + ' m²'
+                        : (solarApiLoading ? '…' : '—') }}
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Usable Roof Area</div>
+                  <div class="metric-val">
+                    {{ solarApiData?.usableAreaM2 != null
+                        ? solarApiData.usableAreaM2.toFixed(1) + ' m²'
+                        : (solarApiLoading ? '…' : '—') }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Formula explanation card -->
+              <div v-if="formulaKwhAnnual > 0" class="formula-card">
+                <div class="formula-card-title">How We Calculate It</div>
+                <div class="formula-rows">
+                  <div class="formula-row">
+                    <span class="formula-row-label">Usable Roof Area</span>
+                    <span class="formula-row-val">
+                      {{ (solarApiData?.usableAreaM2 ?? selectedBuilding?.usable_roof_area ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} m²
+                    </span>
+                  </div>
+                  <div class="formula-row formula-row-op">
+                    <span class="formula-row-label">Panel Efficiency</span>
+                    <span class="formula-row-val">× 20%</span>
+                  </div>
+                  <div class="formula-row formula-row-op">
+                    <span class="formula-row-label">Performance Ratio</span>
+                    <span class="formula-row-val">× 75%</span>
+                  </div>
+                  <div class="formula-row formula-row-op">
+                    <span class="formula-row-label">Peak Sun Hours/Day</span>
+                    <span class="formula-row-val">
+                      × {{ solarApiData?.sunshineHours != null
+                            ? (Math.round(solarApiData.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
+                            : '4.1 kWh/m²/day' }}
+                    </span>
+                  </div>
+                  <div class="formula-row formula-row-op">
+                    <span class="formula-row-label">Days per Year</span>
+                    <span class="formula-row-val">× 365</span>
+                  </div>
+                  <div class="formula-row formula-result">
+                    <span class="formula-row-label">Est. Annual Output</span>
+                    <span class="formula-row-val">{{ formulaKwhAnnual.toLocaleString() }} kWh</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="section-title">Monthly Output</div>
               <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
               <div v-else class="monthly-chart" role="img" :aria-label="`Monthly solar output chart. ${monthlyOutput.map(m => `${m.month}: ${m.kwh.toLocaleString()} kWh`).join(', ')}`">
@@ -402,6 +481,7 @@
                 </div>
               </div>
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
+              <p class="share-btn-desc">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
           </div>
         </div>
@@ -427,6 +507,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const GEOJSON_PATH = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.geojson'
+const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 
 // MapLibre GL requires hex values — CSS variables are not supported in GL paint specs.
 // These mirror the CSS variables defined in style.css :root for a single source of truth.
@@ -480,6 +561,20 @@ const compareBuildings = ref([]) // [{ building, apiData }] — max 2
 const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
 
+// Annual kWh from formula.
+// Area: prefer solarApiData.usableAreaM2 (Google max_array_area_m2 — building-level,
+//   consistent regardless of which polygon is clicked). Falls back to GeoJSON
+//   usable_roof_area only when API data hasn't loaded yet.
+// PSH:  prefer solarApiData.sunshineHours (building-specific kWh/m²/yr from Google).
+//   Falls back to BOM constant 4.1 × 365 = 1496.5.
+const formulaKwhAnnual = computed(() => {
+  const area = solarApiData.value?.usableAreaM2 || selectedBuilding.value?.usable_roof_area
+  if (!area || area <= 0) return 0
+  const psh = solarApiData.value?.sunshineHours
+  if (psh) return Math.round(area * 0.20 * 0.75 * psh)
+  return Math.round(area * 0.20 * 0.75 * 4.1 * 365)  // fallback: BOM constant
+})
+
 // NASA POWER monthly PSH scaled to BOM annual baseline of 4.1 PSH/day
 const MONTHLY_PSH = [
   { month: 'Jan', days: 31, psh: 6.56 },
@@ -499,7 +594,7 @@ const MONTHLY_PSH = [
 const monthlyOutput = computed(() => {
   if (!selectedBuilding.value) return []
 
-  const annualKwh = solarApiData.value?.kwhAnnual ?? 0
+  const annualKwh = formulaKwhAnnual.value
 
   if (annualKwh <= 0) return []
 
@@ -580,6 +675,7 @@ async function fetchSolarApiData(structureId) {
       usableAreaM2: body.max_array_area_m2 != null ? Math.round(body.max_array_area_m2 * 10) / 10 : null,
       roofAreaM2:   body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
       kwhAnnual:    body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
+      sunshineHours: body.max_sunshine_hours_per_year != null ? Math.round(body.max_sunshine_hours_per_year) : null,
       address:      body.address || null,
     }
     solarApiCache.set(structureId, result)
@@ -652,6 +748,12 @@ function filterRoof(type) {
 
 function filterSolar(tierId) {
   activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
+  applyFilters()
+}
+
+function clearAllFilters() {
+  activeFilter.value = 'all'
+  activeSolarFilter.value = 'all'
   applyFilters()
 }
 
@@ -773,12 +875,15 @@ function compareMetrics(item) {
   const roofArea = api?.roofAreaM2 ?? null
   const usableRatio = area != null && roofArea ? Math.round((area / roofArea) * 100) : null
   const maxPanels = api?.maxPanels ?? null
+  const sunHours = api?.sunshineHours ?? null
+  const sunIntensity = sunHours != null && roofArea ? Math.round(sunHours / roofArea * 10) / 10 : null
   return [
-    { label: 'Roof Type',       display: b.roof_type || '—',                                                         raw: null },
-    { label: 'Annual kWh',      display: kwh        != null ? Number(kwh).toLocaleString()        + ' kWh' : '—',    raw: kwh        ?? 0 },
-    { label: 'Usable Area',     display: area       != null ? Number(area).toFixed(1)              + ' m²'  : '—',    raw: area       ?? 0 },
-    { label: 'Usable Ratio',    display: usableRatio != null ? usableRatio                         + '%'    : '—',    raw: usableRatio ?? 0 },
-    { label: 'Max Solar Panels',display: maxPanels  != null ? Number(maxPanels).toLocaleString()              : '—',  raw: maxPanels  ?? 0 },
+    { label: 'Roof Type',        display: b.roof_type || '—',                                                              raw: null        },
+    { label: 'Sun Hrs / m²',     display: sunIntensity != null ? sunIntensity + ' hrs/m²'              : '—',              raw: sunIntensity ?? 0 },
+    { label: 'Annual kWh',       display: kwh          != null ? Number(kwh).toLocaleString() + ' kWh' : '—',              raw: kwh          ?? 0 },
+    { label: 'Usable Area',      display: area         != null ? Number(area).toFixed(1) + ' m²'       : '—',              raw: area         ?? 0 },
+    { label: 'Usable Ratio',     display: usableRatio  != null ? usableRatio + '%'                     : '—',              raw: usableRatio  ?? 0 },
+    { label: 'Max Solar Panels', display: maxPanels    != null ? Number(maxPanels).toLocaleString()    : '—',              raw: maxPanels    ?? 0 },
   ]
 }
 
@@ -906,6 +1011,31 @@ async function openBuildingFromUrl() {
   solarApiLoading.value = false
 }
 
+// ── Precinct helpers (mirror of PrecinctsView) ────────────────────────────────
+function _pBBox(f) {
+  const g = f.geometry; if (!g) return null
+  const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map(p => p[0])
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  for (const ring of rings) for (const [x, y] of ring) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x
+    if (y < minY) minY = y; if (y > maxY) maxY = y
+  }
+  return { minX, maxX, minY, maxY }
+}
+function _pInRing(px, py, ring) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j]
+    if (((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi) / (yj - yi)) + xi)) inside = !inside
+  }
+  return inside
+}
+function _pInFeature(px, py, f) {
+  const g = f.geometry; if (!g) return false
+  const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map(p => p[0])
+  return rings.some(r => _pInRing(px, py, r))
+}
+
 function initMap() {
   map = new maplibregl.Map({
     container: 'map',
@@ -1004,6 +1134,45 @@ function initMap() {
             paint,
           })
         })
+
+        // Precinct boundary lines — only precincts that contain at least one building
+        try {
+          const pRes = await fetch(PRECINCTS_PATH)
+          if (pRes.ok) {
+            const precinctData = await pRes.json()
+            const pFeatures = precinctData.features
+            const bboxes = pFeatures.map(_pBBox)
+
+            // Find which precinct_ids contain at least one building (using lat/lng props)
+            const hasData = new Set()
+            for (const bf of data.features) {
+              if (hasData.size === pFeatures.length) break
+              const px = bf.properties.lng, py = bf.properties.lat
+              if (!px || !py) continue
+              for (let pi = 0; pi < pFeatures.length; pi++) {
+                if (hasData.has(pFeatures[pi].properties.precinct_id)) continue
+                const bb = bboxes[pi]
+                if (!bb || px < bb.minX || px > bb.maxX || py < bb.minY || py > bb.maxY) continue
+                if (!_pInFeature(px, py, pFeatures[pi])) continue
+                hasData.add(pFeatures[pi].properties.precinct_id)
+                break
+              }
+            }
+
+            map.addSource('melbourne-precincts-explore', { type: 'geojson', data: precinctData })
+            map.addLayer({
+              id: 'precinct-boundary',
+              type: 'line',
+              source: 'melbourne-precincts-explore',
+              filter: ['in', ['get', 'precinct_id'], ['literal', [...hasData]]],
+              paint: {
+                'line-color': '#1B5E20',
+                'line-width': 1.5,
+                'line-opacity': 0.85,
+              },
+            })
+          }
+        } catch { /* silently skip if precinct file unavailable */ }
 
         map.on('click', 'building-extrusion', async (event) => {
           if (!event.features?.length) return

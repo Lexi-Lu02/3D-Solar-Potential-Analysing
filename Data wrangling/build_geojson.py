@@ -25,9 +25,10 @@ import math
 import os
 import pandas as pd
 
-BUILDINGS_CSV  = 'buildings.csv'
-SOLAR_CSV      = 'rooftop_solar.csv'
-OUTPUT_GEOJSON = '../Backend/combined-buildings.geojson'
+BUILDINGS_CSV    = 'buildings.csv'
+SOLAR_CSV        = 'rooftop_solar.csv'
+SOLAR_SCORE_CSV  = 'solar_score.csv'   # exported from solar_score table: structure_id, composite_score
+OUTPUT_GEOJSON   = '../Backend/combined-buildings.geojson'
 
 # kWh formula constants (Melbourne CBD, BOM validated)
 PANEL_EFFICIENCY  = 0.20
@@ -91,14 +92,25 @@ def main():
     print(f'  buildings:     {len(buildings):,} rows')
     print(f'  rooftop_solar: {len(solar):,} rows')
 
-    # Join solar data onto buildings (left join keeps buildings with no solar data)
+    # Join rooftop_solar data onto buildings
     df = buildings.merge(solar, on='structure_id', how='left')
 
-    # Pre-compute solar_score (0–100) from solar_score_avg (1–5)
-    df['solar_score'] = df['solar_score_avg'].apply(
-        lambda x: round((safe_float(x) - 1) / 4 * 100)
-                  if not math.isnan(safe_float(x, float('nan'))) else 0
-    )
+    # Solar score: prefer composite_score from solar_score table (0–100, computed by
+    # solar score.py).  Fall back to rescaling solar_score_avg (1–5) from rooftop_solar
+    # for any buildings not yet in the solar_score table.
+    if os.path.isfile(SOLAR_SCORE_CSV):
+        scores = pd.read_csv(SOLAR_SCORE_CSV)[['structure_id', 'composite_score']]
+        print(f'  solar_score:   {len(scores):,} rows (from {SOLAR_SCORE_CSV})')
+        df = df.merge(scores, on='structure_id', how='left')
+        df['solar_score'] = df['composite_score'].apply(
+            lambda x: round(safe_float(x)) if not math.isnan(safe_float(x, float('nan'))) else 0
+        )
+    else:
+        print(f'  solar_score:   {SOLAR_SCORE_CSV} not found — falling back to solar_score_avg')
+        df['solar_score'] = df['solar_score_avg'].apply(
+            lambda x: round((safe_float(x) - 1) / 4 * 100)
+                      if not math.isnan(safe_float(x, float('nan'))) else 0
+        )
 
     print('Building GeoJSON features...')
     features = []
