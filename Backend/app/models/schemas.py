@@ -148,6 +148,9 @@ class SolarCacheResponse(BaseModel):
     address: str | None = Field(None, description="Reverse-geocoded street address")
     max_panels: int | None = Field(None, ge=0, description="Maximum number of panels that fit")
     max_array_area_m2: float | None = Field(None, ge=0, description="Area covered by max panels (m²)")
+    min_panels_kwh_annual: float | None = Field(
+        None, ge=0, description="Annual kWh with minimum panel count"
+    )
     max_panels_kwh_annual: float | None = Field(
         None, ge=0, description="Annual kWh with maximum panel count"
     )

@@ -11,6 +11,7 @@ SELECT
     address,
     max_panels,
     max_array_area_m2,
+    min_panels_kwh_annual,
     max_panels_kwh_annual,
     max_sunshine_hours_per_year,
     carbon_offset_kg_per_mwh,
