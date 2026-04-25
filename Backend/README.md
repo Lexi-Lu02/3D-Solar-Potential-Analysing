@@ -1,12 +1,11 @@
 # Solar Map API
 
 **3D Solar Potential Analysing** 项目的只读 HTTP 后端。为 Vue + MapLibre 前端
-提供墨尔本 CBD 的建筑轮廓、屋顶光伏适宜度数据,以及按建筑计算的 kWh 估算值。
+提供墨尔本 CBD 的建筑轮廓、屋顶光伏适宜度数据，以及按建筑计算的 kWh 估算值。
 
-> **当前状态:** Phase E-rev 已完成 — 五个端点全部就绪：`/health`、
-> `/buildings/search`、`/buildings/{id}`、`/buildings/{id}/yield`、
-> `/buildings/{id}/solar`。
-> 路径参数已统一为 `buildings.id`（代理主键），`address` 字段从 `solar_api_cache` 表读取。
+> **当前状态:** Epic 1–4 后端已完成 — 端点如下：
+> `GET /health` · `/buildings/search` · `/buildings/{id}` · `/buildings/{id}/yield` ·
+> `/buildings/{id}/solar` · `/sun/position` · `/sun/path` · `/sun/psh-monthly`
 
 ---
 
@@ -14,22 +13,23 @@
 
 | 项目 | 内容 |
 |---|---|
-| **技术栈** | FastAPI、psycopg3 (原生 SQL,不用 ORM)、PostgreSQL、Pydantic v2 |
-| **模式** | 只读 (没有 POST/PUT/DELETE;数据库用户只有 SELECT 权限) |
+| **技术栈** | FastAPI、psycopg3 (原生 SQL，不用 ORM)、PostgreSQL、Pydantic v2 |
+| **模式** | 只读 (没有 POST/PUT/DELETE；数据库用户只有 SELECT 权限) |
 | **本地 Base URL** | `http://localhost:8000/api/v1` |
-| **生产 Base URL**  | `https://<域名>/api/v1` (与前端部署在同一台 EC2,前面挂 nginx) |
+| **生产 Base URL**  | `https://<域名>/api/v1` (与前端部署在同一台 EC2，前面挂 nginx) |
 | **认证** | 无 — 数据为公开数据 (City of Melbourne, CC BY 4.0) |
-| **自动生成的接口文档** | Swagger UI: `/api/v1/docs`,ReDoc: `/api/v1/redoc` |
+| **自动生成的接口文档** | Swagger UI: `/api/v1/docs`，ReDoc: `/api/v1/redoc` |
 
-本 README 是**叙述式**文档,讲清楚每个接口的用途与字段含义。如果想要交互式
-"Try it out" 测试和机器可读的 schema,请运行服务后打开
+本 README 是**叙述式**文档，讲清楚每个接口的用途与字段含义。如果想要交互式
+"Try it out" 测试和机器可读的 schema，请运行服务后打开
 `http://localhost:8000/api/v1/docs`。
 
-本 API 服务于项目计划中的以下 Epic:
+本 API 服务于以下 Epic:
 
 - **Epic 1** — 3D 城市地图 (按 ID 单条获取建筑数据)
 - **Epic 2** — 建筑详情面板
 - **Epic 3** — 屋顶光伏 kWh 计算引擎
+- **Epic 4** — 太阳轨迹 / 阴影（Sun position API）
 
 ---
 
@@ -38,8 +38,8 @@
 要求 Python **3.11+** (推荐 3.12)。
 
 ```bash
-# 1. 克隆并进入 api 目录
-cd Backend/api
+# 1. 进入 Backend 目录
+cd Backend
 
 # 2. 创建虚拟环境
 python -m venv .venv
@@ -51,9 +51,9 @@ source .venv/bin/activate
 # 3. 安装包及开发依赖
 pip install -e ".[dev]"
 
-# 4. 配置数据库连接
+# 4. 配置数据库连接（.env 在 Backend 根目录）
 cp .env.example .env        # Windows: copy .env.example .env
-# 然后编辑 .env 填入 DB_HOST / DB_USER / DB_PASSWORD
+# 编辑 .env，填入 DB_HOST / DB_USER / DB_PASSWORD
 
 # 5. 启动 API
 uvicorn app.main:app --reload
@@ -64,9 +64,6 @@ curl -sf http://localhost:8000/api/v1/health
 
 # 7. 运行单元测试
 pytest
-
-# 8. Frondend .env
-cp .env.production .env
 ```
 
 打开浏览器访问 `http://localhost:8000/api/v1/docs` 即可看到自动生成的 Swagger UI。
@@ -75,8 +72,8 @@ cp .env.production .env
 
 ## 3. 环境变量
 
-所有配置都从环境变量读取 (开发时也支持 `.env` 文件)。**任何必填项缺失,
-程序会在启动时立刻失败**。
+`.env` 放在 **`Backend/`** 根目录。所有配置从环境变量读取（开发时也支持 `.env` 文件）。
+**任何必填项缺失，程序会在启动时立刻失败**。
 
 | 变量 | 必填 | 默认 | 用途 |
 |---|---|---|---|
@@ -326,6 +323,125 @@ curl -sf http://localhost:8000/api/v1/buildings/1/yield | jq '{kwh_annual, kwh_m
 
 ```bash
 curl -sf http://localhost:8000/api/v1/buildings/1/solar | jq '{max_panels, max_panels_kwh_annual}'
+```
+
+---
+
+### 5.6 `GET /api/v1/sun/position` *(Epic 4)*
+
+**用途:** 计算指定日期和时刻墨尔本 CBD 参考点的太阳高度角与方位角，替代前端原有的
+客户端球面三角学实现。
+
+**查询参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `date` | string | 必填，`YYYY-MM-DD` | 本地日期（墨尔本时区） |
+| `hour` | float | 必填，0–24 | 本地时间（小数，如 `13.5` = 13:30） |
+
+**响应 200**
+
+```json
+{
+  "altitude_deg": 28.56,
+  "azimuth_deg": 5.71,
+  "shadow_factor": 3.15
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `altitude_deg` | 太阳高度角（°），低于地平线时为 0 |
+| `azimuth_deg` | 太阳方位角（°），北=0，顺时针，与前端 sun-direction-line 约定一致 |
+| `shadow_factor` | 相对阴影长度倍数（`90 / altitude_deg`）；太阳低于地平线时为 `null` |
+
+**缓存:** `Cache-Control: public, max-age=31536000, immutable`（输入确定则结果永远不变）
+
+**curl 示例:**
+
+```bash
+# 冬至正午
+curl -sf "http://localhost:8000/api/v1/sun/position?date=2025-06-21&hour=12" | jq .
+```
+
+---
+
+### 5.7 `GET /api/v1/sun/path` *(Epic 4)*
+
+**用途:** 一次性返回某日 6:00–18:00 共 25 个采样点（每 0.5h 一条），供前端按季节
+预加载并存入 sessionStorage，后续切换时间滑块无需再次请求。
+
+**查询参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `date` | string | 必填，`YYYY-MM-DD` | 本地日期 |
+
+**响应 200**
+
+```json
+{
+  "date": "2025-12-21",
+  "samples": [
+    {"hour": 6.0,  "altitude_deg": 0.0,   "azimuth_deg": 112.3, "shadow_factor": null},
+    {"hour": 6.5,  "altitude_deg": 3.21,  "azimuth_deg": 115.8, "shadow_factor": 28.04},
+    ...
+    {"hour": 18.0, "altitude_deg": 0.0,   "azimuth_deg": 248.1, "shadow_factor": null}
+  ]
+}
+```
+
+**缓存:** `Cache-Control: public, max-age=31536000, immutable`
+
+**curl 示例:**
+
+```bash
+# 夏至全日轨迹（25 个采样点）
+curl -sf "http://localhost:8000/api/v1/sun/path?date=2025-12-21" | jq '.samples | length'
+# → 25
+```
+
+**前端集成建议：** 页面加载时并发请求三个季节日期，用 `Promise.all` 预取后缓存到
+`sessionStorage`，key 格式 `sun_path_<season>`。
+
+---
+
+### 5.8 `GET /api/v1/sun/psh-monthly` *(Epic 4)*
+
+**用途:** 返回墨尔本月度峰值日照时数（PSH）常量数组，供前端做季节调整 kWh 估算。
+
+**无查询参数**
+
+**响应 200**
+
+```json
+{
+  "location": "Melbourne",
+  "psh_monthly": [6.56, 5.71, 4.59, 3.18, 2.16, 1.69, 1.86, 2.61, 3.72, 4.92, 5.78, 6.49],
+  "psh_annual_avg": 4.1075
+}
+```
+
+索引 0 = 1月（Jan），索引 11 = 12月（Dec）。数据来自 NASA POWER（20 年均值），
+经等比缩放使年均等于 BOM 站点 086338 实测值 4.1 PSH/day。
+
+**缓存:** `Cache-Control: public, max-age=31536000, immutable`
+
+**季节因子计算公式（前端参考）：**
+
+```js
+// 例：夏季（南半球 12/1/2 月）相对年均的倍率
+const summerMonths = [11, 0, 1]  // Dec/Jan/Feb，索引从 0 开始
+const seasonFactor = (
+  summerMonths.reduce((s, m) => s + psh_monthly[m], 0) / summerMonths.length
+) / psh_annual_avg
+// kwh_seasonal ≈ base_kwh_annual × seasonFactor
+```
+
+**curl 示例:**
+
+```bash
+curl -sf http://localhost:8000/api/v1/sun/psh-monthly | jq .
 ```
 
 ---

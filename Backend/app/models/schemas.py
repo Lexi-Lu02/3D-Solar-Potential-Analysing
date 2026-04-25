@@ -208,3 +208,47 @@ class YieldResponse(BaseModel):
     assumptions: YieldAssumptions = Field(
         ..., description="本次计算所用的参数，供前端透明展示"
     )
+
+
+# --- /sun/* (Epic 4 — Sun/Shadow) -------------------------------------------
+
+
+class SunPositionResponse(BaseModel):
+    """Sun altitude and azimuth at a given time, Melbourne CBD."""
+
+    altitude_deg: float = Field(
+        ..., ge=0, le=90,
+        description="Solar altitude in degrees. 0 when below horizon."
+    )
+    azimuth_deg: float = Field(
+        ..., ge=0, lt=360,
+        description="Solar azimuth in degrees. N=0, clockwise."
+    )
+    shadow_factor: float | None = Field(
+        None,
+        description="Relative shadow length (90 / altitude). None when below horizon."
+    )
+
+
+class SunPathSample(SunPositionResponse):
+    hour: float = Field(..., ge=0, le=24, description="Local time in hours (0.5h steps)")
+
+
+class SunPathResponse(BaseModel):
+    date: str = Field(..., description="Local date (YYYY-MM-DD)")
+    samples: list[SunPathSample] = Field(
+        ..., description="25 samples from 6:00-18:00 at 0.5h intervals"
+    )
+
+
+class PshMonthlyResponse(BaseModel):
+    """Monthly Peak Sun Hours constants (NASA POWER x BOM calibrated)."""
+
+    location: str = Field(..., description="Location name, e.g. 'Melbourne'")
+    psh_monthly: list[float] = Field(
+        ..., min_length=12, max_length=12,
+        description="Index 0=Jan to 11=Dec, unit: kWh/m²/day"
+    )
+    psh_annual_avg: float = Field(
+        ..., ge=0, description="Annual average PSH (BOM station 086338, ~4.1)"
+    )
