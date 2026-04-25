@@ -240,6 +240,31 @@ class SunPathResponse(BaseModel):
         ..., description="25 samples from 6:00-18:00 at 0.5h intervals"
     )
 
+# --- /precincts (Epic 5) -----------------------------------------------------
+
+
+class PrecinctSummary(BaseModel):
+    precinct_id: int
+    name: str
+    postcode: str | None = None
+    total_kwh_annual: float = Field(..., ge=0)
+    total_usable_area_m2: float = Field(..., ge=0)
+    installed_capacity_kw: float = Field(..., ge=0)
+    potential_capacity_kw: float = Field(..., ge=0)
+    adoption_gap_kw: float = Field(..., ge=0)
+    building_count: int = Field(..., ge=0)
+    rank: int | None = Field(None, description="按当前排序键的排名（1=最高），仅在列表中返回")
+
+
+class PrecinctDetail(PrecinctSummary):
+    geo_boundary: dict[str, Any] | None = Field(
+        None, description="GeoJSON Polygon/MultiPolygon"
+    )
+
+
+class PrecinctListResponse(BaseModel):
+    sort: Literal["kwh", "area", "buildings", "gap"]
+    precincts: list[PrecinctSummary]
 
 class PshMonthlyResponse(BaseModel):
     """Monthly Peak Sun Hours constants (NASA POWER x BOM calibrated)."""

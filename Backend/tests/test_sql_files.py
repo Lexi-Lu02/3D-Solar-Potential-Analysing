@@ -17,7 +17,7 @@ SQL_DIR = Path(__file__).parent.parent / "app" / "sql"
 
 # Enough keys to satisfy every .sql file's named placeholders. Extra keys
 # are harmless; missing keys would raise.
-_DUMMY_PARAMS = {"id": 1, "structure_id": 1, "q": "x"}
+_DUMMY_PARAMS = {"id": 1, "structure_id": 1, "q": "x", "precinct_id": 1}
 
 
 @pytest.mark.parametrize("sql_path", sorted(SQL_DIR.glob("*.sql")), ids=lambda p: p.name)

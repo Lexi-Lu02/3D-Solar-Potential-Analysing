@@ -29,6 +29,8 @@ from .config import get_settings
 from .db import build_pool, lifespan_pool
 from .errors import register_error_handlers
 from .routers import buildings, health, solar, solar_cache, sun, yield_engine
+from .routers import buildings, health, precincts, solar, solar_cache, sun, yield_engine
+
 
 API_PREFIX = "/api/v1"
 
@@ -103,6 +105,8 @@ def create_app() -> FastAPI:
     app.include_router(solar.router, prefix=API_PREFIX)
     app.include_router(solar_cache.router, prefix=API_PREFIX)
     app.include_router(sun.router, prefix=API_PREFIX)
+    app.include_router(precincts.router, prefix=API_PREFIX)
+
     return app
 
 
