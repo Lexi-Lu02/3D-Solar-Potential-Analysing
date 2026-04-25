@@ -45,6 +45,21 @@
           Comparison
           <span v-if="compareBuildings.length > 0" class="subnav-badge">{{ compareBuildings.length }}</span>
         </button>
+
+        <!-- MOD: Sun Path button -->
+        <button
+          class="subnav-btn"
+          :class="{ 'subnav-btn--active': sunPathOpen }"
+          @click="sunPathOpen = !sunPathOpen"
+          :aria-pressed="sunPathOpen"
+          aria-label="Toggle sun path and shadow simulation panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6M2.8 2.8l1.1 1.1M10.1 10.1l1.1 1.1M10.1 3.9l1.1-1.1M2.8 11.2l1.1-1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Sun Path
+        </button>
       </div>
 
       <!-- Right: Search by Address -->
@@ -110,21 +125,19 @@
         </ul>
         <div v-if="searchError" id="search-error-msg" class="search-error subnav-search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
       </div>
-
     </div>
 
     <main id="main-content" class="main">
       <div class="map-area">
-      <div id="map" role="application" aria-label="Interactive 3D solar map of Melbourne buildings">
-        <div v-if="isLoading" class="loading" role="status" aria-live="polite" aria-atomic="true" :aria-label="loadingText">
-          <div class="loading-spinner" aria-hidden="true"></div>
-          <div class="loading-text">{{ loadingText }}</div>
+        <div id="map" role="application" aria-label="Interactive 3D solar map of Melbourne buildings">
+          <div v-if="isLoading" class="loading" role="status" aria-live="polite" aria-atomic="true" :aria-label="loadingText">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <div class="loading-text">{{ loadingText }}</div>
+          </div>
         </div>
-      </div>
 
-      <div v-show="filtersOpen" class="map-controls" role="group" aria-label="Map filters">
+        <div v-show="filtersOpen" class="map-controls" role="group" aria-label="Map filters">
           <div class="control-card">
-
             <!-- Panel header -->
             <div class="filter-panel-header">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -217,7 +230,82 @@
                 {{ f.label }}
               </button>
             </div>
+          </div>
+        </div>
 
+        <!-- MOD: Sun Path panel -->
+        <div v-show="sunPathOpen" class="sunpath-controls" role="group" aria-label="Sun path and shadow simulation controls">
+          <div class="control-card sunpath-card">
+            <div class="filter-panel-header">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              <span class="filter-panel-title">Sun Path</span>
+              <button class="filter-panel-close" @click="sunPathOpen = false" aria-label="Close sun path panel">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="sunpath-section">
+              <label class="sunpath-label" for="sunpath-season">Season</label>
+              <select id="sunpath-season" v-model="sunPathSeason" class="sunpath-select" @change="applySeasonPreset">
+                <option value="summer">Summer Solstice</option>
+                <option value="equinox">Equinox</option>
+                <option value="winter">Winter Solstice</option>
+              </select>
+            </div>
+
+            <div class="sunpath-section">
+              <label class="sunpath-label" for="sunpath-time">
+                Time: <strong>{{ formattedSunTime }}</strong>
+              </label>
+              <input
+                id="sunpath-time"
+                v-model="sunPathTime"
+                class="sunpath-range"
+                type="range"
+                min="6"
+                max="18"
+                step="0.5"
+                @input="updateSunSimulation"
+              />
+              <div class="sunpath-range-labels">
+                <span>6:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+              </div>
+            </div>
+
+            <div class="sunpath-section sunpath-actions">
+              <button class="sunpath-play-btn" @click="toggleSunAnimation">
+                {{ sunAnimating ? 'Pause' : 'Play' }}
+              </button>
+              <button class="sunpath-play-btn sunpath-play-btn--ghost" @click="resetSunSimulation">
+                Reset
+              </button>
+            </div>
+
+            <div class="sunpath-section">
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Sun altitude</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.altitude }}°</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Sun azimuth</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.azimuth }}°</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Shadow length factor</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.shadowFactor }}</span>
+              </div>
+            </div>
+
+            <p class="sunpath-help">
+              Select a building, then use the slider to simulate sunlight and shadow changes across the day.
+            </p>
           </div>
         </div>
 
@@ -314,7 +402,6 @@
                 <div class="comparison-empty-hint">Click a building,<br>then <strong>Add to Compare</strong></div>
               </div>
             </div>
-
           </div>
         </Transition>
       </div><!-- end .map-area -->
@@ -411,6 +498,31 @@
                         ? solarApiData.usableAreaM2.toFixed(1) + ' m²'
                         : (solarApiLoading ? '…' : '—') }}
                   </div>
+                </div>
+              </div>
+
+              <!-- MOD: Sun Path result -->
+              <div v-if="selectedBuilding" class="sunpath-summary-card">
+                <div class="section-title">Sun Path & Shadow</div>
+                <div class="info-row">
+                  <span class="info-key">Simulation Date</span>
+                  <span class="info-val">{{ selectedSimulationDateLabel }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Simulation Time</span>
+                  <span class="info-val">{{ formattedSunTime }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Sun Altitude</span>
+                  <span class="info-val">{{ sunMetrics.altitude }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Sun Azimuth</span>
+                  <span class="info-val">{{ sunMetrics.azimuth }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Estimated Shadow Impact</span>
+                  <span class="info-val">{{ shadowImpactLabel }}</span>
                 </div>
               </div>
 
@@ -512,14 +624,14 @@ const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_pre
 // MapLibre GL requires hex values — CSS variables are not supported in GL paint specs.
 // These mirror the CSS variables defined in style.css :root for a single source of truth.
 const MAP_COLORS = {
-  solarExcellent:  '#09332C',  // --solar-very-high
-  solarGood:       '#5A9072',  // --solar-high
-  solarModerate:   '#BED4C7',  // --solar-med
-  solarPoor:       '#F8AB90',  // --solar-low
-  solarVeryPoor:   '#F0531C',  // --solar-very-low
-  selected:        '#FFD966',  // warm gold highlight
-  compare:         '#8CA28F',  // muted sage highlight
-  lineStroke:      '#1C1710',  // --text-primary
+  solarExcellent:  '#09332C',
+  solarGood:       '#5A9072',
+  solarModerate:   '#BED4C7',
+  solarPoor:       '#F8AB90',
+  solarVeryPoor:   '#F0531C',
+  selected:        '#FFD966',
+  compare:         '#8CA28F',
+  lineStroke:      '#1C1710',
 }
 
 const SELECTED_BUILDING_COLOR = MAP_COLORS.selected
@@ -527,10 +639,7 @@ const SELECTED_BUILDING_OPACITY = 0.98
 const COMPARE_BUILDING_COLOR = MAP_COLORS.compare
 const COMPARE_BUILDING_OPACITY = 0.90
 
-// Backend API base URL (same-origin in production, localhost in dev)
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-
-// Session cache: structure_id → result object | null (null = known failure, skip retry)
 const solarApiCache = new Map()
 
 const isLoading = ref(true)
@@ -540,12 +649,12 @@ const activeFilter = ref('all')
 const activeSolarFilter = ref('all')
 const toastMessage = ref('')
 const toastVisible = ref(false)
-const solarApiData = ref(null)   // { maxPanels, usableAreaM2, kwhAnnual } | null
+const solarApiData = ref(null)
 const solarApiLoading = ref(false)
 const selectedAddress = ref(null)
 const searchId = ref('')
 const searchError = ref('')
-const searchResults = ref([])   // [{ id, structure_id, lat, lng, address }]
+const searchResults = ref([])
 const searchLoading = ref(false)
 const searchFocusedIdx = ref(-1)
 const searchDropdownOpen = ref(false)
@@ -556,26 +665,26 @@ const filtersOpen = ref(true)
 const comparePanelOpen = ref(false)
 const solarFilterOpen = ref(true)
 const roofFilterOpen = ref(true)
-const compareBuildings = ref([]) // [{ building, apiData }] — max 2
+const compareBuildings = ref([])
+
+// MOD: Sun Path state
+const sunPathOpen = ref(false)
+const sunPathSeason = ref('summer')
+const sunPathTime = ref(12)
+const sunAnimating = ref(false)
+const sunAnimationTimer = ref(null)
 
 const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
 
-// Annual kWh from formula.
-// Area: prefer solarApiData.usableAreaM2 (Google max_array_area_m2 — building-level,
-//   consistent regardless of which polygon is clicked). Falls back to GeoJSON
-//   usable_roof_area only when API data hasn't loaded yet.
-// PSH:  prefer solarApiData.sunshineHours (building-specific kWh/m²/yr from Google).
-//   Falls back to BOM constant 4.1 × 365 = 1496.5.
 const formulaKwhAnnual = computed(() => {
   const area = solarApiData.value?.usableAreaM2 || selectedBuilding.value?.usable_roof_area
   if (!area || area <= 0) return 0
   const psh = solarApiData.value?.sunshineHours
   if (psh) return Math.round(area * 0.20 * 0.75 * psh)
-  return Math.round(area * 0.20 * 0.75 * 4.1 * 365)  // fallback: BOM constant
+  return Math.round(area * 0.20 * 0.75 * 4.1 * 365)
 })
 
-// NASA POWER monthly PSH scaled to BOM annual baseline of 4.1 PSH/day
 const MONTHLY_PSH = [
   { month: 'Jan', days: 31, psh: 6.56 },
   { month: 'Feb', days: 28, psh: 5.71 },
@@ -595,10 +704,8 @@ const monthlyOutput = computed(() => {
   if (!selectedBuilding.value) return []
 
   const annualKwh = formulaKwhAnnual.value
-
   if (annualKwh <= 0) return []
 
-  // Distribute annual total proportionally using NASA POWER monthly PSH weights
   const weights = MONTHLY_PSH.map(({ month, days, psh }) => ({ month, w: psh * days }))
   const totalWeight = weights.reduce((s, m) => s + m.w, 0)
   const months = weights.map(({ month, w }) => ({
@@ -612,7 +719,10 @@ const monthlyOutput = computed(() => {
 let map = null
 let toastTimer = null
 let compassIdx = 0
-let buildingIndex = new Map() // structure_id (number) → feature properties
+let buildingIndex = new Map() // structure_id -> properties
+
+// MOD: full feature index for geometry
+let buildingFeatureIndex = new Map()
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
 const filters = [
@@ -655,9 +765,77 @@ const tierColor = computed(() => {
   return 'var(--solar-very-low)'
 })
 
-// Fetch solar cache data from the backend for one building.
-// Returns { maxPanels, usableAreaM2, roofAreaM2, kwhAnnual } on success, null on any failure.
-// Results are session-cached so the same building is only fetched once.
+// MOD: Sun Path computed
+const selectedSimulationDateLabel = computed(() => {
+  if (sunPathSeason.value === 'summer') return '21 Dec'
+  if (sunPathSeason.value === 'winter') return '21 Jun'
+  return '21 Mar'
+})
+
+const formattedSunTime = computed(() => {
+  const value = Number(sunPathTime.value)
+  const hour = Math.floor(value)
+  const minute = value % 1 === 0 ? '00' : '30'
+  return `${String(hour).padStart(2, '0')}:${minute}`
+})
+
+const MELBOURNE_LAT = -37.8136
+
+function getDayOfYearForSeason(season) {
+  if (season === 'summer') return 355
+  if (season === 'winter') return 172
+  return 80
+}
+
+function solarDeclination(dayOfYear) {
+  return 23.44 * Math.sin((2 * Math.PI / 365) * (dayOfYear - 81))
+}
+
+function calculateSolarPosition(latDeg, dayOfYear, timeHour) {
+  const lat = latDeg * Math.PI / 180
+  const decl = solarDeclination(dayOfYear) * Math.PI / 180
+  const hourAngle = (15 * (timeHour - 12)) * Math.PI / 180
+
+  const sinAlt =
+    Math.sin(lat) * Math.sin(decl) +
+    Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle)
+
+  const altitude = Math.asin(sinAlt)
+
+  const cosAz =
+    (Math.sin(decl) - Math.sin(altitude) * Math.sin(lat)) /
+    (Math.cos(altitude) * Math.cos(lat))
+
+  let azimuth = Math.acos(Math.min(1, Math.max(-1, cosAz))) * 180 / Math.PI
+  if (timeHour > 12) azimuth = 360 - azimuth
+
+  return {
+    altitude: Math.max(0, altitude * 180 / Math.PI),
+    azimuth: Math.round(azimuth),
+  }
+}
+
+const sunMetrics = computed(() => {
+  const dayOfYear = getDayOfYearForSeason(sunPathSeason.value)
+  const pos = calculateSolarPosition(MELBOURNE_LAT, dayOfYear, Number(sunPathTime.value))
+  const altitude = Math.round(pos.altitude)
+  const azimuth = pos.azimuth
+  const shadowFactor = altitude > 0 ? (90 / altitude).toFixed(1) : '∞'
+
+  return {
+    altitude,
+    azimuth,
+    shadowFactor,
+  }
+})
+
+const shadowImpactLabel = computed(() => {
+  const altitude = sunMetrics.value.altitude
+  if (altitude >= 60) return 'Low'
+  if (altitude >= 35) return 'Moderate'
+  return 'High'
+})
+
 async function fetchSolarApiData(structureId) {
   if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
 
@@ -671,12 +849,12 @@ async function fetchSolarApiData(structureId) {
 
     const body = await res.json()
     const result = {
-      maxPanels:    body.max_panels ?? null,
+      maxPanels: body.max_panels ?? null,
       usableAreaM2: body.max_array_area_m2 != null ? Math.round(body.max_array_area_m2 * 10) / 10 : null,
-      roofAreaM2:   body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
-      kwhAnnual:    body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
+      roofAreaM2: body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
+      kwhAnnual: body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
       sunshineHours: body.max_sunshine_hours_per_year != null ? Math.round(body.max_sunshine_hours_per_year) : null,
-      address:      body.address || null,
+      address: body.address || null,
     }
     solarApiCache.set(structureId, result)
     return result
@@ -818,7 +996,6 @@ async function selectSearchResult(result) {
   const props = buildingIndex.get(Number(result.structure_id))
   if (!props) { searchError.value = 'Building not found in map data'; return }
 
-  // Use the structure_id from GeoJSON props (same source as map features) for the filter
   const sid = Number(props.structure_id)
 
   selectedBuilding.value = props
@@ -846,6 +1023,9 @@ async function selectSearchResult(result) {
     selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
   }
   solarApiLoading.value = false
+
+  // MOD: update sun simulation after search select
+  updateSunSimulation()
 }
 
 function scoreColor(score) {
@@ -866,7 +1046,6 @@ function scoreTier(score) {
   return 'Very Poor'
 }
 
-// Returns the comparable metrics for a compare entry
 function compareMetrics(item) {
   const b = item.building
   const api = item.apiData
@@ -878,16 +1057,15 @@ function compareMetrics(item) {
   const sunHours = api?.sunshineHours ?? null
   const sunIntensity = sunHours != null && roofArea ? Math.round(sunHours / roofArea * 10) / 10 : null
   return [
-    { label: 'Roof Type',        display: b.roof_type || '—',                                                              raw: null        },
-    { label: 'Sun Hrs / m²',     display: sunIntensity != null ? sunIntensity + ' hrs/m²'              : '—',              raw: sunIntensity ?? 0 },
-    { label: 'Annual kWh',       display: kwh          != null ? Number(kwh).toLocaleString() + ' kWh' : '—',              raw: kwh          ?? 0 },
-    { label: 'Usable Area',      display: area         != null ? Number(area).toFixed(1) + ' m²'       : '—',              raw: area         ?? 0 },
-    { label: 'Usable Ratio',     display: usableRatio  != null ? usableRatio + '%'                     : '—',              raw: usableRatio  ?? 0 },
-    { label: 'Max Solar Panels', display: maxPanels    != null ? Number(maxPanels).toLocaleString()    : '—',              raw: maxPanels    ?? 0 },
+    { label: 'Roof Type',        display: b.roof_type || '—',                                                          raw: null },
+    { label: 'Sun Hrs / m²',     display: sunIntensity != null ? sunIntensity + ' hrs/m²' : '—',                      raw: sunIntensity ?? 0 },
+    { label: 'Annual kWh',       display: kwh != null ? Number(kwh).toLocaleString() + ' kWh' : '—',                 raw: kwh ?? 0 },
+    { label: 'Usable Area',      display: area != null ? Number(area).toFixed(1) + ' m²' : '—',                      raw: area ?? 0 },
+    { label: 'Usable Ratio',     display: usableRatio != null ? usableRatio + '%' : '—',                              raw: usableRatio ?? 0 },
+    { label: 'Max Solar Panels', display: maxPanels != null ? Number(maxPanels).toLocaleString() : '—',               raw: maxPanels ?? 0 },
   ]
 }
 
-// For each metric index: [isWinner_col0, isWinner_col1]
 const compareWinners = computed(() => {
   if (compareBuildings.value.length < 2) return []
   const m0 = compareMetrics(compareBuildings.value[0])
@@ -915,9 +1093,9 @@ function addToCompare() {
   }
   const entry = {
     building: { ...selectedBuilding.value },
-    apiData:  solarApiData.value ? { ...solarApiData.value } : null,
+    apiData: solarApiData.value ? { ...solarApiData.value } : null,
   }
-  if (compareBuildings.value.length >= 2) compareBuildings.value.shift() // replace oldest
+  if (compareBuildings.value.length >= 2) compareBuildings.value.shift()
   compareBuildings.value.push(entry)
   comparePanelOpen.value = true
   showToast('Added to comparison')
@@ -933,7 +1111,7 @@ function clearCompare() {
   compareBuildings.value = []
   updateCompareHighlight()
 }
-// Generates a shareable URL for the currently selected building and copies it to clipboard
+
 async function shareBuilding() {
   if (!selectedBuilding.value) {
     showToast('Select a building first')
@@ -950,7 +1128,6 @@ async function shareBuilding() {
       return
     }
 
-    // fallback
     const textArea = document.createElement('textarea')
     textArea.value = url
     textArea.style.position = 'fixed'
@@ -973,14 +1150,15 @@ async function shareBuilding() {
     showToast('Copy failed')
   }
 }
-// On page load, check if URL has ?buildingId= and if so open that building's details
+
 async function openBuildingFromUrl() {
   const buildingId = route.query.buildingId
   if (!buildingId) return
 
   const id = Number(buildingId)
-  const props = buildingIndex.get(id)
 
+  // MOD: buildingIndex stores properties, not full feature
+  const props = buildingIndex.get(id)
   if (!props) return
 
   selectedBuilding.value = props
@@ -988,7 +1166,6 @@ async function openBuildingFromUrl() {
   selectedAddress.value = null
   solarApiLoading.value = true
 
-  // highlight
   if (map) {
     map.setFilter('building-selected', ['==', ['get', 'structure_id'], id])
 
@@ -1009,6 +1186,152 @@ async function openBuildingFromUrl() {
   }
 
   solarApiLoading.value = false
+
+  // MOD: update sun simulation after deep link open
+  updateSunSimulation()
+}
+
+// MOD: Sun Path controls
+function applySeasonPreset() {
+  sunPathTime.value = 12
+  updateSunSimulation()
+}
+
+function resetSunSimulation() {
+  sunPathSeason.value = 'summer'
+  sunPathTime.value = 12
+  stopSunAnimation()
+  updateSunSimulation()
+}
+
+function toggleSunAnimation() {
+  if (sunAnimating.value) {
+    stopSunAnimation()
+    return
+  }
+
+  sunAnimating.value = true
+  sunAnimationTimer.value = window.setInterval(() => {
+    const next = Number(sunPathTime.value) + 0.5
+    sunPathTime.value = next > 18 ? 6 : next
+    updateSunSimulation()
+  }, 900)
+}
+
+function stopSunAnimation() {
+  sunAnimating.value = false
+  if (sunAnimationTimer.value) {
+    clearInterval(sunAnimationTimer.value)
+    sunAnimationTimer.value = null
+  }
+}
+
+// MOD: geometry helpers + map source updater
+function getEffectiveBuildingHeight(building) {
+  const explicitHeight = Number(building?.building_height)
+  if (Number.isFinite(explicitHeight) && explicitHeight > 0) return explicitHeight
+
+  const base = Number(building?.base_height)
+  const max = Number(building?.max_elevation)
+  if (Number.isFinite(base) && Number.isFinite(max) && max > base) {
+    return max - base
+  }
+
+  return 20
+}
+
+function getShadowLength(height, altitudeDeg) {
+  const rad = altitudeDeg * Math.PI / 180
+  const tan = Math.tan(rad)
+  if (tan <= 0.01) return height * 8
+  return Math.min(height / tan, height * 8)
+}
+
+function shiftLngLat(lng, lat, dxMeters, dyMeters) {
+  const dLat = dyMeters / 111320
+  const dLng = dxMeters / (111320 * Math.cos(lat * Math.PI / 180))
+  return [lng + dLng, lat + dLat]
+}
+
+function buildSunDirectionFeature() {
+  if (!selectedBuilding.value?.lng || !selectedBuilding.value?.lat) return null
+
+  const lng = Number(selectedBuilding.value.lng)
+  const lat = Number(selectedBuilding.value.lat)
+  const az = sunMetrics.value.azimuth
+
+  const lineLengthMeters = 60
+  const rad = az * Math.PI / 180
+  const dxMeters = Math.sin(rad) * lineLengthMeters
+  const dyMeters = Math.cos(rad) * lineLengthMeters
+  const [endLng, endLat] = shiftLngLat(lng, lat, dxMeters, dyMeters)
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [lng, lat],
+        [endLng, endLat],
+      ],
+    },
+    properties: {},
+  }
+}
+
+function buildShadowProjectionFeature() {
+  if (!selectedBuilding.value?.structure_id) return null
+
+  const feature = buildingFeatureIndex.get(Number(selectedBuilding.value.structure_id))
+  if (!feature?.geometry || feature.geometry.type !== 'Polygon') return null
+
+  const ring = feature.geometry.coordinates[0]
+  const height = getEffectiveBuildingHeight(selectedBuilding.value)
+  const altitude = sunMetrics.value.altitude
+  const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360
+  const shadowLength = getShadowLength(height, altitude)
+
+  const rad = shadowAzimuth * Math.PI / 180
+  const dxMeters = Math.sin(rad) * shadowLength
+  const dyMeters = Math.cos(rad) * shadowLength
+
+  const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        ...ring,
+        ...shiftedRing.slice().reverse(),
+        ring[0],
+      ]],
+    },
+    properties: {},
+  }
+}
+
+function updateSunSimulation() {
+  if (!map) return
+
+  const sunFeature = buildSunDirectionFeature()
+  const shadowFeature = buildShadowProjectionFeature()
+
+  const sunSource = map.getSource('sun-direction')
+  if (sunSource) {
+    sunSource.setData({
+      type: 'FeatureCollection',
+      features: sunFeature ? [sunFeature] : [],
+    })
+  }
+
+  const shadowSource = map.getSource('shadow-projection')
+  if (shadowSource) {
+    shadowSource.setData({
+      type: 'FeatureCollection',
+      features: shadowFeature ? [shadowFeature] : [],
+    })
+  }
 }
 
 // ── Precinct helpers (mirror of PrecinctsView) ────────────────────────────────
@@ -1017,11 +1340,14 @@ function _pBBox(f) {
   const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map(p => p[0])
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
   for (const ring of rings) for (const [x, y] of ring) {
-    if (x < minX) minX = x; if (x > maxX) maxX = x
-    if (y < minY) minY = y; if (y > maxY) maxY = y
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
   }
   return { minX, maxX, minY, maxY }
 }
+
 function _pInRing(px, py, ring) {
   let inside = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -1030,8 +1356,10 @@ function _pInRing(px, py, ring) {
   }
   return inside
 }
+
 function _pInFeature(px, py, f) {
-  const g = f.geometry; if (!g) return false
+  const g = f.geometry
+  if (!g) return false
   const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map(p => p[0])
   return rings.some(r => _pInRing(px, py, r))
 }
@@ -1075,8 +1403,13 @@ function initMap() {
       })
       .then(async (data) => {
         isLoading.value = false
-        // Build lookup index for the search box
-        data.features.forEach(f => buildingIndex.set(Number(f.properties.structure_id), f.properties))
+
+        // MOD: keep both properties index and full feature index
+        data.features.forEach(f => {
+          buildingIndex.set(Number(f.properties.structure_id), f.properties)
+          buildingFeatureIndex.set(Number(f.properties.structure_id), f)
+        })
+
         map.addSource('melbourne-buildings', { type: 'geojson', data })
 
         map.addLayer({
@@ -1091,7 +1424,6 @@ function initMap() {
           },
         })
 
-        // Compare buildings highlight (rendered below selected so selected stays on top)
         map.addLayer({
           id: 'building-compare',
           type: 'fill-extrusion',
@@ -1105,7 +1437,6 @@ function initMap() {
           },
         })
 
-        // Selected building highlight (on top of compare layer)
         map.addLayer({
           id: 'building-selected',
           type: 'fill-extrusion',
@@ -1116,6 +1447,44 @@ function initMap() {
             'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': SELECTED_BUILDING_OPACITY,
+          },
+        })
+
+        // MOD: Sun Path sources and layers
+        map.addSource('sun-direction', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [],
+          },
+        })
+
+        map.addLayer({
+          id: 'sun-direction-line',
+          type: 'line',
+          source: 'sun-direction',
+          paint: {
+            'line-color': '#F59E0B',
+            'line-width': 3,
+            'line-opacity': 0.95,
+          },
+        })
+
+        map.addSource('shadow-projection', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [],
+          },
+        })
+
+        map.addLayer({
+          id: 'shadow-projection-fill',
+          type: 'fill',
+          source: 'shadow-projection',
+          paint: {
+            'fill-color': '#1F2937',
+            'fill-opacity': 0.18,
           },
         })
 
@@ -1135,7 +1504,6 @@ function initMap() {
           })
         })
 
-        // Precinct boundary lines — only precincts that contain at least one building
         try {
           const pRes = await fetch(PRECINCTS_PATH)
           if (pRes.ok) {
@@ -1143,7 +1511,6 @@ function initMap() {
             const pFeatures = precinctData.features
             const bboxes = pFeatures.map(_pBBox)
 
-            // Find which precinct_ids contain at least one building (using lat/lng props)
             const hasData = new Set()
             for (const bf of data.features) {
               if (hasData.size === pFeatures.length) break
@@ -1183,10 +1550,8 @@ function initMap() {
           solarApiLoading.value = true
           sidebarOpen.value = true
 
-          // Highlight the clicked building
           map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(props.structure_id)])
 
-          // Fly to building centre
           const lng = Number(props.lng)
           const lat = Number(props.lat)
           if (lat && lng) {
@@ -1199,11 +1564,13 @@ function initMap() {
             })
           }
 
-          // Fetch solar cache data and address from backend
           const sid = Number(props.structure_id)
           solarApiData.value = await fetchSolarApiData(sid)
           selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
           solarApiLoading.value = false
+
+          // MOD: update sun simulation after map click
+          updateSunSimulation()
         })
 
         map.on('mouseenter', 'building-extrusion', () => {
@@ -1212,7 +1579,7 @@ function initMap() {
         map.on('mouseleave', 'building-extrusion', () => {
           map.getCanvas().style.cursor = ''
         })
-        // Add flat roof outlines as a separate layer on top of all others, so they remain visible when any roof filter is active
+
         await openBuildingFromUrl()
       })
       .catch((err) => {
@@ -1232,6 +1599,10 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('mousedown', onSearchClickOutside)
   if (toastTimer) clearTimeout(toastTimer)
+
+  // MOD: stop sun animation timer
+  stopSunAnimation()
+
   if (map) {
     map.remove()
     map = null
