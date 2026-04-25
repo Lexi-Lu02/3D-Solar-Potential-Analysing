@@ -3,9 +3,10 @@
 **3D Solar Potential Analysing** 项目的只读 HTTP 后端。为 Vue + MapLibre 前端
 提供墨尔本 CBD 的建筑轮廓、屋顶光伏适宜度数据，以及按建筑计算的 kWh 估算值。
 
-> **当前状态:** Epic 1–4 后端已完成 — 端点如下：
+> **当前状态:** Epic 1–6 后端已完成 — 端点如下：
 > `GET /health` · `/buildings/search` · `/buildings/{id}` · `/buildings/{id}/yield` ·
-> `/buildings/{id}/solar` · `/sun/position` · `/sun/path` · `/sun/psh-monthly`
+> `/buildings/{id}/solar` · `/buildings/{id}/impact` · `/sun/position` · `/sun/path` ·
+> `/sun/psh-monthly` · `/precincts` · `/precincts/{id}`
 
 ---
 
@@ -30,6 +31,8 @@
 - **Epic 2** — 建筑详情面板
 - **Epic 3** — 屋顶光伏 kWh 计算引擎
 - **Epic 4** — 太阳轨迹 / 阴影（Sun position API）
+- **Epic 5** — Precinct 聚合（按邮编划分的 13 个片区，含建筑数量、kWh、装机缺口）
+- **Epic 6** — 财务 + 环境影响（按建筑给出回本年限、CO₂ 抵消、等价树木数）
 
 ---
 
@@ -442,6 +445,174 @@ const seasonFactor = (
 
 ```bash
 curl -sf http://localhost:8000/api/v1/sun/psh-monthly | jq .
+```
+
+---
+
+### 5.9 `GET /api/v1/precincts` *(Epic 5)*
+
+**用途:** 列出全部 13 个 precinct（按邮编划分的城市片区），按指定指标排序，返回 rank 字段供前端做 Top-5 高亮。
+
+**查询参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `sort` | string | `kwh` / `area` / `buildings` / `gap`，默认 `kwh` | 排序键：年度 kWh、可用面积、建筑数量、装机缺口 |
+
+**响应 200**
+
+```json
+{
+  "sort": "kwh",
+  "precincts": [
+    {
+      "precinct_id": 21640,
+      "name": "Melbourne",
+      "postcode": "3000",
+      "total_kwh_annual": 1180607143.0,
+      "total_usable_area_m2": 4957930.88,
+      "installed_capacity_kw": 3469.46,
+      "potential_capacity_kw": 1009990.8,
+      "adoption_gap_kw": 1006521.34,
+      "building_count": 4500,
+      "rank": 1
+    }
+  ]
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `total_kwh_annual` | 该片区所有有数据建筑的年度 kWh 之和 |
+| `total_usable_area_m2` | 评级 Good 及以上的屋顶面积之和 |
+| `installed_capacity_kw` | CER 公开数据中该邮编已装机容量 |
+| `potential_capacity_kw` | Google Solar API 估算的最大装机容量 |
+| `adoption_gap_kw` | `potential − installed`，即仍可挖掘的装机空间 |
+| `building_count` | 落入该 precinct 的建筑数量（来自 `buildings.precinct_id` 实时聚合） |
+| `rank` | 按 `sort` 键的排名，1 = 最高 |
+
+**实现说明:** `building_count` 不存储在 `precincts` 表，而是查询时通过 `buildings.precinct_id` 聚合，避免数据流水线变动后需要重跑入库。
+
+**缓存:** `Cache-Control: public, max-age=3600`
+
+**curl 示例:**
+
+```bash
+curl -sf "http://localhost:8000/api/v1/precincts?sort=gap" | jq '.precincts[:3]'
+```
+
+---
+
+### 5.10 `GET /api/v1/precincts/{id}` *(Epic 5)*
+
+**用途:** 单个 precinct 详情，附带 GeoJSON Polygon 边界，供前端渲染地图填色或弹窗。
+
+**路径参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `precinct_id` | int | `≥ 1` | precinct 主键 |
+
+**响应 200**
+
+字段与 5.9 列表项一致，多出：
+
+| 字段 | 含义 |
+|---|---|
+| `geo_boundary` | GeoJSON `Polygon` / `MultiPolygon`，由 PostGIS `ST_AsGeoJSON` 输出 |
+| `rank` | 详情接口固定返回 `null`（rank 仅在列表里有意义） |
+
+不存在的 `precinct_id` 返回 **404**。
+
+**缓存:** `Cache-Control: public, max-age=3600`
+
+**curl 示例:**
+
+```bash
+curl -sf http://localhost:8000/api/v1/precincts/21640 | jq '{name, building_count, geo_boundary: .geo_boundary.type}'
+```
+
+---
+
+### 5.11 `GET /api/v1/buildings/{id}/impact` *(Epic 6)*
+
+**用途:** 按建筑返回完整的财务 + 环境影响指标（系统容量、安装成本、回本年限、CO₂ 抵消、等价树木 / 汽油 / 汽车）。前端调一次拿全，不在前端复刻常量与公式。
+
+**路径参数**
+
+| 参数 | 类型 | 约束 | 含义 |
+|---|---|---|---|
+| `id` | int | `≥ 1` | `buildings.id` 代理主键 |
+
+**查询参数**
+
+| 参数 | 类型 | 约束 | 默认 | 含义 |
+|---|---|---|---|---|
+| `season` | string | `annual` / `summer` / `autumn` / `winter` / `spring` | `annual` | 季节因子，用于按月度 PSH 调整 kWh |
+
+**响应 200**
+
+```json
+{
+  "structure_id": 12345,
+  "season": "annual",
+  "kwh_annual_seasonal": 9000.0,
+  "kwh_annual_base": 9000.0,
+  "system_size_kw": 6.2,
+  "financial": {
+    "installation_cost_aud": 6820,
+    "annual_savings_aud": 2700,
+    "payback_years": 2.5,
+    "lifetime_years": 25,
+    "lifetime_net_savings_aud": 60680
+  },
+  "environmental": {
+    "annual_co2_reduction_kg": 7110,
+    "co2_kg_per_kwh_used": 0.79,
+    "co2_factor_source": "google_api",
+    "equivalent_trees": 323,
+    "equivalent_petrol_litres": 3078,
+    "equivalent_cars": 1.6
+  },
+  "assumptions": {
+    "electricity_tariff_aud_per_kwh": 0.30,
+    "cost_per_kw_installed_aud": 1100,
+    "self_consumption_pct": 100,
+    "feed_in_tariff_included": false
+  }
+}
+```
+
+**字段说明**
+
+| 字段 | 含义 |
+|---|---|
+| `kwh_annual_base` | `solar_api_cache.max_panels_kwh_annual`（满功率年发电量） |
+| `kwh_annual_seasonal` | 按季节因子调整后的 kWh，`season=annual` 时与 base 相同 |
+| `system_size_kw` | `max_panels × panel_capacity_watts ÷ 1000`，单位 kW |
+| `financial.installation_cost_aud` | `system_size_kw × 1100`（Solar Choice 2025 中位数，已含 STC 补贴） |
+| `financial.annual_savings_aud` | `kwh_seasonal × 0.30`（VIC 2025 简化电价，假设全自用） |
+| `financial.payback_years` | 安装成本 ÷ 年节省 |
+| `financial.lifetime_net_savings_aud` | `lifetime_years × annual_savings − installation_cost` |
+| `environmental.co2_factor_source` | `google_api` 表示用 `solar_api_cache.carbon_offset_kg_per_mwh`；`dcceew_2024_fallback` 表示用 0.79 默认值 |
+| `environmental.equivalent_trees` | 年 CO₂ ÷ 22kg（EPA AU） |
+| `environmental.equivalent_petrol_litres` | 年 CO₂ ÷ 2.31kg（NGA Factors 2024） |
+| `environmental.equivalent_cars` | 年 CO₂ ÷ 4500kg（澳洲平均小汽车） |
+
+**季节因子算法:** `(sum of season's MONTHLY_PSH ÷ sum of all 12 months) × (12 ÷ months_in_season)`，结果是相对年均的归一化倍率。`annual` 恒为 1.0。
+
+无 `solar_api_cache` 记录的建筑返回 **404**。常量集中在 `app/services/solar_impact.py` 顶部，PM 评审改这里即可。
+
+**缓存:** `Cache-Control: public, max-age=86400`
+
+**curl 示例:**
+
+```bash
+# 默认年度
+curl -sf http://localhost:8000/api/v1/buildings/1/impact | jq '{system_size_kw, financial, environmental}'
+
+# 夏季季节因子
+curl -sf "http://localhost:8000/api/v1/buildings/1/impact?season=summer" | jq '.kwh_annual_seasonal'
 ```
 
 ---

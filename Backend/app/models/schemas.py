@@ -277,3 +277,41 @@ class PshMonthlyResponse(BaseModel):
     psh_annual_avg: float = Field(
         ..., ge=0, description="Annual average PSH (BOM station 086338, ~4.1)"
     )
+
+
+# --- /buildings/{id}/impact (Epic 6) ----------------------------------------
+
+
+class FinancialImpact(BaseModel):
+    installation_cost_aud: int | None = Field(None, ge=0)
+    annual_savings_aud: int | None = Field(None, ge=0)
+    payback_years: float | None = Field(None, ge=0)
+    lifetime_years: int = Field(..., ge=1)
+    lifetime_net_savings_aud: int | None = None
+
+
+class EnvironmentalImpact(BaseModel):
+    annual_co2_reduction_kg: int | None = Field(None, ge=0)
+    co2_kg_per_kwh_used: float = Field(..., ge=0)
+    co2_factor_source: Literal["google_api", "dcceew_2024_fallback"]
+    equivalent_trees: int | None = Field(None, ge=0)
+    equivalent_petrol_litres: int | None = Field(None, ge=0)
+    equivalent_cars: float | None = Field(None, ge=0)
+
+
+class ImpactAssumptions(BaseModel):
+    electricity_tariff_aud_per_kwh: float
+    cost_per_kw_installed_aud: int
+    self_consumption_pct: int = Field(..., ge=0, le=100)
+    feed_in_tariff_included: bool
+
+
+class ImpactResponse(BaseModel):
+    structure_id: int
+    season: Literal["annual", "summer", "autumn", "winter", "spring"]
+    kwh_annual_seasonal: float | None = None
+    kwh_annual_base: float | None = None
+    system_size_kw: float | None = None
+    financial: FinancialImpact
+    environmental: EnvironmentalImpact
+    assumptions: ImpactAssumptions

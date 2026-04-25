@@ -28,8 +28,10 @@ from slowapi.util import get_remote_address
 from .config import get_settings
 from .db import build_pool, lifespan_pool
 from .errors import register_error_handlers
-from .routers import buildings, health, solar, solar_cache, sun, yield_engine
 from .routers import buildings, health, precincts, solar, solar_cache, sun, yield_engine
+
+
+
 
 
 API_PREFIX = "/api/v1"
