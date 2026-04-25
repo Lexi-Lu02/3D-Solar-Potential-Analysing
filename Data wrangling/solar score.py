@@ -9,7 +9,7 @@ DB_NAME     = "melbourne_solar"
 DB_USER     = "teamuser"
 DB_PASSWORD = "123456"
 
-ALPHA = 0.5                  # weight for quality vs quantity
+ALPHA = 0.7                  # weight for quality vs quantity
 
 
 def minmax_norm(arr: np.ndarray) -> np.ndarray:
