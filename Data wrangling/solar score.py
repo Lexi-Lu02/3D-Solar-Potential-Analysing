@@ -96,11 +96,12 @@ def main() -> None:
 
     # Step 4: Normalise both metrics to 0–100.
     print("[4] Normalising metrics (log1p transform + 1st–99th percentile clip, then 0–100)...")
-    quality_norm = minmax_norm(np.log1p(quality_raw))
+    quality_norm  = minmax_norm(np.log1p(quality_raw))
     quantity_norm = minmax_norm(np.log1p(quantity_raw))
 
-    # Weighted combination
-    composite = ALPHA * quality_norm + (1.0 - ALPHA) * quantity_norm
+    # Weighted combination, then re-normalise to stretch composite to full 0–100
+    composite_raw = ALPHA * quality_norm + (1.0 - ALPHA) * quantity_norm
+    composite = minmax_norm(composite_raw)
 
     # Step 5: Upsert into solar_score.
     print("[5] Upserting into solar_score...")
