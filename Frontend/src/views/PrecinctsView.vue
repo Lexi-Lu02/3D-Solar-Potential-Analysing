@@ -32,8 +32,19 @@
         <div id="sidebar-body" class="sidebar-body">
           <!-- Header -->
           <div class="sidebar-header">
-            <div class="rankings-label">Rankings</div>
-            <div class="sidebar-title">Precinct Solar Rankings</div>
+            <div class="sidebar-title-row">
+              <div>
+                <div class="rankings-label">Rankings</div>
+                <div class="sidebar-title">Precinct Solar Rankings</div>
+              </div>
+              <button
+                class="sidebar-export-btn"
+                @click="exportPrecinctsCsv"
+                aria-label="Export precinct data as CSV"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
 
           <!-- Sort tabs — full width, one per sort option -->
@@ -555,6 +566,57 @@ function initMap(precinctGeoJSON) {
   map.on('mouseleave', 'precinct-fill', () => { map.getCanvas().style.cursor = '' })
 }
 
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function toCsvSafe(value) {
+  const s = value == null ? '' : String(value)
+  return `"${s.replace(/"/g, '""')}"`
+}
+
+function exportPrecinctsCsv() {
+  let rows, filename
+
+  if (selectedPrecinct.value) {
+    const p = selectedPrecinct.value
+    rows = [
+      ['Field', 'Value'],
+      ['Precinct Name', p.name],
+      ['Rank', `#${p.rank}`],
+      ['Tier', tierLabel(p.tier)],
+      ['Annual Output', formatKwh(p.total_kwh)],
+      ['Usable Roof Area', formatArea(p.total_area)],
+      ['Buildings', p.building_count.toLocaleString()],
+      ['Adoption Gap', formatKwh(p.adoption_gap)],
+    ]
+    filename = `precinct_${p.name.replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.csv`
+  } else {
+    rows = [['Rank', 'Precinct Name', 'Annual Output', 'Usable Roof Area', 'Buildings', 'Adoption Gap', 'Tier']]
+    sortedPrecincts.value.forEach(p => {
+      rows.push([
+        p.rank,
+        p.name,
+        formatKwh(p.total_kwh),
+        formatArea(p.total_area),
+        p.building_count.toLocaleString(),
+        formatKwh(p.adoption_gap),
+        tierLabel(p.tier),
+      ])
+    })
+    filename = 'precinct_solar_rankings.csv'
+  }
+
+  const csvText = rows.map(row => row.map(toCsvSafe).join(',')).join('\n')
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  showToast('CSV exported')
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
   // If we already have aggregated data from a previous visit, show the sidebar
@@ -613,6 +675,14 @@ onUnmounted(() => {
 /* ── Sidebar width ────────────────────────────────────────── */
 .sidebar { width: 640px !important; }
 
+/* Override global sticky sidebar-header — precincts header is not inside sidebar-content */
+.sidebar-header {
+  position: static;
+  padding: 18px 20px 12px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
 /* ── Header: rankings label + title ──────────────────────── */
 .rankings-label {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -652,6 +722,7 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 .precinct-table-head .col-active { color: var(--city-light); }
+.precinct-table-head .pt-col-name { justify-content: flex-start; }
 
 /* ── Column widths ────────────────────────────────────────── */
 .pt-col-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; justify-content: flex-start; text-align: left; }
