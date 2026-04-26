@@ -241,6 +241,25 @@ class SunPathResponse(BaseModel):
         ..., description="25 samples from 6:00-18:00 at 0.5h intervals"
     )
 
+
+class ShadowImpactResponse(BaseModel):
+    """Estimated rooftop shadow coverage for one selected building."""
+
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
+    date: str = Field(..., description="Local simulation date (YYYY-MM-DD)")
+    hour: float = Field(..., ge=0, le=24, description="Local simulation hour")
+    shadow_coverage_pct: float = Field(
+        ..., ge=0, le=100, description="Estimated selected rooftop coverage shaded by nearby buildings"
+    )
+    shadowed_samples: int = Field(..., ge=0, description="Sample points inside the rooftop that were shaded")
+    total_samples: int = Field(..., ge=0, description="Sample points used inside the selected rooftop footprint")
+    shadow_caster_count: int = Field(..., ge=0, description="Nearby buildings casting shadows onto the selected rooftop")
+    usable_roof_area_m2: float | None = Field(None, ge=0, description="Usable roof area used for unobstructed area estimate")
+    unobstructed_usable_area_m2: float | None = Field(None, ge=0, description="Usable roof area remaining after estimated shadow coverage")
+    overlay_geojson: dict[str, Any] = Field(..., description="GeoJSON rooftop cells split into shaded and unobstructed areas")
+    impact: Literal["Low", "Moderate", "High"] = Field(..., description="Impact level derived from coverage percentage")
+    approximate: bool = Field(True, description="True because footprint geometry is used as a rooftop proxy")
+
 # --- /precincts (Epic 5) -----------------------------------------------------
 
 

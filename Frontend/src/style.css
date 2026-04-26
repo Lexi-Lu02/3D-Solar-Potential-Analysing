@@ -1093,10 +1093,14 @@ body {
 /* use on SunPath */
 .sunpath-controls {
   position: absolute;
-  top: 92px;
-  left: 14px;
+  top: 16px;
+  left: 16px;
   z-index: 10;
   width: 280px;
+}
+
+.sunpath-controls--beside-filters {
+  left: 252px;
 }
 
 .sunpath-card {
@@ -1187,4 +1191,25 @@ body {
   border: 1px solid rgba(0,0,0,0.08);
   border-radius: 14px;
   background: #fafafa;
+}
+
+.detail-season-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+
+.detail-season-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-season-select {
+  height: 34px;
+  border-radius: 8px;
+  font-size: 12px;
 }

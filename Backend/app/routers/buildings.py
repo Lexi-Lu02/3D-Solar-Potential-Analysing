@@ -20,8 +20,15 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from psycopg import Connection
 
 from ..db import get_conn
-from ..models.schemas import BuildingAddressItem, BuildingResponse, BuildingSearchItem, BuildingStatsResponse
+from ..models.schemas import (
+    BuildingAddressItem,
+    BuildingResponse,
+    BuildingSearchItem,
+    BuildingStatsResponse,
+    ShadowImpactResponse,
+)
 from ..services.building_query import BuildingNotFound, fetch_building, fetch_building_address, search_buildings
+from ..services.shadow_impact import BuildingNotFoundForShadow, fetch_shadow_impact
 from ..sql import load
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
@@ -97,6 +104,47 @@ def get_building_address_by_structure(
     response.headers["Cache-Control"] = "public, max-age=86400"
     address = fetch_building_address(conn, structure_id)
     return BuildingAddressItem(structure_id=structure_id, address=address)
+
+
+@router.get(
+    "/by-structure/{structure_id}/shadow-impact",
+    response_model=ShadowImpactResponse,
+    summary="Estimate selected rooftop shadow coverage from nearby buildings",
+    responses={
+        404: {"description": "No building exists with the given structure_id"},
+    },
+)
+def get_building_shadow_impact_by_structure(
+    response: Response,
+    structure_id: int = Path(
+        ...,
+        ge=1,
+        description="City of Melbourne structure_id",
+        examples=[1234567],
+    ),
+    date: str = Query(
+        ...,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Local simulation date (YYYY-MM-DD)",
+        examples=["2025-12-21"],
+    ),
+    hour: float = Query(
+        ...,
+        ge=0,
+        le=24,
+        description="Local time in hours, e.g. 13.5 for 13:30",
+        examples=[12.0],
+    ),
+    conn: Connection = Depends(get_conn),
+) -> ShadowImpactResponse:
+    response.headers["Cache-Control"] = "public, max-age=300"
+    try:
+        return fetch_shadow_impact(conn, structure_id, date, hour)
+    except BuildingNotFoundForShadow as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"building structure_id {exc.structure_id} not found",
+        )
 
 
 @router.get(

@@ -234,7 +234,13 @@
         </div>
 
         <!-- Updated: Sun Path panel -->
-        <div v-show="sunPathOpen" class="sunpath-controls" role="group" aria-label="Sun path and shadow simulation controls">
+        <div
+          v-show="sunPathOpen"
+          class="sunpath-controls"
+          :class="{ 'sunpath-controls--beside-filters': filtersOpen }"
+          role="group"
+          aria-label="Sun path and shadow simulation controls"
+        >
           <div class="control-card sunpath-card">
             <div class="filter-panel-header">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -599,6 +605,23 @@
               <!-- Updated: Sun Path result -->
               <div v-if="selectedBuilding" class="sunpath-summary-card">
                 <div class="section-title">Sun Path & Shadow</div>
+                <div class="detail-season-control">
+                  <label class="detail-season-label" for="detail-sunpath-season">Season Simulation</label>
+                  <select
+                    id="detail-sunpath-season"
+                    v-model="sunPathSeason"
+                    class="sunpath-select detail-season-select"
+                    @change="applySeasonPreset"
+                  >
+                    <option value="summer">Summer Solstice</option>
+                    <option value="equinox">Equinox</option>
+                    <option value="winter">Winter Solstice</option>
+                  </select>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Active Season</span>
+                  <span class="info-val">{{ activeSeasonLabel }}</span>
+                </div>
                 <div class="info-row">
                   <span class="info-key">Simulation Date</span>
                   <span class="info-val">{{ selectedSimulationDateLabel }}</span>
@@ -614,6 +637,14 @@
                 <div class="info-row">
                   <span class="info-key">Sun Azimuth</span>
                   <span class="info-val">{{ sunMetrics.azimuth }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Estimated Rooftop Shaded</span>
+                  <span class="info-val">{{ shadowCoverageLabel }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Unobstructed Usable Roof</span>
+                  <span class="info-val">{{ unobstructedUsableAreaLabel }}</span>
                 </div>
                 <div class="info-row">
                   <span class="info-key">Estimated Shadow Impact</span>
@@ -939,6 +970,7 @@ const COMPARE_BUILDING_OPACITY = 0.90
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const solarApiCache = new Map()
 const yieldCache = new Map()
+const shadowImpactCache = new Map()
 
 // Updated: Cache sun path data from backend.
 const sunPathCache = new Map()
@@ -982,6 +1014,11 @@ const sunPathSeason = ref('summer')
 const sunPathTime = ref(12)
 const sunAnimating = ref(false)
 const sunAnimationTimer = ref(null)
+const shadowCoveragePct = ref(0)
+const shadowCasterCount = ref(0)
+const shadowImpactSource = ref('frontend')
+const shadowOverlayFeatures = ref([])
+const unobstructedUsableAreaM2 = ref(null)
 
 const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
@@ -1128,6 +1165,12 @@ const tierColor = computed(() => {
 })
 
 // Updated: Sun Path computed
+const activeSeasonLabel = computed(() => {
+  if (sunPathSeason.value === 'summer') return 'Summer Solstice'
+  if (sunPathSeason.value === 'winter') return 'Winter Solstice'
+  return 'Equinox'
+})
+
 const selectedSimulationDateLabel = computed(() => {
   if (sunPathSeason.value === 'summer') return '21 Dec'
   if (sunPathSeason.value === 'winter') return '21 Jun'
@@ -1163,10 +1206,21 @@ const sunMetrics = computed(() => {
 })
 
 const shadowImpactLabel = computed(() => {
-  const altitude = sunMetrics.value.altitude
-  if (altitude >= 60) return 'Low'
-  if (altitude >= 35) return 'Moderate'
+  const coverage = shadowCoveragePct.value
+  if (coverage < 10) return 'Low'
+  if (coverage < 35) return 'Moderate'
   return 'High'
+})
+
+const shadowCoverageLabel = computed(() => {
+  if (!selectedBuilding.value) return '0%'
+  return `${Math.round(shadowCoveragePct.value)}%`
+})
+
+const unobstructedUsableAreaLabel = computed(() => {
+  if (!selectedBuilding.value) return '—'
+  if (unobstructedUsableAreaM2.value == null) return '—'
+  return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
 })
 
 // Updated: Load one-day sun path from backend and cache it locally.
@@ -1193,6 +1247,28 @@ async function fetchSunPath(season) {
   sessionStorage.setItem(cacheKey, JSON.stringify(data))
   sunPathCache.set(cacheKey, data)
 
+  return data
+}
+
+async function fetchShadowImpact(structureId, season, hour) {
+  const date = SUN_PATH_DATES[season] || SUN_PATH_DATES.summer
+  const normalizedHour = Number(hour)
+  const cacheKey = `shadow_${structureId}_${date}_${normalizedHour}`
+
+  if (shadowImpactCache.has(cacheKey)) return shadowImpactCache.get(cacheKey)
+
+  const params = new URLSearchParams({
+    date,
+    hour: String(normalizedHour),
+  })
+  const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/shadow-impact?${params}`)
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch shadow impact: ${res.status}`)
+  }
+
+  const data = await res.json()
+  shadowImpactCache.set(cacheKey, data)
   return data
 }
 
@@ -1863,6 +1939,31 @@ function polygonMayIntersectShadow(receiverFeature, shadowRing) {
   return receiverRing.some((point) => pointInRing(point, shadowRing))
 }
 
+function estimateShadowCoveragePct(receiverRing, shadowRings) {
+  if (!receiverRing?.length || !shadowRings.length) return 0
+
+  const box = bboxFromRing(receiverRing)
+  const steps = 18
+  let roofSamples = 0
+  let shadedSamples = 0
+
+  for (let x = 0; x < steps; x += 1) {
+    for (let y = 0; y < steps; y += 1) {
+      const lng = box.minLng + ((x + 0.5) / steps) * (box.maxLng - box.minLng)
+      const lat = box.minLat + ((y + 0.5) / steps) * (box.maxLat - box.minLat)
+      const point = [lng, lat]
+
+      if (!pointInRing(point, receiverRing)) continue
+
+      roofSamples += 1
+      if (shadowRings.some((ring) => pointInRing(point, ring))) shadedSamples += 1
+    }
+  }
+
+  if (!roofSamples) return 0
+  return Math.round((shadedSamples / roofSamples) * 100)
+}
+
 function buildSunDirectionFeature() {
   if (!selectedBuilding.value?.lng || !selectedBuilding.value?.lat) return null
 
@@ -1918,6 +2019,37 @@ function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
   }
 }
 
+function buildCasterShadowFeature(casterFeature, receiverHeight) {
+  const ring = getMainOuterRing(casterFeature?.geometry)
+  if (!ring?.length) return null
+
+  const casterHeight = getEffectiveBuildingHeight(casterFeature.properties)
+  const shadowLength = getShadowLengthByHeightDifference(casterHeight, receiverHeight)
+  if (shadowLength <= 0) return null
+
+  const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360
+  const rad = shadowAzimuth * Math.PI / 180
+  const dxMeters = Math.sin(rad) * shadowLength
+  const dyMeters = Math.cos(rad) * shadowLength
+  const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        ...ring,
+        ...shiftedRing.slice().reverse(),
+        ring[0],
+      ]],
+    },
+    properties: {
+      kind: 'shadow-volume',
+      caster_structure_id: casterFeature.properties?.structure_id,
+    },
+  }
+}
+
 function buildReceiverShadowFeature(receiverFeature) {
   const ring = getMainOuterRing(receiverFeature?.geometry)
   if (!ring?.length) return null
@@ -1936,34 +2068,52 @@ function buildReceiverShadowFeature(receiverFeature) {
 }
 
 function buildShadowInteractionFeatures() {
+  shadowCoveragePct.value = 0
+  shadowCasterCount.value = 0
+  shadowOverlayFeatures.value = []
+  unobstructedUsableAreaM2.value = null
+
   if (!selectedBuilding.value?.structure_id) return []
 
   const selectedId = Number(selectedBuilding.value.structure_id)
-  const casterFeature = buildingFeatureIndex.get(selectedId)
-  if (!casterFeature?.geometry) return []
+  const receiverFeature = buildingFeatureIndex.get(selectedId)
+  if (!receiverFeature?.geometry) return []
 
-  const casterHeight = getEffectiveBuildingHeight(selectedBuilding.value)
-  const selectedShadowFeature = buildSelectedBuildingShadowFeature(casterFeature, casterHeight)
-  if (!selectedShadowFeature) return []
+  const receiverRing = getMainOuterRing(receiverFeature.geometry)
+  if (!receiverRing?.length) return []
 
-  const shadowRing = getMainOuterRing(selectedShadowFeature.geometry)
-  const affectedFeatures = []
+  const receiverHeight = getEffectiveBuildingHeight(selectedBuilding.value)
+  const receiverBox = bboxFromRing(receiverRing)
+  const affectingShadowFeatures = []
+  const affectingShadowRings = []
 
   buildingFeatureIndex.forEach((feature, structureId) => {
     if (Number(structureId) === selectedId) return
     if (!feature?.geometry) return
 
-    const receiverHeight = getEffectiveBuildingHeight(feature.properties)
-    const receiverShadowLength = getShadowLengthByHeightDifference(casterHeight, receiverHeight)
-    if (receiverShadowLength <= 0) return
+    const shadowFeature = buildCasterShadowFeature(feature, receiverHeight)
+    if (!shadowFeature) return
 
-    if (polygonMayIntersectShadow(feature, shadowRing)) {
-      const receiverFeature = buildReceiverShadowFeature(feature)
-      if (receiverFeature) affectedFeatures.push(receiverFeature)
+    const shadowRing = getMainOuterRing(shadowFeature.geometry)
+    if (!shadowRing?.length) return
+    if (!bboxIntersects(receiverBox, bboxFromRing(shadowRing))) return
+
+    if (polygonMayIntersectShadow(receiverFeature, shadowRing)) {
+      affectingShadowFeatures.push(shadowFeature)
+      affectingShadowRings.push(shadowRing)
     }
   })
 
-  return [selectedShadowFeature, ...affectedFeatures]
+  shadowCasterCount.value = affectingShadowRings.length
+  shadowCoveragePct.value = estimateShadowCoveragePct(receiverRing, affectingShadowRings)
+
+  const receiverShadowFeature = shadowCasterCount.value > 0
+    ? buildReceiverShadowFeature(receiverFeature)
+    : null
+
+  return receiverShadowFeature
+    ? [...affectingShadowFeatures, receiverShadowFeature]
+    : affectingShadowFeatures
 }
 
 async function updateSunSimulation() {
@@ -1982,6 +2132,26 @@ async function updateSunSimulation() {
   const sunFeature = buildSunDirectionFeature()
   const shadowFeatures = buildShadowInteractionFeatures()
 
+  if (selectedBuilding.value?.structure_id) {
+    try {
+      const impact = await fetchShadowImpact(
+        selectedBuilding.value.structure_id,
+        sunPathSeason.value,
+        Number(sunPathTime.value),
+      )
+      shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
+      shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
+      unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
+      shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
+      shadowImpactSource.value = 'backend'
+    } catch (err) {
+      console.error('Shadow impact API failed:', err)
+      unobstructedUsableAreaM2.value = null
+      shadowOverlayFeatures.value = []
+      shadowImpactSource.value = 'frontend'
+    }
+  }
+
   const sunSource = map.getSource('sun-direction')
   if (sunSource) {
     sunSource.setData({
@@ -1994,7 +2164,10 @@ async function updateSunSimulation() {
   if (shadowSource) {
     shadowSource.setData({
       type: 'FeatureCollection',
-      features: shadowFeatures,
+      features: [
+        ...shadowFeatures,
+        ...shadowOverlayFeatures.value,
+      ],
     })
   }
 }
@@ -2147,6 +2320,7 @@ function initMap() {
           id: 'shadow-projection-fill',
           type: 'fill',
           source: 'shadow-projection',
+          filter: ['in', ['get', 'kind'], ['literal', ['shadow-volume', 'shadow-receiver']]],
           paint: {
             'fill-color': [
               'match',
@@ -2159,6 +2333,31 @@ function initMap() {
               ['get', 'kind'],
               'shadow-receiver', 0.32,
               0.18,
+            ],
+          },
+        })
+
+        map.addLayer({
+          id: 'shadow-rooftop-overlay',
+          type: 'fill-extrusion',
+          source: 'shadow-projection',
+          filter: ['in', ['get', 'kind'], ['literal', ['rooftop-shaded', 'rooftop-unobstructed']]],
+          paint: {
+            'fill-extrusion-color': [
+              'match',
+              ['get', 'kind'],
+              'rooftop-shaded', '#DC2626',
+              'rooftop-unobstructed', '#16A34A',
+              '#16A34A',
+            ],
+            'fill-extrusion-base': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.25],
+            'fill-extrusion-height': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.55],
+            'fill-extrusion-opacity': [
+              'match',
+              ['get', 'kind'],
+              'rooftop-shaded', 0.76,
+              'rooftop-unobstructed', 0.48,
+              0.5,
             ],
           },
         })
