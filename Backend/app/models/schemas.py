@@ -163,6 +163,7 @@ class SolarCacheResponse(BaseModel):
     whole_roof_area_m2: float | None = Field(None, ge=0, description="Total roof area from solar API (m²)")
     roof_segment_stats: Union[list, dict, None] = Field(None, description="Per-segment solar statistics (jsonb)")
     solar_panel_configs: Union[list, dict, None] = Field(None, description="Panel configuration options (jsonb)")
+    panel_capacity_watts: float | None = Field(None, ge=0, description="Rated capacity of each panel in watts")
 
 
 # --- /buildings/{id}/yield ---------------------------------------------------
