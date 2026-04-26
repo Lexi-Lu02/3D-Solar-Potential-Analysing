@@ -3,8 +3,8 @@ import psycopg2.extras
 import numpy as np
 
 
-DB_HOST     = "127.0.0.1"
-DB_PORT     = 5433           # SSH tunnel port
+DB_HOST     = "3.26.146.10"
+DB_PORT     = 5432           # SSH tunnel port
 DB_NAME     = "melbourne_solar"
 DB_USER     = "teamuser"
 DB_PASSWORD = "123456"
@@ -95,9 +95,9 @@ def main() -> None:
     quantity_raw = np.array([r["max_panels_kwh_annual"] for r in rows], dtype=float)
 
     # Step 4: Normalise both metrics to 0–100.
-    print("[4] Normalising metrics (1st–99th percentile clip, then 0–100)...")
-    quality_norm  = minmax_norm(quality_raw)
-    quantity_norm = minmax_norm(quantity_raw)
+    print("[4] Normalising metrics (log1p transform + 1st–99th percentile clip, then 0–100)...")
+    quality_norm = minmax_norm(np.log1p(quality_raw))
+    quantity_norm = minmax_norm(np.log1p(quantity_raw))
 
     # Weighted combination
     composite = ALPHA * quality_norm + (1.0 - ALPHA) * quantity_norm
