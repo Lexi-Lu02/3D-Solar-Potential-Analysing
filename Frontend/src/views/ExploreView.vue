@@ -4,7 +4,7 @@
 
     <!-- Sub-navigation bar for Explore page -->
     <div class="explore-subnav" role="toolbar" aria-label="Explore controls">
-      <!-- Left: panel toggles -->
+      <!-- Right: panel toggles -->
       <div class="subnav-actions">
         <button
           class="subnav-btn"
@@ -20,19 +20,6 @@
         </button>
         <button
           class="subnav-btn"
-          :class="{ 'subnav-btn--active': sidebarOpen }"
-          @click="sidebarOpen = !sidebarOpen"
-          :aria-pressed="sidebarOpen"
-          aria-label="Toggle building info panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M9 1v12" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          Building Info
-        </button>
-        <button
-          class="subnav-btn"
           :class="{ 'subnav-btn--active': comparePanelOpen }"
           @click="comparePanelOpen = !comparePanelOpen"
           :aria-pressed="comparePanelOpen"
@@ -45,9 +32,22 @@
           Comparison
           <span v-if="compareBuildings.length > 0" class="subnav-badge">{{ compareBuildings.length }}</span>
         </button>
+        <button
+          class="subnav-btn"
+          :class="{ 'subnav-btn--active': sidebarOpen }"
+          @click="sidebarOpen = !sidebarOpen"
+          :aria-pressed="sidebarOpen"
+          aria-label="Toggle building info panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M9 1v12" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          Building Info
+        </button>
       </div>
 
-      <!-- Right: Search by Address -->
+      <!-- Search by Address -->
       <div class="subnav-search-wrap" ref="searchWrapRef" role="search">
         <label for="search-address" class="visually-hidden">Search buildings by address</label>
         <div class="subnav-search-inner">
@@ -110,6 +110,7 @@
         </ul>
         <div v-if="searchError" id="search-error-msg" class="search-error subnav-search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
       </div>
+
 
     </div>
 
@@ -338,33 +339,55 @@
           </svg>
         </button>
         <div id="sidebar-body" class="sidebar-body">
-          <div class="sidebar-header">
-            <div class="sidebar-title" id="sidebar-title">Building Details</div>
-            <div class="sidebar-sub" aria-live="polite">
-              {{ selectedBuilding ? '' : 'Click any building on the map' }}
-            </div>
-          </div>
           <div class="sidebar-content">
+            <template v-if="activeTab === 'details'">
+            <div class="sidebar-header">
+              <div class="sidebar-title-row">
+                <div class="sidebar-title" id="sidebar-title">Solar Potential</div>
+                <button
+                  class="sidebar-export-btn"
+                  @click="exportBuildingCsv"
+                  :disabled="!selectedBuilding"
+                  :aria-disabled="!selectedBuilding"
+                  aria-label="Export selected building details as CSV"
+                >
+                  Export CSV
+                </button>
+              </div>
+              <div class="sidebar-sub" aria-live="polite">
+                {{ selectedBuilding ? '' : 'Click any building on the map' }}
+              </div>
+            </div>
             <div v-if="!selectedBuilding" class="empty-state">
-              <div class="empty-icon">Building</div>
+              <img :src="iconSolarCell" alt="" class="empty-icon-img" aria-hidden="true" />
               <div class="empty-text">Select a building on the map to view its solar potential analysis</div>
             </div>
             <div v-else class="building-panel visible">
               <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
               <div class="score-bar-wrap">
                 <div class="score-header">
-                  <span class="score-label">Solar Score</span>
+                  <span class="score-label-group">
+                    <span class="score-label">Solar Score</span>
+                    <button
+                      class="score-info-btn"
+                      @click="scoreExplOpen = !scoreExplOpen"
+                      :aria-expanded="scoreExplOpen"
+                      aria-label="Toggle solar score explanation"
+                    >?</button>
+                  </span>
                   <span class="score-value">{{ score }}</span>
                 </div>
                 <div class="score-bar">
                   <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
-                <div class="score-explanation">
-                  Composite of <strong>roof quality</strong> (sunshine intensity per m²)
-                  and <strong>energy output</strong> (annual kWh), each normalised 0–100
-                  and weighted equally.
-                </div>
+                <Transition name="score-expl">
+                  <div v-if="scoreExplOpen" class="score-explanation">
+                    Composite of <strong>roof quality</strong> (sunshine intensity per m²)
+                    and <strong>energy output</strong> (annual kWh), each normalised 0–100
+                    and weighted equally.
+                  </div>
+                </Transition>
               </div>
               <div class="section-title">Building Info</div>
               <div class="info-row"><span class="info-key">Address</span><span class="info-val">{{ shortAddress(selectedAddress) }}</span></div>
@@ -381,7 +404,7 @@
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
               <div class="metrics-grid">
                 <div class="metric-card">
-                  <div class="metric-label">Est. Annual kWh</div>
+                  <div class="metric-label">Est. Annual Output</div>
                   <div class="metric-val">
                     {{ formulaKwhAnnual > 0
                         ? formulaKwhAnnual.toLocaleString() + ' kWh'
@@ -389,7 +412,7 @@
                   </div>
                 </div>
                 <div class="metric-card">
-                  <div class="metric-label">Peak Sun Hours/Day</div>
+                  <div class="metric-label">Sun Intensity</div>
                   <div class="metric-val">
                     {{ solarApiData?.sunshineHours != null
                         ? (Math.round(solarApiData.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
@@ -416,8 +439,14 @@
 
               <!-- Formula explanation card -->
               <div v-if="formulaKwhAnnual > 0" class="formula-card">
-                <div class="formula-card-title">How We Calculate It</div>
-                <div class="formula-rows">
+                <button class="formula-card-toggle" @click="formulaCardOpen = !formulaCardOpen" :aria-expanded="formulaCardOpen">
+                  <span class="formula-card-title">How We Calculate Annual Output</span>
+                  <svg class="chevron-icon" :class="{ 'chevron-up': formulaCardOpen }" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <Transition name="formula-collapse">
+                <div v-if="formulaCardOpen" class="formula-rows">
                   <div class="formula-row">
                     <span class="formula-row-label">Usable Roof Area</span>
                     <span class="formula-row-val">
@@ -449,6 +478,7 @@
                     <span class="formula-row-val">{{ formulaKwhAnnual.toLocaleString() }} kWh</span>
                   </div>
                 </div>
+                </Transition>
               </div>
 
               <div class="section-title">Monthly Output</div>
@@ -483,7 +513,272 @@
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
               <p class="share-btn-desc">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
+            </template>
+            <template v-else-if="activeTab === 'finance'">
+              <div class="sidebar-header">
+                <div class="sidebar-title-row">
+                  <div class="sidebar-title">Financial Analysis</div>
+                  <button
+                    class="sidebar-export-btn"
+                    @click="exportBuildingCsv"
+                    :disabled="!selectedBuilding"
+                    :aria-disabled="!selectedBuilding"
+                    aria-label="Export building details as CSV"
+                  >Export CSV</button>
+                </div>
+                <div class="sidebar-sub">Estimated returns from solar installation</div>
+              </div>
+
+              <!-- No building selected -->
+              <div v-if="!selectedBuilding" class="empty-state">
+                <img :src="iconProfits" alt="" class="empty-icon-img" aria-hidden="true" />
+                <div class="empty-text">Select a building on the map to view financial analysis</div>
+              </div>
+
+              <!-- Building selected but no energy data yet -->
+              <div v-else-if="formulaKwhAnnual <= 0" class="empty-state">
+                <div class="empty-icon">—</div>
+                <div class="empty-text">Energy output data unavailable for this building</div>
+              </div>
+
+              <!-- Full financial panel -->
+              <div v-else class="fin-panel">
+
+                <!-- Payback hero -->
+                <div class="fin-hero">
+                  <div class="fin-hero-top">
+                    <span class="fin-hero-label">Est. Payback Period</span>
+                    <div class="fin-tooltip-wrap">
+                      <button class="fin-info-btn" aria-label="Payback period assumptions">i</button>
+                      <div class="fin-tooltip-box">Simple payback = Installation Cost ÷ Annual Savings. Excludes feed-in tariff, maintenance costs, and panel degradation.</div>
+                    </div>
+                  </div>
+                  <div class="fin-hero-val">
+                    {{ financialMetrics?.paybackYears != null ? financialMetrics.paybackYears + ' yrs' : '—' }}
+                  </div>
+                  <div class="fin-hero-sub">before the system pays for itself</div>
+                </div>
+
+                <!-- 4 metric cards -->
+                <div class="fin-metrics-grid">
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Annual Output</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Annual output assumptions">i</button>
+                        <div class="fin-tooltip-box">Usable Roof Area × 20% panel efficiency × 75% performance ratio × peak sun hours × 365 days.</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ financialMetrics.annualKwh.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">kWh / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Installation Cost</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Installation cost assumptions">i</button>
+                        <div class="fin-tooltip-box">Max. panels × 400 W/panel × $1.20/W installed (Melbourne 2024 commercial average).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">
+                      {{ financialMetrics.installCost != null ? '$' + financialMetrics.installCost.toLocaleString() : '—' }}
+                    </div>
+                    <div class="fin-metric-unit">AUD</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Annual Savings</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Annual savings assumptions">i</button>
+                        <div class="fin-tooltip-box">Annual Output × $0.28/kWh Melbourne commercial electricity tariff (avoided grid purchase cost).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">${{ financialMetrics.annualSavings.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">AUD / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Max Solar Panels</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Panel count source">i</button>
+                        <div class="fin-tooltip-box">Maximum panel count sourced from Google Solar API based on usable roof geometry.</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">
+                      {{ financialMetrics.maxPanels != null ? financialMetrics.maxPanels.toLocaleString() : '—' }}
+                    </div>
+                    <div class="fin-metric-unit">panels</div>
+                  </div>
+
+                </div>
+
+                <!-- Assumptions note -->
+                <div class="fin-assumptions">
+                  <div class="fin-assumptions-title">Assumptions</div>
+                  <div class="fin-assumption-row"><span>Panel capacity</span><span>400 W each</span></div>
+                  <div class="fin-assumption-row"><span>Install cost</span><span>$1.20 / W</span></div>
+                  <div class="fin-assumption-row"><span>Electricity tariff</span><span>$0.28 / kWh</span></div>
+                  <div class="fin-assumption-row"><span>Panel efficiency</span><span>20%</span></div>
+                  <div class="fin-assumption-row"><span>Performance ratio</span><span>75%</span></div>
+                </div>
+
+              </div>
+            </template>
+            <template v-else-if="activeTab === 'env'">
+              <div class="sidebar-header">
+                <div class="sidebar-title-row">
+                  <div class="sidebar-title">Environmental Impact</div>
+                  <button
+                    class="sidebar-export-btn"
+                    @click="exportBuildingCsv"
+                    :disabled="!selectedBuilding"
+                    :aria-disabled="!selectedBuilding"
+                    aria-label="Export building details as CSV"
+                  >Export CSV</button>
+                </div>
+                <div class="sidebar-sub">Estimated sustainability benefits from solar installation</div>
+              </div>
+
+              <!-- No building selected -->
+              <div v-if="!selectedBuilding" class="empty-state">
+                <img :src="iconPlanetEarth" alt="" class="empty-icon-img" aria-hidden="true" />
+                <div class="empty-text">Select a building on the map to view environmental impact</div>
+              </div>
+
+              <!-- Building selected but no energy data -->
+              <div v-else-if="formulaKwhAnnual <= 0" class="empty-state">
+                <div class="empty-icon">—</div>
+                <div class="empty-text">Energy output data unavailable for this building</div>
+              </div>
+
+              <!-- Full environmental panel -->
+              <div v-else class="fin-panel">
+
+                <!-- CO₂ hero -->
+                <div class="fin-hero fin-hero--green">
+                  <div class="fin-hero-top">
+                    <span class="fin-hero-label">Est. Annual CO₂ Reduction</span>
+                    <div class="fin-tooltip-wrap">
+                      <button class="fin-info-btn" aria-label="CO₂ reduction assumptions">i</button>
+                      <div class="fin-tooltip-box">Annual Output × 0.79 kg CO₂e/kWh (Australian national grid emission factor, Clean Energy Regulator 2022).</div>
+                    </div>
+                  </div>
+                  <div class="fin-hero-val">
+                    {{ envMetrics.co2Kg.toLocaleString() }} <span class="fin-hero-unit">kg CO₂</span>
+                  </div>
+                  <div class="fin-hero-sub">avoided per year vs. coal-fired grid power</div>
+                </div>
+
+                <!-- 6 metric cards -->
+                <div class="fin-metrics-grid">
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Equivalent Trees Planted</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Trees equivalent assumptions">i</button>
+                        <div class="fin-tooltip-box">CO₂ Reduction ÷ 21.77 kg CO₂ absorbed per mature tree per year (U.S. Forest Service average).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ envMetrics.treesEquiv.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">trees / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Petrol Fuel Saved</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Fuel savings assumptions">i</button>
+                        <div class="fin-tooltip-box">Annual Output ÷ 8.9 kWh/litre energy equivalent of petrol (Australian standard fuel conversion).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ envMetrics.petrolLitres.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">litres / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Cars Off the Road</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Cars equivalent assumptions">i</button>
+                        <div class="fin-tooltip-box">CO₂ Reduction ÷ 2,100 kg CO₂/yr (average Australian car at 180 g/km × 12,000 km/yr).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ envMetrics.carsOffRoad.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">cars / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Homes Powered</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Homes powered assumptions">i</button>
+                        <div class="fin-tooltip-box">Annual Output ÷ 7,227 kWh average annual Victorian household consumption (AER 2023).</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ envMetrics.homesPowered.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">homes / yr</div>
+                  </div>
+
+                  <div class="fin-metric-card env-metric-card--full">
+                    <div class="fin-metric-header">
+                      <span class="fin-metric-label">Lifetime CO₂ Savings (25 yrs)</span>
+                      <div class="fin-tooltip-wrap">
+                        <button class="fin-info-btn" aria-label="Lifetime CO₂ assumptions">i</button>
+                        <div class="fin-tooltip-box">Annual CO₂ Reduction × 25 years (standard commercial solar panel lifespan), expressed in tonnes.</div>
+                      </div>
+                    </div>
+                    <div class="fin-metric-val">{{ envMetrics.lifetimeCo2T.toLocaleString() }}</div>
+                    <div class="fin-metric-unit">tonnes CO₂ over system life</div>
+                  </div>
+
+                </div>
+
+                <!-- Conversion assumptions -->
+                <div class="fin-assumptions">
+                  <div class="fin-assumptions-title">Conversion Factors</div>
+                  <div class="fin-assumption-row"><span>Grid emission factor</span><span>0.79 kg CO₂e / kWh</span></div>
+                  <div class="fin-assumption-row"><span>Tree CO₂ absorption</span><span>21.77 kg CO₂ / yr</span></div>
+                  <div class="fin-assumption-row"><span>Petrol energy equivalent</span><span>8.9 kWh / litre</span></div>
+                  <div class="fin-assumption-row"><span>Average car emissions</span><span>2,100 kg CO₂ / yr</span></div>
+                  <div class="fin-assumption-row"><span>Vic. household consumption</span><span>7,227 kWh / yr</span></div>
+                  <div class="fin-assumption-row"><span>System lifespan</span><span>25 years</span></div>
+                </div>
+
+              </div>
+            </template>
           </div>
+        </div>
+        <!-- Vertical section tabs on right edge -->
+        <div class="sidebar-tabs-v" role="tablist" aria-label="Sidebar sections">
+          <button
+            class="sidebar-tab-v"
+            :class="{ active: activeTab === 'details' }"
+            @click="activeTab = 'details'"
+            role="tab"
+            :aria-selected="activeTab === 'details'"
+            aria-label="Solar Potential"
+          ><span>Solar Potential</span></button>
+          <button
+            class="sidebar-tab-v"
+            :class="{ active: activeTab === 'finance' }"
+            @click="activeTab = 'finance'"
+            role="tab"
+            :aria-selected="activeTab === 'finance'"
+            aria-label="Financial Analysis"
+          ><span>Financial Analysis</span></button>
+          <button
+            class="sidebar-tab-v"
+            :class="{ active: activeTab === 'env' }"
+            @click="activeTab = 'env'"
+            role="tab"
+            :aria-selected="activeTab === 'env'"
+            aria-label="Environmental Impact"
+          ><span>Environmental Impact</span></button>
         </div>
       </aside>
     </main>
@@ -500,8 +795,11 @@ export default { name: 'ExploreView' }
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
-import iconCompare from '../pictures/Compare.png'
-import iconSearch  from '../pictures/Search.png'
+import iconCompare   from '../pictures/Compare.png'
+import iconSearch    from '../pictures/Search.png'
+import iconSolarCell from '../pictures/solar-cell.png'
+import iconProfits     from '../pictures/profits.png'
+import iconPlanetEarth from '../pictures/planet-earth.png'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -560,6 +858,9 @@ const compareBuildings = ref([]) // [{ building, apiData }] — max 2
 
 const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
+const scoreExplOpen = ref(false)
+const formulaCardOpen = ref(false)
+const activeTab = ref('details')
 
 // Annual kWh from formula.
 // Area: prefer solarApiData.usableAreaM2 (Google max_array_area_m2 — building-level,
@@ -607,6 +908,39 @@ const monthlyOutput = computed(() => {
   }))
   const maxKwh = Math.max(...months.map(m => m.kwh))
   return months.map(m => ({ ...m, pct: Math.round(m.kwh / maxKwh * 100) }))
+})
+
+const COST_PER_WATT_AUD = 1.20
+const PANEL_CAPACITY_W  = 400
+const TARIFF_AUD_KWH    = 0.28
+
+const GRID_EMISSION_KG_PER_KWH = 0.79   // kg CO₂e/kWh, Australian national avg (Clean Energy Regulator 2022)
+const TREE_CO2_KG_PER_YEAR     = 21.77  // kg CO₂ absorbed per mature tree per year (U.S. Forest Service)
+const PETROL_KWH_PER_LITRE     = 8.9    // energy equivalent of 1 litre of petrol
+const CAR_CO2_KG_PER_YEAR      = 2100   // avg Australian car: 180 g/km × 12,000 km/yr
+const VIC_HOME_KWH_PER_YEAR    = 7227   // average Victorian household annual consumption (AER 2023)
+const SOLAR_SYSTEM_LIFE_YEARS  = 25     // typical commercial solar panel lifespan
+
+const envMetrics = computed(() => {
+  const annualKwh = formulaKwhAnnual.value
+  if (!selectedBuilding.value || annualKwh <= 0) return null
+  const co2Kg          = Math.round(annualKwh * GRID_EMISSION_KG_PER_KWH)
+  const treesEquiv     = Math.round(co2Kg / TREE_CO2_KG_PER_YEAR)
+  const petrolLitres   = Math.round(annualKwh / PETROL_KWH_PER_LITRE)
+  const carsOffRoad    = Math.round((co2Kg / CAR_CO2_KG_PER_YEAR) * 10) / 10
+  const homesPowered   = Math.round((annualKwh / VIC_HOME_KWH_PER_YEAR) * 10) / 10
+  const lifetimeCo2T   = Math.round(co2Kg * SOLAR_SYSTEM_LIFE_YEARS / 100) / 10  // tonnes, 1dp
+  return { co2Kg, treesEquiv, petrolLitres, carsOffRoad, homesPowered, lifetimeCo2T, annualKwh }
+})
+
+const financialMetrics = computed(() => {
+  const annualKwh = formulaKwhAnnual.value
+  if (!selectedBuilding.value || annualKwh <= 0) return null
+  const maxPanels     = solarApiData.value?.maxPanels ?? null
+  const installCost   = maxPanels != null ? Math.round(maxPanels * PANEL_CAPACITY_W * COST_PER_WATT_AUD) : null
+  const annualSavings = Math.round(annualKwh * TARIFF_AUD_KWH)
+  const paybackYears  = installCost && annualSavings > 0 ? Math.round((installCost / annualSavings) * 10) / 10 : null
+  return { annualKwh, installCost, annualSavings, paybackYears, maxPanels }
 })
 
 let map = null
@@ -933,6 +1267,136 @@ function clearCompare() {
   compareBuildings.value = []
   updateCompareHighlight()
 }
+
+function toCsvSafe(value) {
+  const stringValue = value == null ? '' : String(value)
+  const escaped = stringValue.replace(/"/g, '""')
+  return `"${escaped}"`
+}
+
+function exportBuildingCsv() {
+  if (!selectedBuilding.value) {
+    showToast('Select a building first')
+    return
+  }
+
+  const usableRatio = solarApiData.value?.usableAreaM2 != null && solarApiData.value?.roofAreaM2 != null
+    ? Math.round((solarApiData.value.usableAreaM2 / solarApiData.value.roofAreaM2) * 100) + '%'
+    : (solarApiLoading.value ? '…' : '—')
+
+  const peakSunHours = solarApiData.value?.sunshineHours != null
+    ? (Math.round(solarApiData.value.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
+    : (solarApiLoading.value ? '…' : '—')
+
+  const roofFootprint = solarApiData.value?.roofAreaM2 != null
+    ? solarApiData.value.roofAreaM2.toFixed(1) + ' m²'
+    : (solarApiLoading.value ? '…' : '—')
+
+  const usableRoofArea = solarApiData.value?.usableAreaM2 != null
+    ? solarApiData.value.usableAreaM2.toFixed(1) + ' m²'
+    : (solarApiLoading.value ? '…' : '—')
+
+  const formulaUsableArea = (solarApiData.value?.usableAreaM2 ?? selectedBuilding.value?.usable_roof_area ?? 0)
+    .toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' m²'
+
+  const formulaPeakSun = solarApiData.value?.sunshineHours != null
+    ? (Math.round(solarApiData.value.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
+    : '4.1 kWh/m²/day'
+
+  const fm = financialMetrics.value
+  const em = envMetrics.value
+
+  const rows = [
+    ['Field', 'Value'],
+
+    // ── Building Details ──────────────────────────────────────
+    ['--- BUILDING DETAILS ---', ''],
+    ['Building ID', selectedBuilding.value.structure_id || selectedBuilding.value.objectid || '—'],
+    ['Address', shortAddress(selectedAddress.value)],
+    ['Solar Score', score.value],
+    ['Solar Tier', tier.value],
+    ['Solar Score Explanation', 'Composite of roof quality (sunshine intensity per m²) and energy output (annual kWh), each normalised 0–100 and weighted equally.'],
+    ['Roof Type', selectedBuilding.value.roof_type || 'Unknown'],
+    ['Building Height', (selectedBuilding.value.building_height || 0).toFixed(1) + ' m'],
+    ['Usable Ratio', usableRatio],
+    ['Max Solar Panels', solarApiData.value?.maxPanels != null ? solarApiData.value.maxPanels.toLocaleString() : '—'],
+    ['Est. Annual kWh', formulaKwhAnnual.value > 0 ? formulaKwhAnnual.value.toLocaleString() + ' kWh' : '—'],
+    ['Peak Sun Hours/Day', peakSunHours],
+    ['Roof Footprint', roofFootprint],
+    ['Usable Roof Area', usableRoofArea],
+    ['Formula - Usable Roof Area', formulaUsableArea],
+    ['Formula - Panel Efficiency', '20%'],
+    ['Formula - Performance Ratio', '75%'],
+    ['Formula - Peak Sun Hours/Day', formulaPeakSun],
+    ['Formula - Days per Year', '365'],
+    ['Formula - Est. Annual Output', formulaKwhAnnual.value.toLocaleString() + ' kWh'],
+  ]
+
+  if (monthlyOutput.value.length > 0) {
+    monthlyOutput.value.forEach((monthData) => {
+      rows.push([`Monthly Output - ${monthData.month}`, monthData.kwh.toLocaleString() + ' kWh'])
+    })
+  } else {
+    rows.push(['Monthly Output', 'No solar data available for this building'])
+  }
+
+  // ── Financial Analysis ────────────────────────────────────
+  rows.push(['--- FINANCIAL ANALYSIS ---', ''])
+  if (fm) {
+    rows.push(
+      ['Est. Payback Period', fm.paybackYears != null ? fm.paybackYears + ' yrs' : '—'],
+      ['Annual Solar Output', fm.annualKwh.toLocaleString() + ' kWh'],
+      ['Installation Cost', fm.installCost != null ? '$' + fm.installCost.toLocaleString() + ' AUD' : '—'],
+      ['Annual Savings', '$' + fm.annualSavings.toLocaleString() + ' AUD'],
+      ['Max Solar Panels', fm.maxPanels != null ? fm.maxPanels.toLocaleString() : '—'],
+      ['Assumption - Panel Capacity', '400 W/panel'],
+      ['Assumption - Install Cost Rate', '$1.20 / W'],
+      ['Assumption - Electricity Tariff', '$0.28 / kWh'],
+    )
+  } else {
+    rows.push(['Financial Analysis', 'No data — select a building with solar data'])
+  }
+
+  // ── Environmental Impact ──────────────────────────────────
+  rows.push(['--- ENVIRONMENTAL IMPACT ---', ''])
+  if (em) {
+    rows.push(
+      ['Annual CO₂ Reduction', em.co2Kg.toLocaleString() + ' kg CO₂/yr'],
+      ['Equivalent Trees Planted', em.treesEquiv.toLocaleString() + ' trees/yr'],
+      ['Petrol Fuel Saved', em.petrolLitres.toLocaleString() + ' litres/yr'],
+      ['Cars Off the Road', em.carsOffRoad.toLocaleString() + ' cars/yr'],
+      ['Homes Powered', em.homesPowered.toLocaleString() + ' homes/yr'],
+      ['Lifetime CO₂ Savings (25 yrs)', em.lifetimeCo2T.toLocaleString() + ' tonnes CO₂'],
+      ['Conversion - Grid Emission Factor', '0.79 kg CO₂e / kWh'],
+      ['Conversion - Tree CO₂ Absorption', '21.77 kg CO₂ / yr'],
+      ['Conversion - Petrol Energy Equiv.', '8.9 kWh / litre'],
+      ['Conversion - Avg. Car Emissions', '2,100 kg CO₂ / yr'],
+      ['Conversion - Vic. Household Consumption', '7,227 kWh / yr'],
+      ['Conversion - System Lifespan', '25 years'],
+    )
+  } else {
+    rows.push(['Environmental Impact', 'No data — select a building with solar data'])
+  }
+
+  const csvText = rows.map((row) => row.map(toCsvSafe).join(',')).join('\n')
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const addressPart = shortAddress(selectedAddress.value)
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase()
+  const fileName = `building_${selectedBuilding.value.structure_id || 'details'}${addressPart ? '_' + addressPart : ''}.csv`
+
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', fileName)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  showToast('CSV exported')
+}
+
 // Generates a shareable URL for the currently selected building and copies it to clipboard
 async function shareBuilding() {
   if (!selectedBuilding.value) {
