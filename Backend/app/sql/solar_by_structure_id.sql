@@ -17,6 +17,7 @@ SELECT
     carbon_offset_kg_per_mwh,
     whole_roof_area_m2,
     roof_segment_stats,
-    solar_panel_configs
+    solar_panel_configs,
+    panel_capacity_watts
 FROM solar_api_cache
 WHERE structure_id = %(structure_id)s;

@@ -44,6 +44,7 @@
             <path d="M9 1v12" stroke="currentColor" stroke-width="1.5"/>
           </svg>
           Building Info
+        </button>
 
         <!-- MOD: Sun Path button -->
         <button
@@ -489,7 +490,7 @@
               <div class="info-row"><span class="info-key">Max Solar Panels</span><span class="info-val">{{ solarApiData?.maxPanels != null ? solarApiData.maxPanels.toLocaleString() : '—' }}</span></div>
               <div class="metrics-grid">
                 <div class="metric-card">
-                  <div class="metric-label">Est. Annual Output</div>
+                  <div class="metric-label">Annual Electricity Generation</div>
                   <div class="metric-val">
                     {{ formulaKwhAnnual > 0
                         ? formulaKwhAnnual.toLocaleString() + ' kWh'
@@ -522,35 +523,10 @@
                 </div>
               </div>
 
-              <!-- MOD: Sun Path result -->
-              <div v-if="selectedBuilding" class="sunpath-summary-card">
-                <div class="section-title">Sun Path & Shadow</div>
-                <div class="info-row">
-                  <span class="info-key">Simulation Date</span>
-                  <span class="info-val">{{ selectedSimulationDateLabel }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Simulation Time</span>
-                  <span class="info-val">{{ formattedSunTime }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Sun Altitude</span>
-                  <span class="info-val">{{ sunMetrics.altitude }}°</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Sun Azimuth</span>
-                  <span class="info-val">{{ sunMetrics.azimuth }}°</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Estimated Shadow Impact</span>
-                  <span class="info-val">{{ shadowImpactLabel }}</span>
-                </div>
-              </div>
-
               <!-- Formula explanation card -->
               <div v-if="formulaKwhAnnual > 0" class="formula-card">
                 <button class="formula-card-toggle" @click="formulaCardOpen = !formulaCardOpen" :aria-expanded="formulaCardOpen">
-                  <span class="formula-card-title">How We Calculate Annual Output</span>
+                  <span class="formula-card-title">How We Calculate Annual Generation</span>
                   <svg class="chevron-icon" :class="{ 'chevron-up': formulaCardOpen }" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                     <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
@@ -584,14 +560,14 @@
                     <span class="formula-row-val">× 365</span>
                   </div>
                   <div class="formula-row formula-result">
-                    <span class="formula-row-label">Est. Annual Output</span>
+                    <span class="formula-row-label">Annual Electricity Generation</span>
                     <span class="formula-row-val">{{ formulaKwhAnnual.toLocaleString() }} kWh</span>
                   </div>
                 </div>
                 </Transition>
               </div>
 
-              <div class="section-title">Monthly Output</div>
+              <div class="section-title">Monthly Generation</div>
               <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
               <div v-else class="monthly-chart" role="img" :aria-label="`Monthly solar output chart. ${monthlyOutput.map(m => `${m.month}: ${m.kwh.toLocaleString()} kWh`).join(', ')}`">
                 <div class="monthly-bars" role="list">
@@ -620,6 +596,31 @@
                   </div>
                 </div>
               </div>
+              <!-- MOD: Sun Path result -->
+              <div v-if="selectedBuilding" class="sunpath-summary-card">
+                <div class="section-title">Sun Path & Shadow</div>
+                <div class="info-row">
+                  <span class="info-key">Simulation Date</span>
+                  <span class="info-val">{{ selectedSimulationDateLabel }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Simulation Time</span>
+                  <span class="info-val">{{ formattedSunTime }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Sun Altitude</span>
+                  <span class="info-val">{{ sunMetrics.altitude }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Sun Azimuth</span>
+                  <span class="info-val">{{ sunMetrics.azimuth }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Estimated Shadow Impact</span>
+                  <span class="info-val">{{ shadowImpactLabel }}</span>
+                </div>
+              </div>
+
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
               <p class="share-btn-desc">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
@@ -674,10 +675,10 @@
 
                   <div class="fin-metric-card">
                     <div class="fin-metric-header">
-                      <span class="fin-metric-label">Annual Output</span>
+                      <span class="fin-metric-label">Annual Generation</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Annual output assumptions">i</button>
-                        <div class="fin-tooltip-box">Usable Roof Area × 20% panel efficiency × 75% performance ratio × peak sun hours × 365 days.</div>
+                        <div class="fin-tooltip-box">Same as Solar Potential panel: Usable Roof Area × 20% efficiency × 75% performance ratio × peak sun hours × 365 days.</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">{{ financialMetrics.annualKwh.toLocaleString() }}</div>
@@ -703,7 +704,7 @@
                       <span class="fin-metric-label">Annual Savings</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Annual savings assumptions">i</button>
-                        <div class="fin-tooltip-box">Annual Output × $0.28/kWh Melbourne commercial electricity tariff (avoided grid purchase cost).</div>
+                        <div class="fin-tooltip-box">Annual Generation × $0.28/kWh Melbourne commercial electricity tariff (avoided grid purchase cost).</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">${{ financialMetrics.annualSavings.toLocaleString() }}</div>
@@ -729,7 +730,7 @@
                 <!-- Assumptions note -->
                 <div class="fin-assumptions">
                   <div class="fin-assumptions-title">Assumptions</div>
-                  <div class="fin-assumption-row"><span>Panel capacity</span><span>400 W each</span></div>
+                  <div class="fin-assumption-row"><span>Panel capacity</span><span>{{ financialMetrics.panelCapacityW }} W each</span></div>
                   <div class="fin-assumption-row"><span>Install cost</span><span>$1.20 / W</span></div>
                   <div class="fin-assumption-row"><span>Electricity tariff</span><span>$0.28 / kWh</span></div>
                   <div class="fin-assumption-row"><span>Panel efficiency</span><span>20%</span></div>
@@ -774,7 +775,7 @@
                     <span class="fin-hero-label">Est. Annual CO₂ Reduction</span>
                     <div class="fin-tooltip-wrap">
                       <button class="fin-info-btn" aria-label="CO₂ reduction assumptions">i</button>
-                      <div class="fin-tooltip-box">Annual Output × 0.79 kg CO₂e/kWh (Australian national grid emission factor, Clean Energy Regulator 2022).</div>
+                      <div class="fin-tooltip-box">Annual Generation × {{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e/kWh (sourced from Google Solar API carbon_offset_kg_per_mwh; falls back to 0.79 kg CO₂e/kWh Australian national average).</div>
                     </div>
                   </div>
                   <div class="fin-hero-val">
@@ -803,7 +804,7 @@
                       <span class="fin-metric-label">Petrol Fuel Saved</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Fuel savings assumptions">i</button>
-                        <div class="fin-tooltip-box">Annual Output ÷ 8.9 kWh/litre energy equivalent of petrol (Australian standard fuel conversion).</div>
+                        <div class="fin-tooltip-box">Annual Generation ÷ 8.9 kWh/litre energy equivalent of petrol (Australian standard fuel conversion).</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">{{ envMetrics.petrolLitres.toLocaleString() }}</div>
@@ -827,7 +828,7 @@
                       <span class="fin-metric-label">Homes Powered</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Homes powered assumptions">i</button>
-                        <div class="fin-tooltip-box">Annual Output ÷ 7,227 kWh average annual Victorian household consumption (AER 2023).</div>
+                        <div class="fin-tooltip-box">Annual Generation ÷ 7,227 kWh average annual Victorian household consumption (AER 2023).</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">{{ envMetrics.homesPowered.toLocaleString() }}</div>
@@ -851,7 +852,7 @@
                 <!-- Conversion assumptions -->
                 <div class="fin-assumptions">
                   <div class="fin-assumptions-title">Conversion Factors</div>
-                  <div class="fin-assumption-row"><span>Grid emission factor</span><span>0.79 kg CO₂e / kWh</span></div>
+                  <div class="fin-assumption-row"><span>Grid emission factor</span><span>{{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e / kWh</span></div>
                   <div class="fin-assumption-row"><span>Tree CO₂ absorption</span><span>21.77 kg CO₂ / yr</span></div>
                   <div class="fin-assumption-row"><span>Petrol energy equivalent</span><span>8.9 kWh / litre</span></div>
                   <div class="fin-assumption-row"><span>Average car emissions</span><span>2,100 kg CO₂ / yr</span></div>
@@ -937,6 +938,7 @@ const COMPARE_BUILDING_OPACITY = 0.90
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const solarApiCache = new Map()
+const yieldCache = new Map()
 
 const isLoading = ref(true)
 const loadingText = ref('Loading Melbourne building data...')
@@ -946,6 +948,7 @@ const activeSolarFilter = ref('all')
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const solarApiData = ref(null)
+const yieldData = ref(null)
 const solarApiLoading = ref(false)
 const selectedAddress = ref(null)
 const searchId = ref('')
@@ -976,14 +979,20 @@ const scoreExplOpen = ref(false)
 const formulaCardOpen = ref(false)
 const activeTab = ref('details')
 
+// Priority 1: backend yield API (rooftop_solar survey — 31% of buildings)
+// Priority 2: GeoJSON kwh_annual (also from rooftop_solar)
+// Priority 3: Google Solar API area × efficiency × PSH (covers remaining buildings)
 const formulaKwhAnnual = computed(() => {
-  const area = solarApiData.value?.usableAreaM2 || selectedBuilding.value?.usable_roof_area
+  if (yieldData.value?.kwh_annual > 0) return yieldData.value.kwh_annual
+  if (selectedBuilding.value?.kwh_annual > 0) return Number(selectedBuilding.value.kwh_annual)
+  const area = solarApiData.value?.usableAreaM2
   if (!area || area <= 0) return 0
   const psh = solarApiData.value?.sunshineHours
   if (psh) return Math.round(area * 0.20 * 0.75 * psh)
   return Math.round(area * 0.20 * 0.75 * 4.1 * 365)
 })
 
+// NASA POWER monthly PSH — fallback when yield API has no survey data
 const MONTHLY_PSH = [
   { month: 'Jan', days: 31, psh: 6.56 },
   { month: 'Feb', days: 28, psh: 5.71 },
@@ -1000,11 +1009,15 @@ const MONTHLY_PSH = [
 ]
 
 const monthlyOutput = computed(() => {
-  if (!selectedBuilding.value) return []
-
+  // Priority 1: per-month kWh direct from backend yield API
+  const apiMonths = yieldData.value?.kwh_monthly
+  if (apiMonths?.length) {
+    const maxKwh = Math.max(...apiMonths.map(m => m.kwh))
+    return apiMonths.map(m => ({ ...m, pct: Math.round(m.kwh / maxKwh * 100) }))
+  }
+  // Priority 2: distribute formulaKwhAnnual proportionally using NASA POWER PSH weights
   const annualKwh = formulaKwhAnnual.value
-  if (annualKwh <= 0) return []
-
+  if (!annualKwh || annualKwh <= 0) return []
   const weights = MONTHLY_PSH.map(({ month, days, psh }) => ({ month, w: psh * days }))
   const totalWeight = weights.reduce((s, m) => s + m.w, 0)
   const months = weights.map(({ month, w }) => ({
@@ -1029,23 +1042,30 @@ const SOLAR_SYSTEM_LIFE_YEARS  = 25     // typical commercial solar panel lifesp
 const envMetrics = computed(() => {
   const annualKwh = formulaKwhAnnual.value
   if (!selectedBuilding.value || annualKwh <= 0) return null
-  const co2Kg          = Math.round(annualKwh * GRID_EMISSION_KG_PER_KWH)
+  // Use building-specific carbon offset factor from Google Solar API (kg/MWh → kg/kWh ÷ 1000)
+  // Falls back to Australian national grid average when not available
+  const carbonKgPerKwh  = solarApiData.value?.carbonOffsetKgPerMwh != null
+    ? solarApiData.value.carbonOffsetKgPerMwh / 1000
+    : GRID_EMISSION_KG_PER_KWH
+  const co2Kg          = Math.round(annualKwh * carbonKgPerKwh)
   const treesEquiv     = Math.round(co2Kg / TREE_CO2_KG_PER_YEAR)
   const petrolLitres   = Math.round(annualKwh / PETROL_KWH_PER_LITRE)
   const carsOffRoad    = Math.round((co2Kg / CAR_CO2_KG_PER_YEAR) * 10) / 10
   const homesPowered   = Math.round((annualKwh / VIC_HOME_KWH_PER_YEAR) * 10) / 10
   const lifetimeCo2T   = Math.round(co2Kg * SOLAR_SYSTEM_LIFE_YEARS / 100) / 10  // tonnes, 1dp
-  return { co2Kg, treesEquiv, petrolLitres, carsOffRoad, homesPowered, lifetimeCo2T, annualKwh }
+  return { co2Kg, treesEquiv, petrolLitres, carsOffRoad, homesPowered, lifetimeCo2T, annualKwh, carbonKgPerKwh }
 })
 
 const financialMetrics = computed(() => {
+  if (!selectedBuilding.value) return null
   const annualKwh = formulaKwhAnnual.value
-  if (!selectedBuilding.value || annualKwh <= 0) return null
-  const maxPanels     = solarApiData.value?.maxPanels ?? null
-  const installCost   = maxPanels != null ? Math.round(maxPanels * PANEL_CAPACITY_W * COST_PER_WATT_AUD) : null
+  if (!annualKwh || annualKwh <= 0) return null
+  const maxPanels       = solarApiData.value?.maxPanels ?? null
+  const panelCapacityW  = solarApiData.value?.panelCapacityWatts ?? PANEL_CAPACITY_W
+  const installCost     = maxPanels != null ? Math.round(maxPanels * panelCapacityW * COST_PER_WATT_AUD) : null
   const annualSavings = Math.round(annualKwh * TARIFF_AUD_KWH)
   const paybackYears  = installCost && annualSavings > 0 ? Math.round((installCost / annualSavings) * 10) / 10 : null
-  return { annualKwh, installCost, annualSavings, paybackYears, maxPanels }
+  return { annualKwh, installCost, annualSavings, paybackYears, maxPanels, panelCapacityW }
 })
 
 let map = null
@@ -1186,12 +1206,28 @@ async function fetchSolarApiData(structureId) {
       roofAreaM2: body.whole_roof_area_m2 != null ? Math.round(body.whole_roof_area_m2 * 10) / 10 : null,
       kwhAnnual: body.max_panels_kwh_annual != null ? Math.round(body.max_panels_kwh_annual) : null,
       sunshineHours: body.max_sunshine_hours_per_year != null ? Math.round(body.max_sunshine_hours_per_year) : null,
+      panelCapacityWatts: body.panel_capacity_watts ?? null,
+      carbonOffsetKgPerMwh: body.carbon_offset_kg_per_mwh ?? null,
       address: body.address || null,
     }
     solarApiCache.set(structureId, result)
     return result
   } catch {
     solarApiCache.set(structureId, null)
+    return null
+  }
+}
+
+async function fetchYieldData(structureId) {
+  if (yieldCache.has(structureId)) return yieldCache.get(structureId)
+  try {
+    const res = await fetch(`${API_BASE}/buildings/structure/${structureId}/yield`)
+    if (!res.ok) { yieldCache.set(structureId, null); return null }
+    const body = await res.json()
+    yieldCache.set(structureId, body)
+    return body
+  } catch {
+    yieldCache.set(structureId, null)
     return null
   }
 }
@@ -1332,6 +1368,7 @@ async function selectSearchResult(result) {
 
   selectedBuilding.value = props
   solarApiData.value = null
+  yieldData.value = null
   selectedAddress.value = result.address || null
   solarApiLoading.value = true
 
@@ -1350,7 +1387,10 @@ async function selectSearchResult(result) {
     }
   }
 
-  solarApiData.value = await fetchSolarApiData(sid)
+  ;[solarApiData.value, yieldData.value] = await Promise.all([
+    fetchSolarApiData(sid),
+    fetchYieldData(sid),
+  ])
   if (!selectedAddress.value) {
     selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
   }
@@ -1505,15 +1545,15 @@ function exportBuildingCsv() {
     ['Formula - Performance Ratio', '75%'],
     ['Formula - Peak Sun Hours/Day', formulaPeakSun],
     ['Formula - Days per Year', '365'],
-    ['Formula - Est. Annual Output', formulaKwhAnnual.value.toLocaleString() + ' kWh'],
+    ['Formula - Annual Electricity Generation', formulaKwhAnnual.value.toLocaleString() + ' kWh'],
   ]
 
   if (monthlyOutput.value.length > 0) {
     monthlyOutput.value.forEach((monthData) => {
-      rows.push([`Monthly Output - ${monthData.month}`, monthData.kwh.toLocaleString() + ' kWh'])
+      rows.push([`Monthly Generation - ${monthData.month}`, monthData.kwh.toLocaleString() + ' kWh'])
     })
   } else {
-    rows.push(['Monthly Output', 'No solar data available for this building'])
+    rows.push(['Monthly Generation', 'No solar data available for this building'])
   }
 
   // ── Financial Analysis ────────────────────────────────────
@@ -1625,6 +1665,7 @@ async function openBuildingFromUrl() {
 
   selectedBuilding.value = props
   solarApiData.value = null
+  yieldData.value = null
   selectedAddress.value = null
   solarApiLoading.value = true
 
@@ -1643,7 +1684,10 @@ async function openBuildingFromUrl() {
       })
     }
 
-    solarApiData.value = await fetchSolarApiData(id)
+    ;[solarApiData.value, yieldData.value] = await Promise.all([
+      fetchSolarApiData(id),
+      fetchYieldData(id),
+    ])
     selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(id)
   }
 
@@ -2008,6 +2052,7 @@ function initMap() {
           const props = event.features[0].properties
           selectedBuilding.value = props
           solarApiData.value = null
+          yieldData.value = null
           selectedAddress.value = null
           solarApiLoading.value = true
           sidebarOpen.value = true
@@ -2027,7 +2072,10 @@ function initMap() {
           }
 
           const sid = Number(props.structure_id)
-          solarApiData.value = await fetchSolarApiData(sid)
+          ;[solarApiData.value, yieldData.value] = await Promise.all([
+            fetchSolarApiData(sid),
+            fetchYieldData(sid),
+          ])
           selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
           solarApiLoading.value = false
 

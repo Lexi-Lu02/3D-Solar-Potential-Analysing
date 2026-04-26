@@ -46,6 +46,55 @@ class BuildingNotFoundForYield(Exception):
         self.id = id
 
 
+def fetch_yield_by_structure_id(conn: Connection, structure_id: int) -> YieldResponse | None:
+    """
+    查询 usable_roof_area（通过 structure_id），计算月度和年度 kWh。
+
+    - structure_id 不存在 → 返回 None（路由层转 404）
+    - 建筑存在但无光伏数据 → has_data=False，kwh_annual=0，kwh_monthly=[]
+    """
+    sql = load("yield_by_structure_id")
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"structure_id": structure_id})
+        row = cur.fetchone()
+
+    if row is None:
+        return None
+
+    usable_area = _safe_float(row.get("usable_roof_area"))
+    has_data = row.get("usable_roof_area") is not None and usable_area > 0
+
+    if not has_data:
+        return YieldResponse(
+            structure_id=int(row["structure_id"]),
+            has_data=False,
+            kwh_annual=0,
+            kwh_monthly=[],
+            assumptions=YieldAssumptions(
+                panel_efficiency=PANEL_EFFICIENCY,
+                performance_ratio=PERFORMANCE_RATIO,
+                peak_sun_hours_annual=PEAK_SUN_HOURS,
+                usable_roof_area_m2=0.0,
+            ),
+        )
+
+    monthly = _compute_monthly(usable_area)
+    kwh_annual = sum(item.kwh for item in monthly)
+
+    return YieldResponse(
+        structure_id=int(row["structure_id"]),
+        has_data=True,
+        kwh_annual=round(kwh_annual),
+        kwh_monthly=monthly,
+        assumptions=YieldAssumptions(
+            panel_efficiency=PANEL_EFFICIENCY,
+            performance_ratio=PERFORMANCE_RATIO,
+            peak_sun_hours_annual=PEAK_SUN_HOURS,
+            usable_roof_area_m2=round(usable_area, 1),
+        ),
+    )
+
+
 def fetch_yield(conn: Connection, id: int) -> YieldResponse:
     """
     查询 usable_roof_area，用公式计算月度和年度 kWh，返回 YieldResponse。

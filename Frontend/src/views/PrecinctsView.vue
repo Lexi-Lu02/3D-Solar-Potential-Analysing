@@ -393,7 +393,7 @@ async function aggregateBuildings(buildingFeatures, precinctFeatures) {
         if (!pointInFeature(px, py, precinctFeatures[pi])) continue
         accum[pi].total_kwh      += kwh
         accum[pi].total_area     += area
-        accum[pi].max_kwh        += area * 0.18 * 4.1 * 365  // theoretical max: 180 W/m² × PSH
+        accum[pi].max_kwh        += area * 0.20 * 0.75 * 4.1 * 365  // theoretical max using yield formula: η × PR × PSH × days
         accum[pi].building_count += 1
         break  // a building belongs to one precinct only
       }
