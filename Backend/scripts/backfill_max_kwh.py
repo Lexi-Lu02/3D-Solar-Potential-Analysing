@@ -121,3 +121,38 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # --- Post-backfill: add max_kwh_source column and mark rows ---
+    conn2 = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+        user=DB_USER, password=DB_PASSWORD
+    )
+    cur2 = conn2.cursor()
+
+    print("[post-1] Adding max_kwh_source column...")
+    cur2.execute("ALTER TABLE solar_api_cache ADD COLUMN IF NOT EXISTS max_kwh_source VARCHAR(20)")
+
+    print("[post-2] Marking existing rows as 'api'...")
+    cur2.execute("UPDATE solar_api_cache SET max_kwh_source = 'api' WHERE max_panels_kwh_annual IS NOT NULL")
+
+    print("[post-3] Estimating missing max_panels_kwh_annual...")
+    cur2.execute("""
+        UPDATE solar_api_cache
+        SET
+            max_panels_kwh_annual = max_panels * panel_capacity_watts * max_sunshine_hours_per_year / 1000,
+            max_kwh_source = 'estimated'
+        WHERE
+            max_panels_kwh_annual IS NULL
+            AND max_panels IS NOT NULL
+            AND panel_capacity_watts IS NOT NULL
+            AND max_sunshine_hours_per_year IS NOT NULL
+    """)
+    print(f"  Estimated {cur2.rowcount} rows")
+
+    cur2.execute("SELECT COUNT(*) FROM solar_api_cache WHERE max_panels_kwh_annual IS NULL")
+    print(f"  Remaining nulls: {cur2.fetchone()[0]}")
+
+    conn2.commit()
+    cur2.close()
+    conn2.close()
+    print("Done")
