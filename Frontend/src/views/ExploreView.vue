@@ -175,17 +175,36 @@
 
             <!-- Solar Potential section -->
             <div class="filter-section-divider" v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'"></div>
-            <button
-              class="control-card-toggle"
-              @click="solarFilterOpen = !solarFilterOpen"
-              :aria-expanded="solarFilterOpen"
-              aria-controls="solar-filter-group"
-            >
-              <span class="control-title">Solar Potential</span>
-              <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
+            <div class="control-card-toggle-row">
+              <button
+                class="map-effect-toggle"
+                :class="{ active: solarPotentialColorOn }"
+                type="button"
+                :aria-pressed="solarPotentialColorOn"
+                :aria-label="solarPotentialColorOn ? 'Turn off solar potential map colors' : 'Turn on solar potential map colors'"
+                :title="solarPotentialColorOn ? 'Hide solar potential colors' : 'Show solar potential colors'"
+                @click="toggleSolarPotentialColor"
+              >
+                <svg v-if="solarPotentialColorOn" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M1.5 7s2-3.5 5.5-3.5S12.5 7 12.5 7s-2 3.5-5.5 3.5S1.5 7 1.5 7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                  <circle cx="7" cy="7" r="1.7" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+                <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M1.5 7s2-3.5 5.5-3.5c1 0 1.9.3 2.6.8M12.5 7s-.7 1.2-1.9 2.1M4.4 9.8c.7.4 1.6.7 2.6.7 3.5 0 5.5-3.5 5.5-3.5M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button
+                class="control-card-toggle"
+                @click="solarFilterOpen = !solarFilterOpen"
+                :aria-expanded="solarFilterOpen"
+                aria-controls="solar-filter-group"
+              >
+                <span class="control-title">Solar Potential</span>
+                <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
             <div id="solar-filter-group" v-show="solarFilterOpen" class="filter-group" role="group" aria-label="Solar potential filter options">
               <button
                 v-for="t in solarTiers"
@@ -203,17 +222,36 @@
 
             <!-- Roof Type section -->
             <div class="filter-section-divider"></div>
-            <button
-              class="control-card-toggle"
-              @click="roofFilterOpen = !roofFilterOpen"
-              :aria-expanded="roofFilterOpen"
-              aria-controls="roof-filter-group"
-            >
-              <span class="control-title">Roof Type</span>
-              <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
+            <div class="control-card-toggle-row">
+              <button
+                class="map-effect-toggle"
+                :class="{ active: roofTypeEffectOn }"
+                type="button"
+                :aria-pressed="roofTypeEffectOn"
+                :aria-label="roofTypeEffectOn ? 'Turn off roof type map styling' : 'Turn on roof type map styling'"
+                :title="roofTypeEffectOn ? 'Hide roof type styling' : 'Show roof type styling'"
+                @click="toggleRoofTypeEffect"
+              >
+                <svg v-if="roofTypeEffectOn" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M1.5 7s2-3.5 5.5-3.5S12.5 7 12.5 7s-2 3.5-5.5 3.5S1.5 7 1.5 7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                  <circle cx="7" cy="7" r="1.7" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+                <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M1.5 7s2-3.5 5.5-3.5c1 0 1.9.3 2.6.8M12.5 7s-.7 1.2-1.9 2.1M4.4 9.8c.7.4 1.6.7 2.6.7 3.5 0 5.5-3.5 5.5-3.5M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button
+                class="control-card-toggle"
+                @click="roofFilterOpen = !roofFilterOpen"
+                :aria-expanded="roofFilterOpen"
+                aria-controls="roof-filter-group"
+              >
+                <span class="control-title">Roof Type</span>
+                <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
             <div id="roof-filter-group" v-show="roofFilterOpen" class="filter-group" role="group" aria-label="Roof type filter options">
               <button
                 v-for="f in filters"
@@ -224,9 +262,9 @@
                 :aria-label="`${f.label} filter`"
                 @click="filterRoof(f.type)"
               >
-                <svg width="28" height="12" class="filter-dash-icon" aria-hidden="true">
-                  <line x1="2" y1="6" x2="26" y2="6" stroke="currentColor" stroke-width="2.5" :stroke-dasharray="f.svgDash || 'none'" stroke-linecap="round"/>
-                </svg>
+                <span class="roof-pattern-swatch" aria-hidden="true">
+                  <span class="roof-pattern-swatch__texture" :class="`roof-pattern-swatch__texture--${f.pattern}`"></span>
+                </span>
                 {{ f.label }}
               </button>
             </div>
@@ -949,15 +987,15 @@ const route = useRoute()
 const GEOJSON_PATH   = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 
-async function fetchWithFallback(primaryUrl, fallbackPath) {
+async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
-  try {
-    const res = await fetch(primaryUrl)
-    if (res.ok && isJson(res)) return res
-  } catch { /* primary unreachable — try fallback */ }
-  if (primaryUrl === fallbackPath) throw new Error(`Server unreachable: ${primaryUrl}`)
-  const res = await fetch(fallbackPath)
-  if (!res.ok || !isJson(res)) throw new Error(`Server unreachable and no local fallback found`)
+  const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
+
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Server returned ${res.status} for ${url}`)
+  if (!isJson(res) && !acceptsGeoJsonFile(url, res)) {
+    throw new Error(`Unexpected content type for ${url}: ${res.headers.get('content-type') || 'unknown'}`)
+  }
   return res
 }
 
@@ -978,6 +1016,8 @@ const SELECTED_BUILDING_COLOR = MAP_COLORS.selected
 const SELECTED_BUILDING_OPACITY = 0.98
 const COMPARE_BUILDING_COLOR = MAP_COLORS.compare
 const COMPARE_BUILDING_OPACITY = 0.90
+const SOLAR_EXTRUSION_COLOR = ['step', ['get', 'solar_score'], MAP_COLORS.solarVeryPoor, 20, MAP_COLORS.solarPoor, 40, MAP_COLORS.solarModerate, 60, MAP_COLORS.solarGood, 80, MAP_COLORS.solarExcellent]
+const SOLAR_DISABLED_EXTRUSION_COLOR = '#DED8CA'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const solarApiCache = new Map()
@@ -999,6 +1039,8 @@ const loadingText = ref('Loading Melbourne building data...')
 const selectedBuilding = ref(null)
 const activeFilter = ref('all')
 const activeSolarFilter = ref('all')
+const solarPotentialColorOn = ref(true)
+const roofTypeEffectOn = ref(true)
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const solarApiData = ref(null)
@@ -1137,11 +1179,11 @@ let buildingFeatureIndex = new Map()
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
 const filters = [
-  { type: 'Flat', label: 'Flat Roofs', svgDash: 'none', mapDash: null },
-  { type: 'Hip', label: 'Hip Roofs', svgDash: '8,4', mapDash: [6, 3] },
-  { type: 'Gable', label: 'Gable Roofs', svgDash: '4,4', mapDash: [3, 3] },
-  { type: 'Pyramid', label: 'Pyramid Roofs', svgDash: '1.5,4', mapDash: [1, 3] },
-  { type: 'Shed', label: 'Shed Roofs', svgDash: '10,4,2,4', mapDash: [7, 3, 1, 3] },
+  { type: 'Flat', label: 'Flat Roofs', pattern: 'flat', patternId: 'roof-pattern-flat' },
+  { type: 'Hip', label: 'Hip Roofs', pattern: 'diagonal', patternId: 'roof-pattern-hip' },
+  { type: 'Gable', label: 'Gable Roofs', pattern: 'cross', patternId: 'roof-pattern-gable' },
+  { type: 'Pyramid', label: 'Pyramid Roofs', pattern: 'triangles', patternId: 'roof-pattern-pyramid' },
+  { type: 'Shed', label: 'Shed Roofs', pattern: 'horizontal', patternId: 'roof-pattern-shed' },
 ]
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
@@ -1275,6 +1317,11 @@ async function fetchShadowImpact(structureId, season, hour) {
   })
   const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/shadow-impact?${params}`)
 
+  if (res.status === 404) {
+    shadowImpactCache.set(cacheKey, null)
+    return null
+  }
+
   if (!res.ok) {
     throw new Error(`Failed to fetch shadow impact: ${res.status}`)
   }
@@ -1378,14 +1425,103 @@ function buildCombinedFilter(roofType, solarTierId) {
   return ['all', ...conditions]
 }
 
+function createRoofPatternImage(pattern) {
+  const size = 32
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+
+  ctx.clearRect(0, 0, size, size)
+  ctx.strokeStyle = 'rgba(17, 24, 39, 0.62)'
+  ctx.fillStyle = 'rgba(17, 24, 39, 0.62)'
+  ctx.lineWidth = 3
+  ctx.lineCap = 'round'
+
+  if (pattern === 'flat') {
+    ctx.fillRect(6, 6, 5, 5)
+    ctx.fillRect(22, 22, 5, 5)
+  } else if (pattern === 'diagonal') {
+    for (let x = -size; x <= size * 2; x += 12) {
+      ctx.beginPath()
+      ctx.moveTo(x, size)
+      ctx.lineTo(x + size, 0)
+      ctx.stroke()
+    }
+  } else if (pattern === 'cross') {
+    for (let x = -size; x <= size * 2; x += 14) {
+      ctx.beginPath()
+      ctx.moveTo(x, size)
+      ctx.lineTo(x + size, 0)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x + size, size)
+      ctx.stroke()
+    }
+  } else if (pattern === 'triangles') {
+    for (let y = 7; y < size; y += 12) {
+      for (let x = 7; x < size; x += 12) {
+        ctx.beginPath()
+        ctx.moveTo(x, y - 3)
+        ctx.lineTo(x + 3, y + 2.5)
+        ctx.lineTo(x - 3, y + 2.5)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+  } else if (pattern === 'horizontal') {
+    for (let y = 6; y < size; y += 10) {
+      ctx.beginPath()
+      ctx.moveTo(2, y)
+      ctx.lineTo(size - 2, y)
+      ctx.stroke()
+    }
+  }
+
+  return ctx.getImageData(0, 0, size, size)
+}
+
+function addRoofTypePatternImages() {
+  filters.forEach((roofFilter) => {
+    if (map.hasImage?.(roofFilter.patternId)) return
+    map.addImage(roofFilter.patternId, createRoofPatternImage(roofFilter.pattern), { pixelRatio: 2 })
+  })
+}
+
+function roofTypeLayerVisible(roofType) {
+  return roofTypeEffectOn.value && (activeFilter.value === 'all' || activeFilter.value === roofType)
+}
+
+function applyRoofTypeEffect() {
+  if (!map?.getLayer('building-extrusion')) return
+
+  map.setPaintProperty(
+    'building-extrusion',
+    'fill-extrusion-color',
+    solarPotentialColorOn.value ? SOLAR_EXTRUSION_COLOR : SOLAR_DISABLED_EXTRUSION_COLOR
+  )
+
+  ROOF_TYPES.forEach((roofType) => {
+    const visible = roofTypeLayerVisible(roofType)
+    const filter = buildCombinedFilter(roofType, activeSolarFilter.value)
+
+    if (map.getLayer(`roof-pattern-${roofType}`)) {
+      map.setLayoutProperty(`roof-pattern-${roofType}`, 'visibility', visible ? 'visible' : 'none')
+      if (visible) map.setFilter(`roof-pattern-${roofType}`, filter)
+    }
+
+    if (map.getLayer(`roof-outline-${roofType}`)) {
+      map.setLayoutProperty(`roof-outline-${roofType}`, 'visibility', visible ? 'visible' : 'none')
+      if (visible) map.setFilter(`roof-outline-${roofType}`, filter)
+    }
+  })
+}
+
 function applyFilters() {
   if (!map) return
   map.setFilter('building-extrusion', buildCombinedFilter(activeFilter.value, activeSolarFilter.value))
-  ROOF_TYPES.forEach((roofType) => {
-    const visible = activeFilter.value === 'all' || activeFilter.value === roofType
-    map.setLayoutProperty(`roof-outline-${roofType}`, 'visibility', visible ? 'visible' : 'none')
-    if (visible) map.setFilter(`roof-outline-${roofType}`, buildCombinedFilter(roofType, activeSolarFilter.value))
-  })
+  applyRoofTypeEffect()
 }
 
 function shortAddress(addr) {
@@ -1402,6 +1538,18 @@ function filterRoof(type) {
 function filterSolar(tierId) {
   activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
   applyFilters()
+}
+
+function toggleSolarPotentialColor() {
+  solarPotentialColorOn.value = !solarPotentialColorOn.value
+  applyRoofTypeEffect()
+  showToast(`Solar potential colors ${solarPotentialColorOn.value ? 'on' : 'off'}`)
+}
+
+function toggleRoofTypeEffect() {
+  roofTypeEffectOn.value = !roofTypeEffectOn.value
+  applyRoofTypeEffect()
+  showToast(`Roof type styling ${roofTypeEffectOn.value ? 'on' : 'off'}`)
 }
 
 function clearAllFilters() {
@@ -2151,11 +2299,17 @@ async function updateSunSimulation() {
         sunPathSeason.value,
         Number(sunPathTime.value),
       )
-      shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
-      shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
-      unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
-      shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
-      shadowImpactSource.value = 'backend'
+      if (impact) {
+        shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
+        shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
+        unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
+        shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
+        shadowImpactSource.value = 'backend'
+      } else {
+        unobstructedUsableAreaM2.value = null
+        shadowOverlayFeatures.value = []
+        shadowImpactSource.value = 'frontend'
+      }
     } catch (err) {
       console.error('Shadow impact API failed:', err)
       unobstructedUsableAreaM2.value = null
@@ -2246,7 +2400,7 @@ function initMap() {
   }, 0)
 
   map.on('load', () => {
-    fetchWithFallback(GEOJSON_PATH, '/combined-buildings.geojson')
+    fetchGeoJson(GEOJSON_PATH)
       .then((response) => response.json())
       .then(async (data) => {
         isLoading.value = false
@@ -2258,17 +2412,34 @@ function initMap() {
         })
 
         map.addSource('melbourne-buildings', { type: 'geojson', data })
+        addRoofTypePatternImages()
 
         map.addLayer({
           id: 'building-extrusion',
           type: 'fill-extrusion',
           source: 'melbourne-buildings',
           paint: {
-            'fill-extrusion-color': ['step', ['get', 'solar_score'], MAP_COLORS.solarVeryPoor, 20, MAP_COLORS.solarPoor, 40, MAP_COLORS.solarModerate, 60, MAP_COLORS.solarGood, 80, MAP_COLORS.solarExcellent],
+            'fill-extrusion-color': SOLAR_EXTRUSION_COLOR,
             'fill-extrusion-height': ['coalesce', ['get', 'building_height'], 4],
             'fill-extrusion-base': 0,
             'fill-extrusion-opacity': 0.85,
           },
+        })
+
+        filters.forEach((roofFilter) => {
+          map.addLayer({
+            id: `roof-pattern-${roofFilter.type}`,
+            type: 'fill',
+            source: 'melbourne-buildings',
+            filter: ['==', ['get', 'roof_type'], roofFilter.type],
+            layout: {
+              visibility: roofTypeEffectOn.value ? 'visible' : 'none',
+            },
+            paint: {
+              'fill-pattern': roofFilter.patternId,
+              'fill-opacity': 1,
+            },
+          })
         })
 
         map.addLayer({
@@ -2361,13 +2532,7 @@ function initMap() {
             ],
             'fill-extrusion-base': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.25],
             'fill-extrusion-height': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.55],
-            'fill-extrusion-opacity': [
-              'match',
-              ['get', 'kind'],
-              'rooftop-shaded', 0.76,
-              'rooftop-unobstructed', 0.48,
-              0.5,
-            ],
+            'fill-extrusion-opacity': 0.62,
           },
         })
 
@@ -2387,24 +2552,26 @@ function initMap() {
           },
         })
 
-        filters.slice(1).forEach((roofFilter) => {
-          const paint = {
-            'line-color': MAP_COLORS.lineStroke,
-            'line-width': 1.2,
-            'line-opacity': 0.55,
-          }
-          if (roofFilter.mapDash) paint['line-dasharray'] = roofFilter.mapDash
+        filters.forEach((roofFilter) => {
           map.addLayer({
             id: `roof-outline-${roofFilter.type}`,
             type: 'line',
             source: 'melbourne-buildings',
             filter: ['==', ['get', 'roof_type'], roofFilter.type],
-            paint,
+            layout: {
+              visibility: roofTypeEffectOn.value ? 'visible' : 'none',
+            },
+            paint: {
+              'line-color': 'rgba(17, 24, 39, 0.45)',
+              'line-width': 1.2,
+              'line-opacity': 0.7,
+            },
           })
         })
+        applyFilters()
 
         try {
-          const pRes = await fetchWithFallback(PRECINCTS_PATH, '/melbourne_cbd_precincts.geojson').catch(() => null)
+          const pRes = await fetchGeoJson(PRECINCTS_PATH).catch(() => null)
           if (pRes) {
             const precinctData = await pRes.json()
             const pFeatures = precinctData.features
