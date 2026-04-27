@@ -305,6 +305,41 @@ body {
 .filter-btn.active { background: var(--accent-light); border-color: #F2C0A0; color: var(--accent); font-weight: 500; }
 .filter-btn:hover:not(.active) { background: var(--surface2); }
 .filter-dash-icon { flex-shrink: 0; }
+.roof-pattern-swatch {
+  --roof-texture: #4B5563;
+  width: 28px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid #9CA3AF;
+  background: transparent;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.roof-pattern-swatch__texture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+}
+.roof-pattern-swatch__texture--flat {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Crect x='3' y='3' width='3' height='3' rx='0.8' fill='%234B5563' fill-opacity='0.85'/%3E%3Crect x='11' y='11' width='3' height='3' rx='0.8' fill='%234B5563' fill-opacity='0.85'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+}
+.roof-pattern-swatch__texture--diagonal {
+  background-image: repeating-linear-gradient(135deg, var(--roof-texture) 0 2px, transparent 2px 8px);
+}
+.roof-pattern-swatch__texture--cross {
+  background-image:
+    repeating-linear-gradient(45deg, var(--roof-texture) 0 1.5px, transparent 1.5px 8px),
+    repeating-linear-gradient(135deg, var(--roof-texture) 0 1.5px, transparent 1.5px 8px);
+}
+.roof-pattern-swatch__texture--triangles {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 2.2 9.4 8.7H2.6Z' fill='%234B5563' fill-opacity='0.85'/%3E%3C/svg%3E");
+  background-size: 12px 12px;
+}
+.roof-pattern-swatch__texture--horizontal {
+  background-image: repeating-linear-gradient(0deg, var(--roof-texture) 0 2px, transparent 2px 7px);
+}
 .tier-range { color: var(--text-muted); font-weight: 400; }
 .sidebar {
   width: 430px; background: var(--surface);
@@ -474,8 +509,10 @@ body {
 .score-explanation strong { color: var(--text-secondary); font-weight: 600; }
 .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; margin-bottom: 16px; }
 .metric-card { background: var(--surface2); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.metric-card--wide { grid-column: 1 / -1; }
 .metric-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); line-height: 1.3; }
 .metric-val { font-size: 17px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.metric-sub { font-size: 10px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 /* Formula explanation card */
 .formula-card { margin: 0 0 16px; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
 .formula-card-toggle {
@@ -586,7 +623,35 @@ body {
   background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 0;
   font-family: 'DM Sans', sans-serif; gap: 6px;
 }
+.control-card-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .control-card-toggle .control-title { margin-bottom: 0; flex: 1; text-align: left; }
+.map-effect-toggle {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.map-effect-toggle:hover {
+  background: var(--surface2);
+  color: var(--text-primary);
+}
+.map-effect-toggle.active {
+  background: var(--accent-light);
+  border-color: #F2C0A0;
+  color: var(--accent);
+}
 .chevron-icon { color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
 .chevron-icon.chevron-up { transform: rotate(180deg); }
 
@@ -864,6 +929,7 @@ body {
 
 /* Focus-visible styles — keyboard-only visible focus indicators */
 .control-card-toggle:focus-visible,
+.map-effect-toggle:focus-visible,
 .filter-btn:focus-visible,
 .sidebar-strip-btn:focus-visible,
 .sidebar-export-btn:focus-visible,

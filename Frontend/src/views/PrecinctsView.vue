@@ -80,30 +80,50 @@
                 </div>
               </div>
 
+              <div class="section-title">Precinct Info</div>
+              <div class="info-row">
+                <span class="info-key">Precinct ID</span>
+                <span class="info-val">{{ selectedPrecinct.precinct_id }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-key">Name</span>
+                <span class="info-val">{{ selectedPrecinct.name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-key">Postcode</span>
+                <span class="info-val">{{ selectedPrecinct.postcode || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-key">Buildings</span>
+                <span class="info-val">{{ selectedPrecinct.building_count.toLocaleString() }}</span>
+              </div>
+
+              <div class="section-title">Solar Capacity</div>
               <div class="metrics-grid">
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKwh(selectedPrecinct.total_kwh) }}</div>
-                  <div class="metric-label">Annual Output</div>
+                  <div class="metric-label">Total Annual Output</div>
+                  <div class="metric-sub">total_kwh_annual</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatArea(selectedPrecinct.total_area) }}</div>
-                  <div class="metric-label">Usable Roof Area</div>
+                  <div class="metric-label">Total Usable Roof Area</div>
+                  <div class="metric-sub">total_usable_area_m2</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKw(selectedPrecinct.installed_capacity_kw) }}</div>
                   <div class="metric-label">Installed Capacity</div>
+                  <div class="metric-sub">installed_capacity_kw</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKw(selectedPrecinct.potential_capacity_kw) }}</div>
                   <div class="metric-label">Potential Capacity</div>
+                  <div class="metric-sub">potential_capacity_kw</div>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card metric-card--wide">
                   <div class="metric-val">{{ selectedPrecinct.adoption_gap_kw != null ? formatKw(selectedPrecinct.adoption_gap_kw) : formatKwh(selectedPrecinct.adoption_gap) }}</div>
                   <div class="metric-label">Adoption Gap</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val">{{ selectedPrecinct.building_count.toLocaleString() }}</div>
-                  <div class="metric-label">Buildings</div>
+                  <div class="metric-sub">adoption_gap_kw</div>
                 </div>
               </div>
 
@@ -190,15 +210,15 @@ const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildin
 const PRECINCTS_PATH  = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 const API_BASE        = import.meta.env.VITE_API_BASE_URL  || '/api/v1'
 
-async function fetchWithFallback(primaryUrl, fallbackPath) {
+async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
-  try {
-    const res = await fetch(primaryUrl)
-    if (res.ok && isJson(res)) return res
-  } catch { /* primary unreachable — try fallback */ }
-  if (primaryUrl === fallbackPath) throw new Error(`Server unreachable: ${primaryUrl}`)
-  const res = await fetch(fallbackPath)
-  if (!res.ok || !isJson(res)) throw new Error(`Server unreachable and no local fallback found`)
+  const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
+
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Server returned ${res.status} for ${url}`)
+  if (!isJson(res) && !acceptsGeoJsonFile(url, res)) {
+    throw new Error(`Unexpected content type for ${url}: ${res.headers.get('content-type') || 'unknown'}`)
+  }
   return res
 }
 
@@ -547,7 +567,7 @@ function initMap(precinctGeoJSON) {
     } else {
       loadingText.value = 'Loading buildings…'
       try {
-        const res = await fetchWithFallback(BUILDINGS_PATH, '/combined-buildings.geojson')
+        const res = await fetchGeoJson(BUILDINGS_PATH)
         buildingData = await res.json()
         _cachedBuildingData = buildingData
       } catch (err) {
@@ -601,9 +621,14 @@ function initMap(precinctGeoJSON) {
         if (!ap) return p
         return {
           ...p,
+          name: ap.name || p.name,
+          postcode: ap.postcode ?? p.postcode,
+          total_kwh: Math.round(ap.total_kwh_annual ?? p.total_kwh),
+          total_area: Math.round(ap.total_usable_area_m2 ?? p.total_area),
           installed_capacity_kw: ap.installed_capacity_kw,
           potential_capacity_kw: ap.potential_capacity_kw,
           adoption_gap_kw:       ap.adoption_gap_kw,
+          building_count:        ap.building_count ?? p.building_count,
         }
       })
       _cachedAggregation = enriched
@@ -696,7 +721,7 @@ onMounted(async () => {
   } else {
     loadingText.value = 'Loading precinct boundaries…'
     try {
-      const res = await fetchWithFallback(PRECINCTS_PATH, '/melbourne_cbd_precincts.geojson')
+      const res = await fetchGeoJson(PRECINCTS_PATH)
       precinctGeoJSON = await res.json()
       _cachedPrecinctGeoJSON = precinctGeoJSON
     } catch (err) {
@@ -761,6 +786,7 @@ onUnmounted(() => {
 
 /* ── Sidebar content: rows span full width ────────────────── */
 .sidebar-content { padding: 0; }
+.precinct-detail-panel { margin-top: 22px; }
 
 /* ── Column header row ────────────────────────────────────── */
 .precinct-table-head {
