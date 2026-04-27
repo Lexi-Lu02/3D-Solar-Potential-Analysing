@@ -209,3 +209,129 @@ class YieldResponse(BaseModel):
     assumptions: YieldAssumptions = Field(
         ..., description="本次计算所用的参数，供前端透明展示"
     )
+
+
+# --- /sun/* (Epic 4 — Sun/Shadow) -------------------------------------------
+
+
+class SunPositionResponse(BaseModel):
+    """Sun altitude and azimuth at a given time, Melbourne CBD."""
+
+    altitude_deg: float = Field(
+        ..., ge=0, le=90,
+        description="Solar altitude in degrees. 0 when below horizon."
+    )
+    azimuth_deg: float = Field(
+        ..., ge=0, lt=360,
+        description="Solar azimuth in degrees. N=0, clockwise."
+    )
+    shadow_factor: float | None = Field(
+        None,
+        description="Relative shadow length (90 / altitude). None when below horizon."
+    )
+
+
+class SunPathSample(SunPositionResponse):
+    hour: float = Field(..., ge=0, le=24, description="Local time in hours (0.5h steps)")
+
+
+class SunPathResponse(BaseModel):
+    date: str = Field(..., description="Local date (YYYY-MM-DD)")
+    samples: list[SunPathSample] = Field(
+        ..., description="25 samples from 6:00-18:00 at 0.5h intervals"
+    )
+
+
+class ShadowImpactResponse(BaseModel):
+    """Estimated rooftop shadow coverage for one selected building."""
+
+    structure_id: int = Field(..., description="City of Melbourne structure_id")
+    date: str = Field(..., description="Local simulation date (YYYY-MM-DD)")
+    hour: float = Field(..., ge=0, le=24, description="Local simulation hour")
+    shadow_coverage_pct: float = Field(
+        ..., ge=0, le=100, description="Estimated selected rooftop coverage shaded by nearby buildings"
+    )
+    shadowed_samples: int = Field(..., ge=0, description="Sample points inside the rooftop that were shaded")
+    total_samples: int = Field(..., ge=0, description="Sample points used inside the selected rooftop footprint")
+    shadow_caster_count: int = Field(..., ge=0, description="Nearby buildings casting shadows onto the selected rooftop")
+    usable_roof_area_m2: float | None = Field(None, ge=0, description="Usable roof area used for unobstructed area estimate")
+    unobstructed_usable_area_m2: float | None = Field(None, ge=0, description="Usable roof area remaining after estimated shadow coverage")
+    overlay_geojson: dict[str, Any] = Field(..., description="GeoJSON rooftop cells split into shaded and unobstructed areas")
+    impact: Literal["Low", "Moderate", "High"] = Field(..., description="Impact level derived from coverage percentage")
+    approximate: bool = Field(True, description="True because footprint geometry is used as a rooftop proxy")
+
+# --- /precincts (Epic 5) -----------------------------------------------------
+
+
+class PrecinctSummary(BaseModel):
+    precinct_id: int
+    name: str
+    postcode: str | None = None
+    total_kwh_annual: float = Field(..., ge=0)
+    total_usable_area_m2: float = Field(..., ge=0)
+    installed_capacity_kw: float = Field(..., ge=0)
+    potential_capacity_kw: float = Field(..., ge=0)
+    adoption_gap_kw: float = Field(..., ge=0)
+    building_count: int = Field(..., ge=0)
+    rank: int | None = Field(None, description="按当前排序键的排名（1=最高），仅在列表中返回")
+
+
+class PrecinctDetail(PrecinctSummary):
+    geo_boundary: dict[str, Any] | None = Field(
+        None, description="GeoJSON Polygon/MultiPolygon"
+    )
+
+
+class PrecinctListResponse(BaseModel):
+    sort: Literal["kwh", "area", "buildings", "gap"]
+    precincts: list[PrecinctSummary]
+
+class PshMonthlyResponse(BaseModel):
+    """Monthly Peak Sun Hours constants (NASA POWER x BOM calibrated)."""
+
+    location: str = Field(..., description="Location name, e.g. 'Melbourne'")
+    psh_monthly: list[float] = Field(
+        ..., min_length=12, max_length=12,
+        description="Index 0=Jan to 11=Dec, unit: kWh/m²/day"
+    )
+    psh_annual_avg: float = Field(
+        ..., ge=0, description="Annual average PSH (BOM station 086338, ~4.1)"
+    )
+
+
+# --- /buildings/{id}/impact (Epic 6) ----------------------------------------
+
+
+class FinancialImpact(BaseModel):
+    installation_cost_aud: int | None = Field(None, ge=0)
+    annual_savings_aud: int | None = Field(None, ge=0)
+    payback_years: float | None = Field(None, ge=0)
+    lifetime_years: int = Field(..., ge=1)
+    lifetime_net_savings_aud: int | None = None
+
+
+class EnvironmentalImpact(BaseModel):
+    annual_co2_reduction_kg: int | None = Field(None, ge=0)
+    co2_kg_per_kwh_used: float = Field(..., ge=0)
+    co2_factor_source: Literal["google_api", "dcceew_2024_fallback"]
+    equivalent_trees: int | None = Field(None, ge=0)
+    equivalent_petrol_litres: int | None = Field(None, ge=0)
+    equivalent_cars: float | None = Field(None, ge=0)
+
+
+class ImpactAssumptions(BaseModel):
+    electricity_tariff_aud_per_kwh: float
+    cost_per_kw_installed_aud: int
+    self_consumption_pct: int = Field(..., ge=0, le=100)
+    feed_in_tariff_included: bool
+
+
+class ImpactResponse(BaseModel):
+    structure_id: int
+    season: Literal["annual", "summer", "autumn", "winter", "spring"]
+    kwh_annual_seasonal: float | None = None
+    kwh_annual_base: float | None = None
+    system_size_kw: float | None = None
+    financial: FinancialImpact
+    environmental: EnvironmentalImpact
+    assumptions: ImpactAssumptions

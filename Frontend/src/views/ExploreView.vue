@@ -46,7 +46,7 @@
           Building Info
         </button>
 
-        <!-- MOD: Sun Path button -->
+        <!-- Updated: Sun Path button -->
         <button
           class="subnav-btn"
           :class="{ 'subnav-btn--active': sunPathOpen }"
@@ -233,8 +233,14 @@
           </div>
         </div>
 
-        <!-- MOD: Sun Path panel -->
-        <div v-show="sunPathOpen" class="sunpath-controls" role="group" aria-label="Sun path and shadow simulation controls">
+        <!-- Updated: Sun Path panel -->
+        <div
+          v-show="sunPathOpen"
+          class="sunpath-controls"
+          :class="{ 'sunpath-controls--beside-filters': filtersOpen }"
+          role="group"
+          aria-label="Sun path and shadow simulation controls"
+        >
           <div class="control-card sunpath-card">
             <div class="filter-panel-header">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -596,9 +602,26 @@
                   </div>
                 </div>
               </div>
-              <!-- MOD: Sun Path result -->
+              <!-- Updated: Sun Path result -->
               <div v-if="selectedBuilding" class="sunpath-summary-card">
                 <div class="section-title">Sun Path & Shadow</div>
+                <div class="detail-season-control">
+                  <label class="detail-season-label" for="detail-sunpath-season">Season Simulation</label>
+                  <select
+                    id="detail-sunpath-season"
+                    v-model="sunPathSeason"
+                    class="sunpath-select detail-season-select"
+                    @change="applySeasonPreset"
+                  >
+                    <option value="summer">Summer Solstice</option>
+                    <option value="equinox">Equinox</option>
+                    <option value="winter">Winter Solstice</option>
+                  </select>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Active Season</span>
+                  <span class="info-val">{{ activeSeasonLabel }}</span>
+                </div>
                 <div class="info-row">
                   <span class="info-key">Simulation Date</span>
                   <span class="info-val">{{ selectedSimulationDateLabel }}</span>
@@ -614,6 +637,14 @@
                 <div class="info-row">
                   <span class="info-key">Sun Azimuth</span>
                   <span class="info-val">{{ sunMetrics.azimuth }}°</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Estimated Rooftop Shaded</span>
+                  <span class="info-val">{{ shadowCoverageLabel }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-key">Unobstructed Usable Roof</span>
+                  <span class="info-val">{{ unobstructedUsableAreaLabel }}</span>
                 </div>
                 <div class="info-row">
                   <span class="info-key">Estimated Shadow Impact</span>
@@ -939,6 +970,17 @@ const COMPARE_BUILDING_OPACITY = 0.90
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const solarApiCache = new Map()
 const yieldCache = new Map()
+const shadowImpactCache = new Map()
+
+// Updated: Cache sun path data from backend.
+const sunPathCache = new Map()
+
+// Updated: Backend date presets for sun path simulation.
+const SUN_PATH_DATES = {
+  summer: '2025-12-21',
+  equinox: '2025-03-21',
+  winter: '2025-06-21',
+}
 
 const isLoading = ref(true)
 const loadingText = ref('Loading Melbourne building data...')
@@ -966,12 +1008,17 @@ const solarFilterOpen = ref(true)
 const roofFilterOpen = ref(true)
 const compareBuildings = ref([])
 
-// MOD: Sun Path state
+// Updated: Sun Path state
 const sunPathOpen = ref(false)
 const sunPathSeason = ref('summer')
 const sunPathTime = ref(12)
 const sunAnimating = ref(false)
 const sunAnimationTimer = ref(null)
+const shadowCoveragePct = ref(0)
+const shadowCasterCount = ref(0)
+const shadowImpactSource = ref('frontend')
+const shadowOverlayFeatures = ref([])
+const unobstructedUsableAreaM2 = ref(null)
 
 const compareVisible = computed(() => comparePanelOpen.value)
 const hoveredMonthIdx = ref(null)
@@ -1073,7 +1120,7 @@ let toastTimer = null
 let compassIdx = 0
 let buildingIndex = new Map() // structure_id -> properties
 
-// MOD: full feature index for geometry
+// Updated: full feature index for geometry
 let buildingFeatureIndex = new Map()
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
@@ -1117,7 +1164,13 @@ const tierColor = computed(() => {
   return 'var(--solar-very-low)'
 })
 
-// MOD: Sun Path computed
+// Updated: Sun Path computed
+const activeSeasonLabel = computed(() => {
+  if (sunPathSeason.value === 'summer') return 'Summer Solstice'
+  if (sunPathSeason.value === 'winter') return 'Winter Solstice'
+  return 'Equinox'
+})
+
 const selectedSimulationDateLabel = computed(() => {
   if (sunPathSeason.value === 'summer') return '21 Dec'
   if (sunPathSeason.value === 'winter') return '21 Jun'
@@ -1131,62 +1184,104 @@ const formattedSunTime = computed(() => {
   return `${String(hour).padStart(2, '0')}:${minute}`
 })
 
-const MELBOURNE_LAT = -37.8136
+// Updated: Current sun data returned by the backend Sun Path API.
+const currentSunData = ref({
+  hour: 12,
+  altitude_deg: 0,
+  azimuth_deg: 0,
+  shadow_factor: null,
+})
 
-function getDayOfYearForSeason(season) {
-  if (season === 'summer') return 355
-  if (season === 'winter') return 172
-  return 80
-}
-
-function solarDeclination(dayOfYear) {
-  return 23.44 * Math.sin((2 * Math.PI / 365) * (dayOfYear - 81))
-}
-
-function calculateSolarPosition(latDeg, dayOfYear, timeHour) {
-  const lat = latDeg * Math.PI / 180
-  const decl = solarDeclination(dayOfYear) * Math.PI / 180
-  const hourAngle = (15 * (timeHour - 12)) * Math.PI / 180
-
-  const sinAlt =
-    Math.sin(lat) * Math.sin(decl) +
-    Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle)
-
-  const altitude = Math.asin(sinAlt)
-
-  const cosAz =
-    (Math.sin(decl) - Math.sin(altitude) * Math.sin(lat)) /
-    (Math.cos(altitude) * Math.cos(lat))
-
-  let azimuth = Math.acos(Math.min(1, Math.max(-1, cosAz))) * 180 / Math.PI
-  if (timeHour > 12) azimuth = 360 - azimuth
-
-  return {
-    altitude: Math.max(0, altitude * 180 / Math.PI),
-    azimuth: Math.round(azimuth),
-  }
-}
-
+// Updated: Display backend sun API values in the UI.
 const sunMetrics = computed(() => {
-  const dayOfYear = getDayOfYearForSeason(sunPathSeason.value)
-  const pos = calculateSolarPosition(MELBOURNE_LAT, dayOfYear, Number(sunPathTime.value))
-  const altitude = Math.round(pos.altitude)
-  const azimuth = pos.azimuth
-  const shadowFactor = altitude > 0 ? (90 / altitude).toFixed(1) : '∞'
+  const altitude = Math.round(Number(currentSunData.value?.altitude_deg || 0))
+  const azimuth = Math.round(Number(currentSunData.value?.azimuth_deg || 0))
+  const factor = currentSunData.value?.shadow_factor
 
   return {
     altitude,
     azimuth,
-    shadowFactor,
+    shadowFactor: factor == null ? '∞' : Number(factor).toFixed(1),
   }
 })
 
 const shadowImpactLabel = computed(() => {
-  const altitude = sunMetrics.value.altitude
-  if (altitude >= 60) return 'Low'
-  if (altitude >= 35) return 'Moderate'
+  const coverage = shadowCoveragePct.value
+  if (coverage < 10) return 'Low'
+  if (coverage < 35) return 'Moderate'
   return 'High'
 })
+
+const shadowCoverageLabel = computed(() => {
+  if (!selectedBuilding.value) return '0%'
+  return `${Math.round(shadowCoveragePct.value)}%`
+})
+
+const unobstructedUsableAreaLabel = computed(() => {
+  if (!selectedBuilding.value) return '—'
+  if (unobstructedUsableAreaM2.value == null) return '—'
+  return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
+})
+
+// Updated: Load one-day sun path from backend and cache it locally.
+async function fetchSunPath(season) {
+  const date = SUN_PATH_DATES[season] || SUN_PATH_DATES.summer
+  const cacheKey = `sun_path_${season}`
+
+  if (sunPathCache.has(cacheKey)) return sunPathCache.get(cacheKey)
+
+  const cached = sessionStorage.getItem(cacheKey)
+  if (cached) {
+    const parsed = JSON.parse(cached)
+    sunPathCache.set(cacheKey, parsed)
+    return parsed
+  }
+
+  const res = await fetch(`${API_BASE}/sun/path?date=${encodeURIComponent(date)}`)
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch sun path: ${res.status}`)
+  }
+
+  const data = await res.json()
+  sessionStorage.setItem(cacheKey, JSON.stringify(data))
+  sunPathCache.set(cacheKey, data)
+
+  return data
+}
+
+async function fetchShadowImpact(structureId, season, hour) {
+  const date = SUN_PATH_DATES[season] || SUN_PATH_DATES.summer
+  const normalizedHour = Number(hour)
+  const cacheKey = `shadow_${structureId}_${date}_${normalizedHour}`
+
+  if (shadowImpactCache.has(cacheKey)) return shadowImpactCache.get(cacheKey)
+
+  const params = new URLSearchParams({
+    date,
+    hour: String(normalizedHour),
+  })
+  const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/shadow-impact?${params}`)
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch shadow impact: ${res.status}`)
+  }
+
+  const data = await res.json()
+  shadowImpactCache.set(cacheKey, data)
+  return data
+}
+
+// Updated: Pick the closest backend sample for the current slider time.
+function findClosestSunSample(samples, hour) {
+  if (!Array.isArray(samples) || samples.length === 0) return null
+
+  return samples.reduce((closest, item) => {
+    return Math.abs(Number(item.hour) - hour) < Math.abs(Number(closest.hour) - hour)
+      ? item
+      : closest
+  }, samples[0])
+}
 
 async function fetchSolarApiData(structureId) {
   if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
@@ -1396,7 +1491,7 @@ async function selectSearchResult(result) {
   }
   solarApiLoading.value = false
 
-  // MOD: update sun simulation after search select
+  // Updated: update sun simulation after search select
   updateSunSimulation()
 }
 
@@ -1659,7 +1754,7 @@ async function openBuildingFromUrl() {
 
   const id = Number(buildingId)
 
-  // MOD: buildingIndex stores properties, not full feature
+  // Updated: buildingIndex stores properties, not full feature
   const props = buildingIndex.get(id)
   if (!props) return
 
@@ -1693,21 +1788,21 @@ async function openBuildingFromUrl() {
 
   solarApiLoading.value = false
 
-  // MOD: update sun simulation after deep link open
-  updateSunSimulation()
+  // Updated: update sun simulation after deep link open
+  await updateSunSimulation()
 }
 
-// MOD: Sun Path controls
-function applySeasonPreset() {
+// Updated: Sun Path controls
+async function applySeasonPreset() {
   sunPathTime.value = 12
-  updateSunSimulation()
+  await updateSunSimulation()
 }
 
-function resetSunSimulation() {
+async function resetSunSimulation() {
   sunPathSeason.value = 'summer'
   sunPathTime.value = 12
   stopSunAnimation()
-  updateSunSimulation()
+  await updateSunSimulation()
 }
 
 function toggleSunAnimation() {
@@ -1717,10 +1812,10 @@ function toggleSunAnimation() {
   }
 
   sunAnimating.value = true
-  sunAnimationTimer.value = window.setInterval(() => {
+  sunAnimationTimer.value = window.setInterval(async () => {
     const next = Number(sunPathTime.value) + 0.5
     sunPathTime.value = next > 18 ? 6 : next
-    updateSunSimulation()
+    await updateSunSimulation()
   }, 900)
 }
 
@@ -1732,7 +1827,7 @@ function stopSunAnimation() {
   }
 }
 
-// MOD: geometry helpers + map source updater
+// Updated: geometry helpers + map source updater
 function getEffectiveBuildingHeight(building) {
   const explicitHeight = Number(building?.building_height)
   if (Number.isFinite(explicitHeight) && explicitHeight > 0) return explicitHeight
@@ -1746,17 +1841,127 @@ function getEffectiveBuildingHeight(building) {
   return 20
 }
 
-function getShadowLength(height, altitudeDeg) {
-  const rad = altitudeDeg * Math.PI / 180
+function getShadowLengthByHeightDifference(casterHeight, receiverHeight = 0) {
+  const altitude = Number(currentSunData.value?.altitude_deg || 0)
+  if (altitude <= 0) return 0
+
+  const heightDiff = Math.max(0, casterHeight - receiverHeight)
+  if (heightDiff <= 0) return 0
+
+  const rad = altitude * Math.PI / 180
   const tan = Math.tan(rad)
-  if (tan <= 0.01) return height * 8
-  return Math.min(height / tan, height * 8)
+  if (tan <= 0.01) return casterHeight * 8
+
+  return Math.min(heightDiff / tan, casterHeight * 8)
 }
 
 function shiftLngLat(lng, lat, dxMeters, dyMeters) {
   const dLat = dyMeters / 111320
   const dLng = dxMeters / (111320 * Math.cos(lat * Math.PI / 180))
   return [lng + dLng, lat + dLat]
+}
+
+function getPolygonRings(geometry) {
+  if (!geometry) return []
+  if (geometry.type === 'Polygon') return geometry.coordinates.map((ring) => ring)
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates.flatMap((poly) => poly.map((ring) => ring))
+  return []
+}
+
+function getMainOuterRing(geometry) {
+  const rings = getPolygonRings(geometry)
+  return rings.length ? rings[0] : null
+}
+
+function getFeatureCenter(feature) {
+  const ring = getMainOuterRing(feature?.geometry)
+  if (!ring?.length) return null
+
+  let lngSum = 0
+  let latSum = 0
+
+  ring.forEach(([lng, lat]) => {
+    lngSum += Number(lng)
+    latSum += Number(lat)
+  })
+
+  return [lngSum / ring.length, latSum / ring.length]
+}
+
+function pointInRing(point, ring) {
+  const [px, py] = point
+  let inside = false
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    const intersects =
+      ((yi > py) !== (yj > py)) &&
+      (px < ((xj - xi) * (py - yi)) / (yj - yi + 0.0000000001) + xi)
+
+    if (intersects) inside = !inside
+  }
+
+  return inside
+}
+
+function bboxFromRing(ring) {
+  let minLng = Infinity
+  let minLat = Infinity
+  let maxLng = -Infinity
+  let maxLat = -Infinity
+
+  ring.forEach(([lng, lat]) => {
+    minLng = Math.min(minLng, lng)
+    minLat = Math.min(minLat, lat)
+    maxLng = Math.max(maxLng, lng)
+    maxLat = Math.max(maxLat, lat)
+  })
+
+  return { minLng, minLat, maxLng, maxLat }
+}
+
+function bboxIntersects(a, b) {
+  return !(a.maxLng < b.minLng || a.minLng > b.maxLng || a.maxLat < b.minLat || a.minLat > b.maxLat)
+}
+
+function polygonMayIntersectShadow(receiverFeature, shadowRing) {
+  const receiverRing = getMainOuterRing(receiverFeature?.geometry)
+  if (!receiverRing?.length || !shadowRing?.length) return false
+
+  const receiverBox = bboxFromRing(receiverRing)
+  const shadowBox = bboxFromRing(shadowRing)
+  if (!bboxIntersects(receiverBox, shadowBox)) return false
+
+  const receiverCenter = getFeatureCenter(receiverFeature)
+  if (receiverCenter && pointInRing(receiverCenter, shadowRing)) return true
+
+  return receiverRing.some((point) => pointInRing(point, shadowRing))
+}
+
+function estimateShadowCoveragePct(receiverRing, shadowRings) {
+  if (!receiverRing?.length || !shadowRings.length) return 0
+
+  const box = bboxFromRing(receiverRing)
+  const steps = 18
+  let roofSamples = 0
+  let shadedSamples = 0
+
+  for (let x = 0; x < steps; x += 1) {
+    for (let y = 0; y < steps; y += 1) {
+      const lng = box.minLng + ((x + 0.5) / steps) * (box.maxLng - box.minLng)
+      const lat = box.minLat + ((y + 0.5) / steps) * (box.maxLat - box.minLat)
+      const point = [lng, lat]
+
+      if (!pointInRing(point, receiverRing)) continue
+
+      roofSamples += 1
+      if (shadowRings.some((ring) => pointInRing(point, ring))) shadedSamples += 1
+    }
+  }
+
+  if (!roofSamples) return 0
+  return Math.round((shadedSamples / roofSamples) * 100)
 }
 
 function buildSunDirectionFeature() {
@@ -1766,7 +1971,7 @@ function buildSunDirectionFeature() {
   const lat = Number(selectedBuilding.value.lat)
   const az = sunMetrics.value.azimuth
 
-  const lineLengthMeters = 60
+  const lineLengthMeters = 80
   const rad = az * Math.PI / 180
   const dxMeters = Math.sin(rad) * lineLengthMeters
   const dyMeters = Math.cos(rad) * lineLengthMeters
@@ -1785,22 +1990,17 @@ function buildSunDirectionFeature() {
   }
 }
 
-function buildShadowProjectionFeature() {
-  if (!selectedBuilding.value?.structure_id) return null
+function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
+  const ring = getMainOuterRing(casterFeature?.geometry)
+  if (!ring?.length) return null
 
-  const feature = buildingFeatureIndex.get(Number(selectedBuilding.value.structure_id))
-  if (!feature?.geometry || feature.geometry.type !== 'Polygon') return null
-
-  const ring = feature.geometry.coordinates[0]
-  const height = getEffectiveBuildingHeight(selectedBuilding.value)
-  const altitude = sunMetrics.value.altitude
   const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360
-  const shadowLength = getShadowLength(height, altitude)
+  const shadowLength = getShadowLengthByHeightDifference(casterHeight, 0)
+  if (shadowLength <= 0) return null
 
   const rad = shadowAzimuth * Math.PI / 180
   const dxMeters = Math.sin(rad) * shadowLength
   const dyMeters = Math.cos(rad) * shadowLength
-
   const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
 
   return {
@@ -1813,15 +2013,144 @@ function buildShadowProjectionFeature() {
         ring[0],
       ]],
     },
-    properties: {},
+    properties: {
+      kind: 'shadow-volume',
+    },
   }
 }
 
-function updateSunSimulation() {
+function buildCasterShadowFeature(casterFeature, receiverHeight) {
+  const ring = getMainOuterRing(casterFeature?.geometry)
+  if (!ring?.length) return null
+
+  const casterHeight = getEffectiveBuildingHeight(casterFeature.properties)
+  const shadowLength = getShadowLengthByHeightDifference(casterHeight, receiverHeight)
+  if (shadowLength <= 0) return null
+
+  const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360
+  const rad = shadowAzimuth * Math.PI / 180
+  const dxMeters = Math.sin(rad) * shadowLength
+  const dyMeters = Math.cos(rad) * shadowLength
+  const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        ...ring,
+        ...shiftedRing.slice().reverse(),
+        ring[0],
+      ]],
+    },
+    properties: {
+      kind: 'shadow-volume',
+      caster_structure_id: casterFeature.properties?.structure_id,
+    },
+  }
+}
+
+function buildReceiverShadowFeature(receiverFeature) {
+  const ring = getMainOuterRing(receiverFeature?.geometry)
+  if (!ring?.length) return null
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [ring],
+    },
+    properties: {
+      kind: 'shadow-receiver',
+      structure_id: receiverFeature.properties?.structure_id,
+    },
+  }
+}
+
+function buildShadowInteractionFeatures() {
+  shadowCoveragePct.value = 0
+  shadowCasterCount.value = 0
+  shadowOverlayFeatures.value = []
+  unobstructedUsableAreaM2.value = null
+
+  if (!selectedBuilding.value?.structure_id) return []
+
+  const selectedId = Number(selectedBuilding.value.structure_id)
+  const receiverFeature = buildingFeatureIndex.get(selectedId)
+  if (!receiverFeature?.geometry) return []
+
+  const receiverRing = getMainOuterRing(receiverFeature.geometry)
+  if (!receiverRing?.length) return []
+
+  const receiverHeight = getEffectiveBuildingHeight(selectedBuilding.value)
+  const receiverBox = bboxFromRing(receiverRing)
+  const affectingShadowFeatures = []
+  const affectingShadowRings = []
+
+  buildingFeatureIndex.forEach((feature, structureId) => {
+    if (Number(structureId) === selectedId) return
+    if (!feature?.geometry) return
+
+    const shadowFeature = buildCasterShadowFeature(feature, receiverHeight)
+    if (!shadowFeature) return
+
+    const shadowRing = getMainOuterRing(shadowFeature.geometry)
+    if (!shadowRing?.length) return
+    if (!bboxIntersects(receiverBox, bboxFromRing(shadowRing))) return
+
+    if (polygonMayIntersectShadow(receiverFeature, shadowRing)) {
+      affectingShadowFeatures.push(shadowFeature)
+      affectingShadowRings.push(shadowRing)
+    }
+  })
+
+  shadowCasterCount.value = affectingShadowRings.length
+  shadowCoveragePct.value = estimateShadowCoveragePct(receiverRing, affectingShadowRings)
+
+  const receiverShadowFeature = shadowCasterCount.value > 0
+    ? buildReceiverShadowFeature(receiverFeature)
+    : null
+
+  return receiverShadowFeature
+    ? [...affectingShadowFeatures, receiverShadowFeature]
+    : affectingShadowFeatures
+}
+
+async function updateSunSimulation() {
+  try {
+    const path = await fetchSunPath(sunPathSeason.value)
+    const sample = findClosestSunSample(path.samples, Number(sunPathTime.value))
+
+    if (sample) currentSunData.value = sample
+  } catch (err) {
+    console.error('Sun path API failed:', err)
+    showToast('Sun path unavailable')
+  }
+
   if (!map) return
 
   const sunFeature = buildSunDirectionFeature()
-  const shadowFeature = buildShadowProjectionFeature()
+  const shadowFeatures = buildShadowInteractionFeatures()
+
+  if (selectedBuilding.value?.structure_id) {
+    try {
+      const impact = await fetchShadowImpact(
+        selectedBuilding.value.structure_id,
+        sunPathSeason.value,
+        Number(sunPathTime.value),
+      )
+      shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
+      shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
+      unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
+      shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
+      shadowImpactSource.value = 'backend'
+    } catch (err) {
+      console.error('Shadow impact API failed:', err)
+      unobstructedUsableAreaM2.value = null
+      shadowOverlayFeatures.value = []
+      shadowImpactSource.value = 'frontend'
+    }
+  }
 
   const sunSource = map.getSource('sun-direction')
   if (sunSource) {
@@ -1835,7 +2164,10 @@ function updateSunSimulation() {
   if (shadowSource) {
     shadowSource.setData({
       type: 'FeatureCollection',
-      features: shadowFeature ? [shadowFeature] : [],
+      features: [
+        ...shadowFeatures,
+        ...shadowOverlayFeatures.value,
+      ],
     })
   }
 }
@@ -1910,7 +2242,7 @@ function initMap() {
       .then(async (data) => {
         isLoading.value = false
 
-        // MOD: keep both properties index and full feature index
+        // Updated: keep both properties index and full feature index
         data.features.forEach(f => {
           buildingIndex.set(Number(f.properties.structure_id), f.properties)
           buildingFeatureIndex.set(Number(f.properties.structure_id), f)
@@ -1956,7 +2288,7 @@ function initMap() {
           },
         })
 
-        // MOD: Sun Path sources and layers
+        // Updated: Sun Path sources and layers
         map.addSource('sun-direction', {
           type: 'geojson',
           data: {
@@ -1988,9 +2320,61 @@ function initMap() {
           id: 'shadow-projection-fill',
           type: 'fill',
           source: 'shadow-projection',
+          filter: ['in', ['get', 'kind'], ['literal', ['shadow-volume', 'shadow-receiver']]],
           paint: {
-            'fill-color': '#1F2937',
-            'fill-opacity': 0.18,
+            'fill-color': [
+              'match',
+              ['get', 'kind'],
+              'shadow-receiver', '#DC2626',
+              '#1F2937',
+            ],
+            'fill-opacity': [
+              'match',
+              ['get', 'kind'],
+              'shadow-receiver', 0.32,
+              0.18,
+            ],
+          },
+        })
+
+        map.addLayer({
+          id: 'shadow-rooftop-overlay',
+          type: 'fill-extrusion',
+          source: 'shadow-projection',
+          filter: ['in', ['get', 'kind'], ['literal', ['rooftop-shaded', 'rooftop-unobstructed']]],
+          paint: {
+            'fill-extrusion-color': [
+              'match',
+              ['get', 'kind'],
+              'rooftop-shaded', '#DC2626',
+              'rooftop-unobstructed', '#16A34A',
+              '#16A34A',
+            ],
+            'fill-extrusion-base': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.25],
+            'fill-extrusion-height': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.55],
+            'fill-extrusion-opacity': [
+              'match',
+              ['get', 'kind'],
+              'rooftop-shaded', 0.76,
+              'rooftop-unobstructed', 0.48,
+              0.5,
+            ],
+          },
+        })
+
+        map.addLayer({
+          id: 'shadow-receiver-outline',
+          type: 'line',
+          source: 'shadow-projection',
+          paint: {
+            'line-color': '#DC2626',
+            'line-width': 1.8,
+            'line-opacity': [
+              'match',
+              ['get', 'kind'],
+              'shadow-receiver', 0.9,
+              0,
+            ],
           },
         })
 
@@ -2079,7 +2463,7 @@ function initMap() {
           selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
           solarApiLoading.value = false
 
-          // MOD: update sun simulation after map click
+          // Updated: update sun simulation after map click
           updateSunSimulation()
         })
 
@@ -2110,7 +2494,7 @@ onUnmounted(() => {
   document.removeEventListener('mousedown', onSearchClickOutside)
   if (toastTimer) clearTimeout(toastTimer)
 
-  // MOD: stop sun animation timer
+  // Updated: stop sun animation timer
   stopSunAnimation()
 
   if (map) {
