@@ -83,14 +83,22 @@
               <div class="metrics-grid">
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKwh(selectedPrecinct.total_kwh) }}</div>
-                  <div class="metric-label">Annual kWh</div>
+                  <div class="metric-label">Annual Output</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatArea(selectedPrecinct.total_area) }}</div>
                   <div class="metric-label">Usable Roof Area</div>
                 </div>
                 <div class="metric-card">
-                  <div class="metric-val">{{ formatKwh(selectedPrecinct.adoption_gap) }}</div>
+                  <div class="metric-val">{{ formatKw(selectedPrecinct.installed_capacity_kw) }}</div>
+                  <div class="metric-label">Installed Capacity</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val">{{ formatKw(selectedPrecinct.potential_capacity_kw) }}</div>
+                  <div class="metric-label">Potential Capacity</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val">{{ selectedPrecinct.adoption_gap_kw != null ? formatKw(selectedPrecinct.adoption_gap_kw) : formatKwh(selectedPrecinct.adoption_gap) }}</div>
                   <div class="metric-label">Adoption Gap</div>
                 </div>
                 <div class="metric-card">
@@ -178,14 +186,28 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
 
-const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.geojson'
+const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH  = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
+const API_BASE        = import.meta.env.VITE_API_BASE_URL  || '/api/v1'
+
+async function fetchWithFallback(primaryUrl, fallbackPath) {
+  const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
+  try {
+    const res = await fetch(primaryUrl)
+    if (res.ok && isJson(res)) return res
+  } catch { /* primary unreachable — try fallback */ }
+  if (primaryUrl === fallbackPath) throw new Error(`Server unreachable: ${primaryUrl}`)
+  const res = await fetch(fallbackPath)
+  if (!res.ok || !isJson(res)) throw new Error(`Server unreachable and no local fallback found`)
+  return res
+}
 
 // Module-level session caches — survive component unmount/remount within the same tab.
 // Avoids re-fetching large GeoJSON files and re-running the expensive PIP aggregation.
 let _cachedPrecinctGeoJSON = null
 let _cachedBuildingData    = null
 let _cachedAggregation     = null
+let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from /api/v1/precincts
 
 // MapLibre hex colours (mirrors CSS variables — GL paint doesn't accept CSS vars)
 const MAP_COLORS = {
@@ -193,7 +215,7 @@ const MAP_COLORS = {
   solarGood:      '#5A9072',
   solarModerate:  '#BED4C7',
   solarPoor:      '#F8AB90',
-  solarVeryPoor:  '#F0531C',
+  solarVeryPoor:  '#FA1029',
   buildingBase:   '#2A2A26',
   top5Outline:    '#D4743A',
   selectedOutline:'#FFD966',
@@ -238,13 +260,18 @@ const sortOptions = [
 
 // ── Sorted / ranked list ──────────────────────────────────────────────────────
 const sortedPrecincts = computed(() => {
+  const isGap = sortBy.value === 'gap'
   const key = sortBy.value === 'kwh' ? 'total_kwh'
             : sortBy.value === 'area' ? 'total_area'
             : sortBy.value === 'buildings' ? 'building_count'
-            : 'adoption_gap'
+            : 'adoption_gap_kw'
   const sorted = [...precincts.value]
     .filter(p => p.building_count > 0)
-    .sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0))
+    .sort((a, b) => {
+      const aVal = isGap ? (a.adoption_gap_kw ?? a.adoption_gap ?? 0) : (a[key] ?? 0)
+      const bVal = isGap ? (b.adoption_gap_kw ?? b.adoption_gap ?? 0) : (b[key] ?? 0)
+      return bVal - aVal
+    })
   const total = sorted.length
   const maxVal = sorted[0]?.[key] ?? 1
   return sorted.map((p, i) => {
@@ -292,11 +319,18 @@ function formatAreaCompact(val) {
   if (val >= 1_000)     return Math.round(val / 1_000) + 'K m²'
   return Math.round(val) + ' m²'
 }
+function formatKw(val) {
+  if (val == null || val === 0) return '—'
+  if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + ' GW'
+  if (val >= 1_000)     return (val / 1_000).toFixed(1) + ' MW'
+  return Math.round(val).toLocaleString() + ' kW'
+}
 function adoptionPct(p) {
   if (!p.max_kwh) return 0
   return Math.round((p.total_kwh / p.max_kwh) * 100)
 }
 function gapPct(p) {
+  if (p.potential_capacity_kw > 0) return Math.round(((p.adoption_gap_kw ?? 0) / p.potential_capacity_kw) * 100)
   if (!p.max_kwh) return 0
   return Math.round((p.adoption_gap / p.max_kwh) * 100)
 }
@@ -513,8 +547,7 @@ function initMap(precinctGeoJSON) {
     } else {
       loadingText.value = 'Loading buildings…'
       try {
-        const res = await fetch(BUILDINGS_PATH)
-        if (!res.ok) throw new Error(res.statusText)
+        const res = await fetchWithFallback(BUILDINGS_PATH, '/combined-buildings.geojson')
         buildingData = await res.json()
         _cachedBuildingData = buildingData
       } catch (err) {
@@ -549,6 +582,33 @@ function initMap(precinctGeoJSON) {
       enriched = await aggregateBuildings(buildingData.features, precinctGeoJSON.features)
       _cachedAggregation = enriched
     }
+    // ── Fetch DB capacity data and merge ─────────────────────────────────────
+    if (!_cachedApiData) {
+      try {
+        const apiRes = await fetch(`${API_BASE}/precincts`)
+        if (apiRes.ok) {
+          const apiJson = await apiRes.json()
+          const list = Array.isArray(apiJson) ? apiJson : (apiJson.precincts ?? [])
+          const apiMap = {}
+          list.forEach(ap => { apiMap[ap.precinct_id] = ap })
+          _cachedApiData = apiMap
+        }
+      } catch { /* API unreachable — use local aggregation only */ }
+    }
+    if (_cachedApiData) {
+      enriched = enriched.map(p => {
+        const ap = _cachedApiData[p.precinct_id]
+        if (!ap) return p
+        return {
+          ...p,
+          installed_capacity_kw: ap.installed_capacity_kw,
+          potential_capacity_kw: ap.potential_capacity_kw,
+          adoption_gap_kw:       ap.adoption_gap_kw,
+        }
+      })
+      _cachedAggregation = enriched
+    }
+
     precincts.value = enriched
     isLoading.value = false
     updateMapLayers()
@@ -584,21 +644,25 @@ function exportPrecinctsCsv() {
       ['Tier', tierLabel(p.tier)],
       ['Annual Output', formatKwh(p.total_kwh)],
       ['Usable Roof Area', formatArea(p.total_area)],
+      ['Installed Capacity', formatKw(p.installed_capacity_kw)],
+      ['Potential Capacity', formatKw(p.potential_capacity_kw)],
+      ['Adoption Gap', p.adoption_gap_kw != null ? formatKw(p.adoption_gap_kw) : formatKwh(p.adoption_gap)],
       ['Buildings', p.building_count.toLocaleString()],
-      ['Adoption Gap', formatKwh(p.adoption_gap)],
     ]
     filename = `precinct_${p.name.replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.csv`
   } else {
-    rows = [['Rank', 'Precinct Name', 'Annual Output', 'Usable Roof Area', 'Buildings', 'Adoption Gap', 'Tier']]
+    rows = [['Rank', 'Precinct Name', 'Annual Output', 'Usable Roof Area', 'Installed Capacity', 'Potential Capacity', 'Adoption Gap', 'Tier', 'Buildings']]
     sortedPrecincts.value.forEach(p => {
       rows.push([
         p.rank,
         p.name,
         formatKwh(p.total_kwh),
         formatArea(p.total_area),
-        p.building_count.toLocaleString(),
-        formatKwh(p.adoption_gap),
+        formatKw(p.installed_capacity_kw),
+        formatKw(p.potential_capacity_kw),
+        p.adoption_gap_kw != null ? formatKw(p.adoption_gap_kw) : formatKwh(p.adoption_gap),
         tierLabel(p.tier),
+        p.building_count.toLocaleString(),
       ])
     })
     filename = 'precinct_solar_rankings.csv'
@@ -632,8 +696,7 @@ onMounted(async () => {
   } else {
     loadingText.value = 'Loading precinct boundaries…'
     try {
-      const res = await fetch(PRECINCTS_PATH)
-      if (!res.ok) throw new Error(res.statusText)
+      const res = await fetchWithFallback(PRECINCTS_PATH, '/melbourne_cbd_precincts.geojson')
       precinctGeoJSON = await res.json()
       _cachedPrecinctGeoJSON = precinctGeoJSON
     } catch (err) {
@@ -657,23 +720,12 @@ onUnmounted(() => {
 .main { display: flex; flex: 1; overflow: hidden; }
 #precinct-map { flex: 1; position: relative; overflow: hidden; }
 
-/* ── Loading overlay ──────────────────────────────────────── */
-.loading {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: rgba(26, 26, 24, 0.72); z-index: 20; gap: 16px;
-}
-.loading-spinner {
-  width: 36px; height: 36px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--city-light);
-  border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-.loading-text { color: var(--nav-text); font-size: 14px; }
+/* Loading overlay — inherits from global style.css .loading / .loading-spinner / .loading-text */
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Sidebar width ────────────────────────────────────────── */
-.sidebar { width: 640px !important; }
+.sidebar { width: 640px; }
+.sidebar--collapsed { width: 28px; }
 
 /* Override global sticky sidebar-header — precincts header is not inside sidebar-content */
 .sidebar-header {

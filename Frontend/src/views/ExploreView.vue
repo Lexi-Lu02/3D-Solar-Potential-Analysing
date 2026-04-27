@@ -946,8 +946,20 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-const GEOJSON_PATH = import.meta.env.VITE_GEOJSON_URL || '/combined-buildings.geojson'
+const GEOJSON_PATH   = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
+
+async function fetchWithFallback(primaryUrl, fallbackPath) {
+  const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
+  try {
+    const res = await fetch(primaryUrl)
+    if (res.ok && isJson(res)) return res
+  } catch { /* primary unreachable — try fallback */ }
+  if (primaryUrl === fallbackPath) throw new Error(`Server unreachable: ${primaryUrl}`)
+  const res = await fetch(fallbackPath)
+  if (!res.ok || !isJson(res)) throw new Error(`Server unreachable and no local fallback found`)
+  return res
+}
 
 // MapLibre GL requires hex values — CSS variables are not supported in GL paint specs.
 // These mirror the CSS variables defined in style.css :root for a single source of truth.
@@ -956,7 +968,7 @@ const MAP_COLORS = {
   solarGood:       '#5A9072',
   solarModerate:   '#BED4C7',
   solarPoor:       '#F8AB90',
-  solarVeryPoor:   '#F0531C',
+  solarVeryPoor:   '#FA1029',
   selected:        '#FFD966',
   compare:         '#8CA28F',
   lineStroke:      '#1C1710',
@@ -2234,11 +2246,8 @@ function initMap() {
   }, 0)
 
   map.on('load', () => {
-    fetch(GEOJSON_PATH)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Failed to load GeoJSON: ${response.statusText}`)
-        return response.json()
-      })
+    fetchWithFallback(GEOJSON_PATH, '/combined-buildings.geojson')
+      .then((response) => response.json())
       .then(async (data) => {
         isLoading.value = false
 
@@ -2395,8 +2404,8 @@ function initMap() {
         })
 
         try {
-          const pRes = await fetch(PRECINCTS_PATH)
-          if (pRes.ok) {
+          const pRes = await fetchWithFallback(PRECINCTS_PATH, '/melbourne_cbd_precincts.geojson').catch(() => null)
+          if (pRes) {
             const precinctData = await pRes.json()
             const pFeatures = precinctData.features
             const bboxes = pFeatures.map(_pBBox)

@@ -39,7 +39,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
-import logoUrl       from '../pictures/Logo.png'
+import logoUrl       from '../pictures/Project logo.png'
 import iconHome      from '../pictures/home.png'
 import iconExplore   from '../pictures/3d explore.png'
 import iconPrecincts from '../pictures/precinct.png'
