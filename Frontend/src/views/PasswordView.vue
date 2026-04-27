@@ -81,18 +81,18 @@ function submit() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #D6EDCA 0%, #EAF4E0 40%, #C8E6B8 100%);
+  background: linear-gradient(135deg, #E8E6E0 0%, #F2F0EA 50%, #E4E2DC 100%);
   padding: 24px;
 }
 
 .pw-card {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(154, 211, 91, 0.35);
+  background: rgba(242, 240, 234, 0.88);
+  border: 1px solid #C4C2BA;
   border-radius: 16px;
   padding: 40px 36px;
   width: 100%;
   max-width: 380px;
-  box-shadow: 0 8px 32px rgba(37, 63, 41, 0.12);
+  box-shadow: 0 8px 32px rgba(26, 26, 24, 0.10);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -115,13 +115,13 @@ function submit() {
 .pw-logo-text {
   font-family: 'DM Serif Display', serif;
   font-size: 22px;
-  color: #1E3A1E;
+  color: #1A1A18;
   margin-bottom: 4px;
 }
 
 .pw-logo-sub {
   font-size: 13px;
-  color: #5A7A5A;
+  color: #6B6960;
 }
 
 .pw-form {
@@ -135,7 +135,7 @@ function submit() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #4A6A4A;
+  color: #4A4844;
 }
 
 .pw-input-row {
@@ -147,19 +147,19 @@ function submit() {
 .pw-input {
   width: 100%;
   padding: 11px 40px 11px 14px;
-  border: 1px solid #B8D8A0;
+  border: 1px solid #C4C2BA;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
-  color: #1E3A1E;
-  background: rgba(255, 255, 255, 0.80);
+  color: #1A1A18;
+  background: rgba(255, 255, 255, 0.70);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .pw-input:focus {
-  border-color: #9AD35B;
-  box-shadow: 0 0 0 3px rgba(154, 211, 91, 0.18);
+  border-color: #D4743A;
+  box-shadow: 0 0 0 3px rgba(212, 116, 58, 0.15);
   background: #fff;
 }
 
@@ -183,7 +183,7 @@ function submit() {
 .pw-toggle:hover { opacity: 1; }
 .pw-toggle:focus-visible {
   opacity: 1;
-  outline: 3px solid #9AD35B;
+  outline: 3px solid #D4743A;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -200,20 +200,20 @@ function submit() {
 .pw-btn {
   margin-top: 4px;
   padding: 11px;
-  background: #253F29;
-  color: #D6EDCA;
+  background: #1A1A18;
+  color: #F0EFE8;
   border: none;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.pw-btn:hover:not(:disabled) { background: #111F11; color: #9AD35B; }
+.pw-btn:hover:not(:disabled) { background: #D4743A; color: #fff; }
 .pw-btn:focus-visible {
-  outline: 3px solid #9AD35B;
+  outline: 3px solid #D4743A;
   outline-offset: 2px;
 }
 .pw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
