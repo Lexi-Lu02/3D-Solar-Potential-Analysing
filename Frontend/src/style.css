@@ -1185,31 +1185,3 @@ body {
   color: #6b7280;
 }
 
-.sunpath-summary-card {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 14px;
-  background: #fafafa;
-}
-
-.detail-season-control {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 10px 0 12px;
-}
-
-.detail-season-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.detail-season-select {
-  height: 34px;
-  border-radius: 8px;
-  font-size: 12px;
-}
