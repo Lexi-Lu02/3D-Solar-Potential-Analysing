@@ -21,7 +21,7 @@
         <button
           class="subnav-btn"
           :class="{ 'subnav-btn--active': comparePanelOpen }"
-          @click="comparePanelOpen = !comparePanelOpen"
+          @click="toggleComparePanel"
           :aria-pressed="comparePanelOpen"
           aria-label="Toggle comparison panel"
         >
@@ -50,7 +50,7 @@
         <button
           class="subnav-btn"
           :class="{ 'subnav-btn--active': sunPathOpen }"
-          @click="sunPathOpen = !sunPathOpen"
+          @click="toggleSunPathPanel"
           :aria-pressed="sunPathOpen"
           aria-label="Toggle sun path and shadow simulation panel"
         >
@@ -271,88 +271,6 @@
           </div>
         </div>
 
-        <!-- Updated: Sun Path panel -->
-        <div
-          v-show="sunPathOpen"
-          class="sunpath-controls"
-          :class="{ 'sunpath-controls--beside-filters': filtersOpen }"
-          role="group"
-          aria-label="Sun path and shadow simulation controls"
-        >
-          <div class="control-card sunpath-card">
-            <div class="filter-panel-header">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-              </svg>
-              <span class="filter-panel-title">Sun Path</span>
-              <button class="filter-panel-close" @click="sunPathOpen = false" aria-label="Close sun path panel">
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            <div class="sunpath-section">
-              <label class="sunpath-label" for="sunpath-season">Season</label>
-              <select id="sunpath-season" v-model="sunPathSeason" class="sunpath-select" @change="applySeasonPreset">
-                <option value="summer">Summer Solstice</option>
-                <option value="equinox">Equinox</option>
-                <option value="winter">Winter Solstice</option>
-              </select>
-            </div>
-
-            <div class="sunpath-section">
-              <label class="sunpath-label" for="sunpath-time">
-                Time: <strong>{{ formattedSunTime }}</strong>
-              </label>
-              <input
-                id="sunpath-time"
-                v-model="sunPathTime"
-                class="sunpath-range"
-                type="range"
-                min="6"
-                max="18"
-                step="0.5"
-                @input="updateSunSimulation"
-              />
-              <div class="sunpath-range-labels">
-                <span>6:00</span>
-                <span>12:00</span>
-                <span>18:00</span>
-              </div>
-            </div>
-
-            <div class="sunpath-section sunpath-actions">
-              <button class="sunpath-play-btn" @click="toggleSunAnimation">
-                {{ sunAnimating ? 'Pause' : 'Play' }}
-              </button>
-              <button class="sunpath-play-btn sunpath-play-btn--ghost" @click="resetSunSimulation">
-                Reset
-              </button>
-            </div>
-
-            <div class="sunpath-section">
-              <div class="sunpath-stat-row">
-                <span class="sunpath-stat-label">Sun altitude</span>
-                <span class="sunpath-stat-value">{{ sunMetrics.altitude }}°</span>
-              </div>
-              <div class="sunpath-stat-row">
-                <span class="sunpath-stat-label">Sun azimuth</span>
-                <span class="sunpath-stat-value">{{ sunMetrics.azimuth }}°</span>
-              </div>
-              <div class="sunpath-stat-row">
-                <span class="sunpath-stat-label">Shadow length factor</span>
-                <span class="sunpath-stat-value">{{ sunMetrics.shadowFactor }}</span>
-              </div>
-            </div>
-
-            <p class="sunpath-help">
-              Select a building, then use the slider to simulate sunlight and shadow changes across the day.
-            </p>
-          </div>
-        </div>
-
         <!-- Comparison panel — slides up from bottom of map area -->
         <Transition name="compare-slide">
           <div v-if="compareVisible" class="comparison-panel" role="region" aria-label="Building comparison panel" aria-live="polite">
@@ -444,6 +362,76 @@
                   <path d="M14 9v10M9 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
                 <div class="comparison-empty-hint">Click a building,<br>then <strong>Add to Compare</strong></div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- Sun Path bottom panel -->
+        <Transition name="sunpath-slide">
+          <div v-if="sunPathOpen" class="sunpath-panel" role="region" aria-label="Sun path and shadow simulation">
+            <div class="sunpath-panel-header">
+              <div class="sunpath-panel-header-left">
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true" class="sunpath-panel-icon">
+                  <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6M2.8 2.8l1.1 1.1M10.1 10.1l1.1 1.1M10.1 3.9l1.1-1.1M2.8 11.2l1.1-1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                <span class="sunpath-panel-title">Sun Path & Shadow</span>
+              </div>
+              <button class="comparison-close-btn" @click="sunPathOpen = false" aria-label="Close sun path panel">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="sunpath-panel-body">
+              <!-- Season + play controls -->
+              <div class="sunpath-panel-col">
+                <div class="sunpath-panel-col-label">Season</div>
+                <select v-model="sunPathSeason" class="sunpath-select" @change="applySeasonPreset" aria-label="Select season">
+                  <option value="summer">Summer Solstice</option>
+                  <option value="equinox">Equinox</option>
+                  <option value="winter">Winter Solstice</option>
+                </select>
+                <div class="sunpath-actions" style="margin-top:10px">
+                  <button class="sunpath-play-btn" @click="toggleSunAnimation">{{ sunAnimating ? 'Pause' : 'Play' }}</button>
+                  <button class="sunpath-play-btn sunpath-play-btn--ghost" @click="resetSunSimulation">Reset</button>
+                </div>
+              </div>
+              <!-- Time slider -->
+              <div class="sunpath-panel-col sunpath-panel-col--wide">
+                <div class="sunpath-panel-col-label">Time: <strong>{{ formattedSunTime }}</strong></div>
+                <input
+                  v-model="sunPathTime"
+                  class="sunpath-range"
+                  type="range"
+                  min="6"
+                  max="18"
+                  step="0.5"
+                  aria-label="Simulation time"
+                  @input="updateSunSimulation"
+                />
+                <div class="sunpath-range-labels">
+                  <span>6:00</span><span>12:00</span><span>18:00</span>
+                </div>
+              </div>
+              <!-- Sun metrics -->
+              <div class="sunpath-panel-col">
+                <div class="sunpath-panel-col-label">Sun Metrics</div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Date</span><span class="sunpath-stat-value">{{ selectedSimulationDateLabel }}</span></div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Altitude</span><span class="sunpath-stat-value">{{ sunMetrics.altitude }}°</span></div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Azimuth</span><span class="sunpath-stat-value">{{ sunMetrics.azimuth }}°</span></div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Shadow Factor</span><span class="sunpath-stat-value">{{ sunMetrics.shadowFactor }}</span></div>
+              </div>
+              <!-- Building shadow data (only when a building is selected) -->
+              <div v-if="selectedBuilding" class="sunpath-panel-col">
+                <div class="sunpath-panel-col-label">Building Shadow</div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Rooftop Shaded</span><span class="sunpath-stat-value">{{ shadowCoverageLabel }}</span></div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Unobstructed Roof</span><span class="sunpath-stat-value">{{ unobstructedUsableAreaLabel }}</span></div>
+                <div class="sunpath-stat-row"><span class="sunpath-stat-label">Shadow Impact</span><span class="sunpath-stat-value">{{ shadowImpactLabel }}</span></div>
+              </div>
+              <div v-else class="sunpath-panel-col sunpath-panel-col--help">
+                <p class="sunpath-help" style="margin:0;padding:0;font-size:12px;color:var(--text-muted);line-height:1.5">Select a building on the map to see shadow impact for the current sun position.</p>
               </div>
             </div>
           </div>
@@ -640,56 +628,6 @@
                   </div>
                 </div>
               </div>
-              <!-- Updated: Sun Path result -->
-              <div v-if="selectedBuilding" class="sunpath-summary-card">
-                <div class="section-title">Sun Path & Shadow</div>
-                <div class="detail-season-control">
-                  <label class="detail-season-label" for="detail-sunpath-season">Season Simulation</label>
-                  <select
-                    id="detail-sunpath-season"
-                    v-model="sunPathSeason"
-                    class="sunpath-select detail-season-select"
-                    @change="applySeasonPreset"
-                  >
-                    <option value="summer">Summer Solstice</option>
-                    <option value="equinox">Equinox</option>
-                    <option value="winter">Winter Solstice</option>
-                  </select>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Active Season</span>
-                  <span class="info-val">{{ activeSeasonLabel }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Simulation Date</span>
-                  <span class="info-val">{{ selectedSimulationDateLabel }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Simulation Time</span>
-                  <span class="info-val">{{ formattedSunTime }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Sun Altitude</span>
-                  <span class="info-val">{{ sunMetrics.altitude }}°</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Sun Azimuth</span>
-                  <span class="info-val">{{ sunMetrics.azimuth }}°</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Estimated Rooftop Shaded</span>
-                  <span class="info-val">{{ shadowCoverageLabel }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Unobstructed Usable Roof</span>
-                  <span class="info-val">{{ unobstructedUsableAreaLabel }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-key">Estimated Shadow Impact</span>
-                  <span class="info-val">{{ shadowImpactLabel }}</span>
-                </div>
-              </div>
-
               <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
               <p class="share-btn-desc">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
@@ -1538,6 +1476,16 @@ function filterRoof(type) {
 function filterSolar(tierId) {
   activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
   applyFilters()
+}
+
+function toggleComparePanel() {
+  comparePanelOpen.value = !comparePanelOpen.value
+  if (comparePanelOpen.value) sunPathOpen.value = false
+}
+
+function toggleSunPathPanel() {
+  sunPathOpen.value = !sunPathOpen.value
+  if (sunPathOpen.value) comparePanelOpen.value = false
 }
 
 function toggleSolarPotentialColor() {
