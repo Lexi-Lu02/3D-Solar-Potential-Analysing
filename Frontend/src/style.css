@@ -1156,22 +1156,48 @@ body {
 .env-metric-card--full {
   grid-column: 1 / -1;
 }
-/* use on SunPath */
-.sunpath-controls {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 10;
-  width: 280px;
+/* ── Sun Path bottom panel ──────────────────────────────── */
+.sunpath-panel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 2px solid var(--border);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+  z-index: 20;
 }
 
-.sunpath-controls--beside-filters {
-  left: 252px;
+.sunpath-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
 }
 
-.sunpath-card {
-  padding: 0;
+.sunpath-panel-header-left { display: flex; align-items: center; gap: 8px; }
+.sunpath-panel-icon { color: var(--city-light); flex-shrink: 0; }
+.sunpath-panel-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+
+.sunpath-panel-body { display: flex; overflow-x: auto; }
+
+.sunpath-panel-col {
+  flex: 1;
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
 }
+.sunpath-panel-col:last-child { border-right: none; }
+.sunpath-panel-col--wide { flex: 1.8; }
+
+.sunpath-panel-col-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.sunpath-slide-enter-active, .sunpath-slide-leave-active { transition: transform 0.3s ease, opacity 0.3s ease; }
+.sunpath-slide-enter-from, .sunpath-slide-leave-to { transform: translateY(100%); opacity: 0; }
 
 .sunpath-section {
   padding: 12px 14px;
@@ -1251,31 +1277,3 @@ body {
   color: #6b7280;
 }
 
-.sunpath-summary-card {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 14px;
-  background: #fafafa;
-}
-
-.detail-season-control {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 10px 0 12px;
-}
-
-.detail-season-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.detail-season-select {
-  height: 34px;
-  border-radius: 8px;
-  font-size: 12px;
-}
