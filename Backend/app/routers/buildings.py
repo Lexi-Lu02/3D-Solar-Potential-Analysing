@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import logging
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
 from psycopg import Connection
 
