@@ -271,6 +271,96 @@
           </div>
         </div>
 
+        <!-- Updated: Sun Path panel -->
+        <div
+          v-show="sunPathOpen"
+          class="sunpath-controls"
+          :class="{ 'sunpath-controls--beside-filters': filtersOpen }"
+          role="group"
+          aria-label="Sun path and shadow simulation controls"
+        >
+          <div class="control-card sunpath-card">
+            <div class="filter-panel-header">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              <span class="filter-panel-title">Sun Path</span>
+              <button class="filter-panel-close" @click="sunPathOpen = false" aria-label="Close sun path panel">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="sunpath-section">
+              <label class="sunpath-label" for="sunpath-season">Season</label>
+              <select id="sunpath-season" v-model="sunPathSeason" class="sunpath-select" @change="applySeasonPreset">
+                <option value="summer">Summer Solstice</option>
+                <option value="equinox">Equinox</option>
+                <option value="winter">Winter Solstice</option>
+              </select>
+            </div>
+
+            <div class="sunpath-section">
+              <label class="sunpath-label" for="sunpath-time">
+                Time: <strong>{{ formattedSunTime }}</strong>
+              </label>
+              <input
+                id="sunpath-time"
+                v-model="sunPathTime"
+                class="sunpath-range"
+                type="range"
+                min="6"
+                max="18"
+                step="0.5"
+                @input="updateSunSimulation"
+              />
+              <div class="sunpath-range-labels">
+                <span>6:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+              </div>
+            </div>
+
+            <div class="sunpath-section sunpath-actions">
+              <button class="sunpath-play-btn" @click="toggleSunAnimation">
+                {{ sunAnimating ? 'Pause' : 'Play' }}
+              </button>
+              <button class="sunpath-play-btn sunpath-play-btn--ghost" @click="resetSunSimulation">
+                Reset
+              </button>
+            </div>
+
+            <div class="sunpath-section">
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Sun altitude</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.altitude }}°</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Sun azimuth</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.azimuth }}°</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Shadow length factor</span>
+                <span class="sunpath-stat-value">{{ sunMetrics.shadowFactor }}</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Rooftop shaded</span>
+                <span class="sunpath-stat-value">{{ shadowCoverageLabel }}</span>
+              </div>
+              <div class="sunpath-stat-row">
+                <span class="sunpath-stat-label">Unobstructed usable roof</span>
+                <span class="sunpath-stat-value">{{ unobstructedUsableAreaLabel }}</span>
+              </div>
+            </div>
+
+            <p class="sunpath-help">
+              Select a building, then use the slider to simulate sunlight and shadow changes across the day.
+            </p>
+          </div>
+        </div>
+
         <!-- Comparison panel — slides up from bottom of map area -->
         <Transition name="compare-slide">
           <div v-if="compareVisible" class="comparison-panel" role="region" aria-label="Building comparison panel" aria-live="polite">
@@ -971,6 +1061,7 @@ const SUN_PATH_DATES = {
   equinox: '2025-03-21',
   winter: '2025-06-21',
 }
+const NEARBY_SHADOW_RADIUS_M = 260
 
 const isLoading = ref(true)
 const loadingText = ref('Loading Melbourne building data...')
@@ -1008,7 +1099,6 @@ const sunAnimating = ref(false)
 const sunAnimationTimer = ref(null)
 const shadowCoveragePct = ref(0)
 const shadowCasterCount = ref(0)
-const shadowImpactSource = ref('frontend')
 const shadowOverlayFeatures = ref([])
 const unobstructedUsableAreaM2 = ref(null)
 
@@ -1157,18 +1247,6 @@ const tierColor = computed(() => {
 })
 
 // Updated: Sun Path computed
-const activeSeasonLabel = computed(() => {
-  if (sunPathSeason.value === 'summer') return 'Summer Solstice'
-  if (sunPathSeason.value === 'winter') return 'Winter Solstice'
-  return 'Equinox'
-})
-
-const selectedSimulationDateLabel = computed(() => {
-  if (sunPathSeason.value === 'summer') return '21 Dec'
-  if (sunPathSeason.value === 'winter') return '21 Jun'
-  return '21 Mar'
-})
-
 const formattedSunTime = computed(() => {
   const value = Number(sunPathTime.value)
   const hour = Math.floor(value)
@@ -1197,21 +1275,14 @@ const sunMetrics = computed(() => {
   }
 })
 
-const shadowImpactLabel = computed(() => {
-  const coverage = shadowCoveragePct.value
-  if (coverage < 10) return 'Low'
-  if (coverage < 35) return 'Moderate'
-  return 'High'
-})
-
 const shadowCoverageLabel = computed(() => {
-  if (!selectedBuilding.value) return '0%'
+  if (!selectedBuilding.value) return 'Select a building'
   return `${Math.round(shadowCoveragePct.value)}%`
 })
 
 const unobstructedUsableAreaLabel = computed(() => {
-  if (!selectedBuilding.value) return '—'
-  if (unobstructedUsableAreaM2.value == null) return '—'
+  if (!selectedBuilding.value) return 'Select a building'
+  if (unobstructedUsableAreaM2.value == null) return 'Calculating...'
   return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
 })
 
@@ -1269,17 +1340,6 @@ async function fetchShadowImpact(structureId, season, hour) {
   return data
 }
 
-// Updated: Pick the closest backend sample for the current slider time.
-function findClosestSunSample(samples, hour) {
-  if (!Array.isArray(samples) || samples.length === 0) return null
-
-  return samples.reduce((closest, item) => {
-    return Math.abs(Number(item.hour) - hour) < Math.abs(Number(closest.hour) - hour)
-      ? item
-      : closest
-  }, samples[0])
-}
-
 async function fetchSolarApiData(structureId) {
   if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
 
@@ -1308,6 +1368,17 @@ async function fetchSolarApiData(structureId) {
     solarApiCache.set(structureId, null)
     return null
   }
+}
+
+// Updated: Pick the closest backend sample for the current slider time.
+function findClosestSunSample(samples, hour) {
+  if (!Array.isArray(samples) || samples.length === 0) return null
+
+  return samples.reduce((closest, item) => {
+    return Math.abs(Number(item.hour) - hour) < Math.abs(Number(closest.hour) - hour)
+      ? item
+      : closest
+  }, samples[0])
 }
 
 async function fetchYieldData(structureId) {
@@ -2033,6 +2104,19 @@ function bboxIntersects(a, b) {
   return !(a.maxLng < b.minLng || a.minLng > b.maxLng || a.maxLat < b.minLat || a.minLat > b.maxLat)
 }
 
+function expandBboxByMeters(box, metres) {
+  const centerLat = (box.minLat + box.maxLat) / 2
+  const latDelta = metres / 111320
+  const lngDelta = metres / (111320 * Math.cos(centerLat * Math.PI / 180))
+
+  return {
+    minLng: box.minLng - lngDelta,
+    minLat: box.minLat - latDelta,
+    maxLng: box.maxLng + lngDelta,
+    maxLat: box.maxLat + latDelta,
+  }
+}
+
 function polygonMayIntersectShadow(receiverFeature, shadowRing) {
   const receiverRing = getMainOuterRing(receiverFeature?.geometry)
   if (!receiverRing?.length || !shadowRing?.length) return false
@@ -2070,6 +2154,23 @@ function estimateShadowCoveragePct(receiverRing, shadowRings) {
 
   if (!roofSamples) return 0
   return Math.round((shadedSamples / roofSamples) * 100)
+}
+
+function getEstimatedUsableRoofArea(building) {
+  const usableArea = Number(building?.usable_roof_area)
+  if (Number.isFinite(usableArea) && usableArea > 0) return usableArea
+
+  const footprintArea = Number(building?.footprint_area)
+  if (Number.isFinite(footprintArea) && footprintArea > 0) return footprintArea
+
+  return null
+}
+
+function updateFallbackUnobstructedUsableArea() {
+  const area = getEstimatedUsableRoofArea(selectedBuilding.value)
+  unobstructedUsableAreaM2.value = area == null
+    ? null
+    : Math.round(area * Math.max(0, 1 - shadowCoveragePct.value / 100) * 10) / 10
 }
 
 function buildSunDirectionFeature() {
@@ -2192,12 +2293,24 @@ function buildShadowInteractionFeatures() {
 
   const receiverHeight = getEffectiveBuildingHeight(selectedBuilding.value)
   const receiverBox = bboxFromRing(receiverRing)
+  const nearbyBox = expandBboxByMeters(receiverBox, NEARBY_SHADOW_RADIUS_M)
+  const visualShadowFeatures = []
   const affectingShadowFeatures = []
   const affectingShadowRings = []
 
   buildingFeatureIndex.forEach((feature, structureId) => {
     if (Number(structureId) === selectedId) return
     if (!feature?.geometry) return
+
+    const casterRing = getMainOuterRing(feature.geometry)
+    if (!casterRing?.length) return
+    if (!bboxIntersects(nearbyBox, bboxFromRing(casterRing))) return
+
+    const casterHeight = getEffectiveBuildingHeight(feature.properties)
+    const visualShadowFeature = buildSelectedBuildingShadowFeature(feature, casterHeight)
+    if (visualShadowFeature) {
+      visualShadowFeatures.push(visualShadowFeature)
+    }
 
     const shadowFeature = buildCasterShadowFeature(feature, receiverHeight)
     if (!shadowFeature) return
@@ -2214,14 +2327,15 @@ function buildShadowInteractionFeatures() {
 
   shadowCasterCount.value = affectingShadowRings.length
   shadowCoveragePct.value = estimateShadowCoveragePct(receiverRing, affectingShadowRings)
+  updateFallbackUnobstructedUsableArea()
 
   const receiverShadowFeature = shadowCasterCount.value > 0
     ? buildReceiverShadowFeature(receiverFeature)
     : null
 
   return receiverShadowFeature
-    ? [...affectingShadowFeatures, receiverShadowFeature]
-    : affectingShadowFeatures
+    ? [...visualShadowFeatures, ...affectingShadowFeatures, receiverShadowFeature]
+    : visualShadowFeatures
 }
 
 async function updateSunSimulation() {
@@ -2247,6 +2361,11 @@ async function updateSunSimulation() {
         sunPathSeason.value,
         Number(sunPathTime.value),
       )
+      shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
+      shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
+      unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
+      if (unobstructedUsableAreaM2.value == null) updateFallbackUnobstructedUsableArea()
+      shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
       if (impact) {
         shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
         shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
@@ -2260,9 +2379,8 @@ async function updateSunSimulation() {
       }
     } catch (err) {
       console.error('Shadow impact API failed:', err)
-      unobstructedUsableAreaM2.value = null
+      updateFallbackUnobstructedUsableArea()
       shadowOverlayFeatures.value = []
-      shadowImpactSource.value = 'frontend'
     }
   }
 
@@ -2448,7 +2566,13 @@ function initMap() {
           id: 'shadow-projection-fill',
           type: 'fill',
           source: 'shadow-projection',
-          filter: ['in', ['get', 'kind'], ['literal', ['shadow-volume', 'shadow-receiver']]],
+          filter: [
+            'match',
+            ['get', 'kind'],
+            ['shadow-volume', 'shadow-receiver'],
+            true,
+            false,
+          ],
           paint: {
             'fill-color': [
               'match',
@@ -2469,7 +2593,13 @@ function initMap() {
           id: 'shadow-rooftop-overlay',
           type: 'fill-extrusion',
           source: 'shadow-projection',
-          filter: ['in', ['get', 'kind'], ['literal', ['rooftop-shaded', 'rooftop-unobstructed']]],
+          filter: [
+            'match',
+            ['get', 'kind'],
+            ['rooftop-shaded', 'rooftop-unobstructed'],
+            true,
+            false,
+          ],
           paint: {
             'fill-extrusion-color': [
               'match',
