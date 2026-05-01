@@ -1,3 +1,4 @@
+// Router — maps URL paths to page components and enforces the password gate.
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import PasswordView from '../views/PasswordView.vue'
@@ -5,6 +6,7 @@ import ExploreView from '../views/ExploreView.vue'
 import PrecinctsView from '../views/PrecinctsView.vue'
 import FeaturePlaceholderView from '../views/FeaturePlaceholderView.vue'
 
+// sessionStorage persists auth for the current browser tab only — closing the tab logs you out.
 let isAuthenticated = sessionStorage.getItem('auth') === 'true'
 
 const router = createRouter({
@@ -50,6 +52,10 @@ const router = createRouter({
   ],
 })
 
+// Auth guard — runs before every navigation.
+// Unauthenticated users trying to reach a protected page are redirected to /login.
+// The original URL is saved in ?redirect so they land back there after logging in.
+// Already-logged-in users hitting /login are bounced straight to home (or their redirect target).
 router.beforeEach((to) => {
   if (to.meta.requiresAuth && sessionStorage.getItem('auth') !== 'true') {
     return {
@@ -67,11 +73,13 @@ router.beforeEach((to) => {
   return true
 })
 
+// Called by PasswordView after a successful login — sets the in-memory flag and writes to sessionStorage.
 function setAuthenticated(value) {
   isAuthenticated = value
   sessionStorage.setItem('auth', value ? 'true' : 'false')
 }
 
+// logout is exported so it can be wired to a logout button if one is added later.
 function logout() {
   isAuthenticated = false
   sessionStorage.removeItem('auth')

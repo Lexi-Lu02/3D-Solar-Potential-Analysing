@@ -1,3 +1,8 @@
+/*
+  Global stylesheet — all CSS custom properties (design tokens) and shared component
+  styles live here so every page should pick them up without importing anything extra.
+  Scoped styles inside .vue files still override these when needed.
+*/
 :root {
   /* ── Surfaces ─────────────────────────────────────────── */
   --bg: #E8E6E0;
@@ -58,6 +63,25 @@
   --text-primary-rgb: 26, 26, 24;
   --accent-rgb: 200, 168, 112;
   --ink-rgb: 26, 26, 24;
+  --white-rgb: 255, 255, 255;
+  --black-rgb: 0, 0, 0;
+  --surface-rgb: 242, 240, 234;
+  --city-light-rgb: 212, 116, 58;
+
+  /* ── Extra tokens ─────────────────────────────────────── */
+  --white: #ffffff;
+  --surface3: #E4E2DC;           /* third surface depth, used in password page gradient */
+  --text-caption: #6B6960;       /* slightly darker than text-muted, for subdued captions */
+  --danger: #C0392B;             /* red used for the adoption-gap bar in Precincts */
+
+  /* ── MapLibre map colours ────────────────────────────── */
+  /* MapLibre GL paint specs only accept hex literals, not CSS variables.         */
+  /* These tokens are the single source of truth — the MAP_COLORS JS objects in   */
+  /* ExploreView and PrecinctsView duplicate them as hex so MapLibre can use them. */
+  --map-building-base: #2A2A26;
+  --map-outline-default: #3E3E3A;
+  --map-outline-selected: #FFD966;
+  --map-line-stroke: #1C1710;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -604,6 +628,8 @@ body {
   z-index: 9999; transition: transform 0.3s ease; white-space: nowrap;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+/* Shared loading overlay used by both 3D Explore and Precincts.
+   Sits on top of the map while data is being fetched or aggregated. */
 .loading {
   position: absolute; inset: 0;
   background: rgba(247,245,240,0.92);
@@ -655,7 +681,9 @@ body {
 .chevron-icon { color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
 .chevron-icon.chevron-up { transform: rotate(180deg); }
 
-/* ── Comparison panel ───────────────────────────────────── */
+/* ── Comparison panel ────────────────────────────────────────────────────────
+   Slides up from the bottom of the 3D Explore map to show two buildings
+   side by side. The winning value in each row is highlighted with a gold star. */
 .comparison-panel {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: var(--ink);
@@ -966,7 +994,9 @@ body {
   outline-offset: 2px;
 }
 
-/* ── Financial Analysis panel ─────────────────────────────── */
+/* ── Financial Analysis panel ────────────────────────────────────────────────
+   Shown in the right sidebar when the Finance tab is active.
+   Uses the same .fin-* class prefix for all its cards and metric rows. */
 .fin-panel {
   display: flex;
   flex-direction: column;
@@ -1156,7 +1186,10 @@ body {
 .env-metric-card--full {
   grid-column: 1 / -1;
 }
-/* ── Sun Path bottom panel ──────────────────────────────── */
+/* ── Sun Path bottom panel ───────────────────────────────────────────────────
+   Slides up from the bottom of the map (same slot as the comparison panel,
+   but only one can be open at a time). Shows season/time controls and live
+   shadow metrics for the selected building. */
 .sunpath-panel {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: var(--surface);
