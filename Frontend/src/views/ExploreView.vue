@@ -1000,6 +1000,9 @@ export default { name: 'ExploreView' }
 </script>
 
 <script setup>
+// 3D Explore page — the main interactive map. Renders every Melbourne CBD building
+// as a 3D extrusion colour-coded by solar score, and opens a three-panel analysis
+// (Solar Potential / Financial / Environmental) when a building is clicked.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
@@ -1012,9 +1015,11 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
+// URLs come from .env so they can point at the EC2 server in production or a local file in dev.
 const GEOJSON_PATH   = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 
+// Fetches a GeoJSON file and validates that the server actually returned JSON (not an HTML error page).
 async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
   const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
@@ -1027,8 +1032,8 @@ async function fetchGeoJson(url) {
   return res
 }
 
-// MapLibre GL requires hex values — CSS variables are not supported in GL paint specs.
-// These mirror the CSS variables defined in style.css :root for a single source of truth.
+// MapLibre paint properties only accept literal hex values — they can't read CSS variables.
+// These colours are intentionally kept in sync with the :root palette in style.css.
 const MAP_COLORS = {
   solarExcellent:  '#09332C',
   solarGood:       '#5A9072',
@@ -1048,14 +1053,15 @@ const SOLAR_EXTRUSION_COLOR = ['step', ['get', 'solar_score'], MAP_COLORS.solarV
 const SOLAR_DISABLED_EXTRUSION_COLOR = '#DED8CA'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+
+// In-memory caches keyed by structure_id (or season for sun path).
+// Avoids re-fetching the same building data every time the user clicks the same building.
 const solarApiCache = new Map()
 const yieldCache = new Map()
 const shadowImpactCache = new Map()
-
-// Updated: Cache sun path data from backend.
 const sunPathCache = new Map()
 
-// Updated: Backend date presets for sun path simulation.
+// Fixed calendar dates used for the three sun simulation seasons.
 const SUN_PATH_DATES = {
   summer: '2025-12-21',
   equinox: '2025-03-21',
@@ -1108,9 +1114,10 @@ const scoreExplOpen = ref(false)
 const formulaCardOpen = ref(false)
 const activeTab = ref('details')
 
-// Priority 1: backend yield API (rooftop_solar survey — 31% of buildings)
-// Priority 2: GeoJSON kwh_annual (also from rooftop_solar)
-// Priority 3: Google Solar API area × efficiency × PSH (covers remaining buildings)
+// kWh estimate with three fallback tiers, because not every building has every data source:
+//   1. Backend yield API — from the City of Melbourne rooftop solar survey (~31% of buildings)
+//   2. GeoJSON kwh_annual — also survey data, embedded in the map file
+//   3. Formula: usable area × 20% panel efficiency × 75% system losses × peak sun hours
 const formulaKwhAnnual = computed(() => {
   if (yieldData.value?.kwh_annual > 0) return yieldData.value.kwh_annual
   if (selectedBuilding.value?.kwh_annual > 0) return Number(selectedBuilding.value.kwh_annual)
@@ -1121,7 +1128,8 @@ const formulaKwhAnnual = computed(() => {
   return Math.round(area * 0.20 * 0.75 * 4.1 * 365)
 })
 
-// NASA POWER monthly PSH — fallback when yield API has no survey data
+// Monthly peak sun hours for Melbourne from NASA POWER, used to split annual kWh into
+// a per-month breakdown when the backend doesn't have actual monthly survey data.
 const MONTHLY_PSH = [
   { month: 'Jan', days: 31, psh: 6.56 },
   { month: 'Feb', days: 28, psh: 5.71 },
@@ -1157,10 +1165,12 @@ const monthlyOutput = computed(() => {
   return months.map(m => ({ ...m, pct: Math.round(m.kwh / maxKwh * 100) }))
 })
 
-const COST_PER_WATT_AUD = 1.20
-const PANEL_CAPACITY_W  = 400
-const TARIFF_AUD_KWH    = 0.28
+// Financial constants — Melbourne 2024 commercial averages used for the payback calculation.
+const COST_PER_WATT_AUD = 1.20   // installed cost per watt (AUD)
+const PANEL_CAPACITY_W  = 400    // standard panel wattage used when Google Solar API doesn't specify
+const TARIFF_AUD_KWH    = 0.28   // electricity tariff (avoided cost per kWh)
 
+// Environmental conversion factors — sources noted inline, used for the Impact panel.
 const GRID_EMISSION_KG_PER_KWH = 0.79   // kg CO₂e/kWh, Australian national avg (Clean Energy Regulator 2022)
 const TREE_CO2_KG_PER_YEAR     = 21.77  // kg CO₂ absorbed per mature tree per year (U.S. Forest Service)
 const PETROL_KWH_PER_LITRE     = 8.9    // energy equivalent of 1 litre of petrol
@@ -1200,10 +1210,9 @@ const financialMetrics = computed(() => {
 let map = null
 let toastTimer = null
 let compassIdx = 0
-let buildingIndex = new Map() // structure_id -> properties
-
-// Updated: full feature index for geometry
-let buildingFeatureIndex = new Map()
+// Quick lookup tables built once when GeoJSON loads — avoids scanning all 40k features on every click.
+let buildingIndex = new Map()        // structure_id → properties (for the sidebar panels)
+let buildingFeatureIndex = new Map() // structure_id → full GeoJSON feature (needed for shadow geometry)
 
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
 const filters = [
@@ -1286,7 +1295,8 @@ const unobstructedUsableAreaLabel = computed(() => {
   return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
 })
 
-// Updated: Load one-day sun path from backend and cache it locally.
+// Loads a full day's sun position data from the backend for one of the three seasons.
+// Caches in memory (Map) and also in sessionStorage so a page refresh doesn't re-fetch.
 async function fetchSunPath(season) {
   const date = SUN_PATH_DATES[season] || SUN_PATH_DATES.summer
   const cacheKey = `sun_path_${season}`
@@ -1340,6 +1350,8 @@ async function fetchShadowImpact(structureId, season, hour) {
   return data
 }
 
+// Fetches Google Solar API data for a building from the backend cache table.
+// Returns null if the building has no cached entry (saves the 404 from bubbling up as an error).
 async function fetchSolarApiData(structureId) {
   if (solarApiCache.has(structureId)) return solarApiCache.get(structureId)
 
@@ -1415,6 +1427,8 @@ function showToast(message) {
   }, 1800)
 }
 
+// Builds a MapLibre filter expression that combines the active roof type and solar tier filters.
+// Returns null when no filters are active (tells MapLibre to show all buildings).
 function buildCombinedFilter(roofType, solarTierId) {
   const conditions = []
   if (roofType !== 'all') {
@@ -1434,6 +1448,8 @@ function buildCombinedFilter(roofType, solarTierId) {
   return ['all', ...conditions]
 }
 
+// Draws a small texture onto a canvas and returns it as image data for MapLibre to use
+// as a fill pattern on roof-type overlay layers (each roof type gets a distinct hatching style).
 function createRoofPatternImage(pattern) {
   const size = 32
   const canvas = document.createElement('canvas')

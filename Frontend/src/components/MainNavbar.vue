@@ -38,6 +38,7 @@
 </template>
 
 <script setup>
+// Shared top navigation bar used by every page after login.
 import { useRoute } from 'vue-router'
 import logoUrl       from '../pictures/Project logo.png'
 import iconHome      from '../pictures/home.png'
@@ -47,6 +48,7 @@ import iconInsights  from '../pictures/ai insights.png'
 
 const route = useRoute()
 
+// disabled: true renders the item as a <span> instead of a link and adds "coming soon" tooltip.
 const navItems = [
   { label: 'Home',        to: '/',          icon: iconHome      },
   { label: '3D Explore',  to: '/explore',   icon: iconExplore   },

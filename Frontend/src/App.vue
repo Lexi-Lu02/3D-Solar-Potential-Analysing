@@ -1,6 +1,14 @@
 <template>
+  <!-- Skip link lets keyboard/screen-reader users jump straight to the page content, bypassing the navbar -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <RouterView v-slot="{ Component }">
+    <!--
+      KeepAlive keeps the 3D map pages alive when you navigate away.
+      Without it, MapLibre would tear down and re-initialise every time you
+      switch tabs, which is expensive and loses your camera position.
+      Home and Password don't need this because they're lightweight.
+    -->
     <KeepAlive include="ExploreView,PrecinctsView">
       <component :is="Component" />
     </KeepAlive>

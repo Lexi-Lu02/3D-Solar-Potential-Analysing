@@ -202,6 +202,8 @@ export default { name: 'PrecinctsView' }
 </script>
 
 <script setup>
+// Precincts page — shows Melbourne CBD divided into named precincts, each colour-coded
+// by solar tier. The sidebar ranks precincts and shows DB-sourced capacity metrics.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
@@ -210,6 +212,7 @@ const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildin
 const PRECINCTS_PATH  = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 const API_BASE        = import.meta.env.VITE_API_BASE_URL  || '/api/v1'
 
+// Fetches a GeoJSON file and validates the response is actually JSON (not an HTML error page).
 async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
   const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
@@ -222,14 +225,19 @@ async function fetchGeoJson(url) {
   return res
 }
 
-// Module-level session caches — survive component unmount/remount within the same tab.
-// Avoids re-fetching large GeoJSON files and re-running the expensive PIP aggregation.
+// Module-level caches that survive component unmount/remount within the same browser tab.
+// The GeoJSON files are large (several MB) and the point-in-polygon aggregation is slow —
+// caching means navigating away and back doesn't redo all that work.
 let _cachedPrecinctGeoJSON = null
 let _cachedBuildingData    = null
 let _cachedAggregation     = null
 let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from /api/v1/precincts
 
-// MapLibre hex colours (mirrors CSS variables — GL paint doesn't accept CSS vars)
+// MapLibre GL paint specs only accept hex literals — CSS variables are not supported.
+// Every value here has a matching token in style.css :root (solar* → --solar-*,
+// buildingBase → --map-building-base, top5Outline → --city-light,
+// selectedOutline → --map-outline-selected, defaultOutline → --map-outline-default,
+// lineStroke → --map-line-stroke).
 const MAP_COLORS = {
   solarExcellent: '#09332C',
   solarGood:      '#5A9072',
@@ -252,7 +260,8 @@ const TIER_COLORS = [
 ]
 const TIER_LABELS = ['Excellent', 'Good', 'Moderate', 'Poor', 'Very Poor']
 
-// Returns 0-based tier index (0 = best) based on rank quintile
+// Splits precincts into 5 equal bands (quintiles) based on their rank.
+// Rank 1 = the best precinct = tier 0 (Excellent). Rank last = tier 4 (Very Poor).
 function quintileTier(rank, total) {
   if (total <= 0) return 2
   return Math.min(4, Math.floor((rank - 1) / total * 5))
@@ -383,7 +392,8 @@ function selectPrecinct(p) {
   }
 }
 
-// ── Point-in-polygon (ray casting) ───────────────────────────────────────────
+// Classic ray-casting algorithm — fires a horizontal ray from the point and counts
+// how many polygon edges it crosses. Odd = inside, even = outside.
 function pointInPolygon(px, py, ring) {
   let inside = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -403,7 +413,8 @@ function pointInFeature(px, py, feature) {
   return rings.some(ring => pointInPolygon(px, py, ring))
 }
 
-// ── Build bounding boxes for fast pre-filter ─────────────────────────────────
+// Pre-computes a bounding box for each precinct polygon so we can skip the expensive
+// ray-cast for buildings that are obviously outside (fast rectangular check first).
 function getBBox(feature) {
   const geom = feature.geometry
   if (!geom) return null
@@ -418,7 +429,9 @@ function getBBox(feature) {
   return { minX, maxX, minY, maxY }
 }
 
-// ── Aggregate buildings into precincts (chunked to keep UI responsive) ────────
+// Assigns every building to a precinct using point-in-polygon and sums up kWh, area, and count.
+// We process buildings in chunks of 2000 and yield back to the browser between each chunk
+// so the loading spinner and text stay responsive during the ~10-second computation.
 async function aggregateBuildings(buildingFeatures, precinctFeatures) {
   const bboxes = precinctFeatures.map(getBBox)
   const accum  = precinctFeatures.map(() => ({
@@ -602,7 +615,9 @@ function initMap(precinctGeoJSON) {
       enriched = await aggregateBuildings(buildingData.features, precinctGeoJSON.features)
       _cachedAggregation = enriched
     }
-    // ── Fetch DB capacity data and merge ─────────────────────────────────────
+    // Fetch the /api/v1/precincts endpoint to get installed_capacity_kw, potential_capacity_kw,
+    // and adoption_gap_kw from the real CER database records.
+    // If the API is unreachable we just skip this step — the sidebar still shows kWh/area/count.
     if (!_cachedApiData) {
       try {
         const apiRes = await fetch(`${API_BASE}/precincts`)
@@ -816,8 +831,8 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border); transition: background 0.15s;
 }
 .precinct-row:hover { background: var(--surface2); }
-.precinct-row--top5 { background: rgba(212, 116, 58, 0.05); }
-.precinct-row--top5:hover { background: rgba(212, 116, 58, 0.10); }
+.precinct-row--top5 { background: rgba(var(--city-light-rgb), 0.05); }
+.precinct-row--top5:hover { background: rgba(var(--city-light-rgb), 0.10); }
 
 /* Rank badge */
 .p-rank {
@@ -826,7 +841,7 @@ onUnmounted(() => {
   border-radius: 8px; font-size: 12px; font-weight: 700;
   color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
 }
-.p-rank--top5 { background: var(--ink); color: #fff; border-color: var(--ink); }
+.p-rank--top5 { background: var(--ink); color: var(--white); border-color: var(--ink); }
 
 /* Tier color dot */
 .p-dot { width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; }
@@ -853,7 +868,7 @@ onUnmounted(() => {
   border-radius: 3px; overflow: hidden;
 }
 .mini-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-.mini-bar--gap { background: #C0392B; }
+.mini-bar--gap { background: var(--danger); }
 .mini-pct { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 
 /* ── Precinct detail panel ────────────────────────────────── */

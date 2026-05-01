@@ -40,6 +40,7 @@
 </template>
 
 <script setup>
+// Login gate for the whole platform. There's only one shared password — it's not per-user auth.
 import { ref, onMounted } from 'vue'
 import { setAuthenticated } from '../router'
 import logoUrl from '../pictures/Project logo.png'
@@ -48,13 +49,14 @@ import { useRouter, useRoute } from 'vue-router'
 const CORRECT_PASSWORD = 'tp06888'
 
 const password = ref('')
-const showPw = ref(false)
+const showPw = ref(false)   // toggles between password dots and plain text
 const errorMsg = ref('')
-const shaking = ref(false)
+const shaking = ref(false)  // triggers the CSS shake animation on wrong password
 const inputRef = ref(null)
 const router = useRouter()
 const route = useRoute()
 
+// Auto-focus the password field so users can start typing immediately.
 onMounted(() => {
   inputRef.value?.focus()
 })
@@ -62,10 +64,11 @@ onMounted(() => {
 function submit() {
   if (password.value === CORRECT_PASSWORD) {
     setAuthenticated(true)
-
+    // Send the user to wherever they were trying to go, or home if they came directly.
     router.replace(route.query.redirect || '/')
   } else {
     errorMsg.value = 'Incorrect password. Please try again.'
+    // Shake the input box to give visual feedback, then clear both the field and the error.
     shaking.value = true
     password.value = ''
     setTimeout(() => { shaking.value = false }, 500)
@@ -81,18 +84,18 @@ function submit() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #E8E6E0 0%, #F2F0EA 50%, #E4E2DC 100%);
+  background: linear-gradient(135deg, var(--bg) 0%, var(--surface) 50%, var(--surface3) 100%);
   padding: 24px;
 }
 
 .pw-card {
-  background: rgba(242, 240, 234, 0.88);
-  border: 1px solid #C4C2BA;
+  background: rgba(var(--surface-rgb), 0.88);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 40px 36px;
   width: 100%;
   max-width: 380px;
-  box-shadow: 0 8px 32px rgba(26, 26, 24, 0.10);
+  box-shadow: 0 8px 32px rgba(var(--ink-rgb), 0.10);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -115,13 +118,13 @@ function submit() {
 .pw-logo-text {
   font-family: 'DM Serif Display', serif;
   font-size: 22px;
-  color: #1A1A18;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .pw-logo-sub {
   font-size: 13px;
-  color: #6B6960;
+  color: var(--text-caption);
 }
 
 .pw-form {
@@ -135,7 +138,7 @@ function submit() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #4A4844;
+  color: var(--text-secondary);
 }
 
 .pw-input-row {
@@ -147,20 +150,20 @@ function submit() {
 .pw-input {
   width: 100%;
   padding: 11px 40px 11px 14px;
-  border: 1px solid #C4C2BA;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
-  color: #1A1A18;
-  background: rgba(255, 255, 255, 0.70);
+  color: var(--text-primary);
+  background: rgba(var(--white-rgb), 0.70);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .pw-input:focus {
-  border-color: #D4743A;
-  box-shadow: 0 0 0 3px rgba(212, 116, 58, 0.15);
-  background: #fff;
+  border-color: var(--city-light);
+  box-shadow: 0 0 0 3px rgba(var(--city-light-rgb), 0.15);
+  background: var(--white);
 }
 
 .pw-input.shake {
@@ -183,7 +186,7 @@ function submit() {
 .pw-toggle:hover { opacity: 1; }
 .pw-toggle:focus-visible {
   opacity: 1;
-  outline: 3px solid #D4743A;
+  outline: 3px solid var(--city-light);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -200,8 +203,8 @@ function submit() {
 .pw-btn {
   margin-top: 4px;
   padding: 11px;
-  background: #1A1A18;
-  color: #F0EFE8;
+  background: var(--ink);
+  color: var(--nav-text);
   border: none;
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
@@ -211,9 +214,9 @@ function submit() {
   transition: background 0.15s, color 0.15s;
 }
 
-.pw-btn:hover:not(:disabled) { background: #D4743A; color: #fff; }
+.pw-btn:hover:not(:disabled) { background: var(--city-light); color: var(--white); }
 .pw-btn:focus-visible {
-  outline: 3px solid #D4743A;
+  outline: 3px solid var(--city-light);
   outline-offset: 2px;
 }
 .pw-btn:disabled { opacity: 0.4; cursor: not-allowed; }

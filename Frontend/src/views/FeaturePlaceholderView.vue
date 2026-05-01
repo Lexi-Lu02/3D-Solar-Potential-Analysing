@@ -10,6 +10,9 @@
 </template>
 
 <script setup>
+// Generic placeholder shown for pages that are not built yet (currently: AI Insights).
+// The router passes title and description as props, so we don't need to create a
+// separate stub component for every future feature.
 import MainNavbar from '../components/MainNavbar.vue'
 
 defineProps({

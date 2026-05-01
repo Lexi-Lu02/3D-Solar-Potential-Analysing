@@ -142,14 +142,48 @@
     <!-- ── CTA ────────────────────────────────────────────────── -->
     <section class="seg seg--dark">
       <div class="seg-inner seg-inner--narrow seg-inner--center">
-        <p class="eyebrow eyebrow--orange">Start exploring</p>
+        <p class="eyebrow eyebrow--orange">Get Started — It's Free</p>
         <h2 class="seg-title seg-title--light">
-          Ready to explore<br>Melbourne's solar future?
+          Your path to smarter<br>solar decisions starts here
         </h2>
-        <p class="seg-desc seg-desc--light">
-          All data is open, live, and free to use. Start with your own building
-          or browse the city's highest-ranked solar precincts.
-        </p>
+
+        <!-- User journey -->
+        <div class="cta-journey" aria-label="User journey steps">
+          <div class="cta-journey-step">
+            <div class="cta-journey-num" aria-hidden="true">1</div>
+            <div class="cta-journey-label">Search</div>
+            <div class="cta-journey-desc">Find any Melbourne CBD building by street address or click it on the 3D map</div>
+          </div>
+          <div class="cta-journey-arrow" aria-hidden="true">→</div>
+          <div class="cta-journey-step">
+            <div class="cta-journey-num" aria-hidden="true">2</div>
+            <div class="cta-journey-label">Analyse</div>
+            <div class="cta-journey-desc">Instantly see solar score, annual energy output, financial payback, and CO₂ savings</div>
+          </div>
+          <div class="cta-journey-arrow" aria-hidden="true">→</div>
+          <div class="cta-journey-step">
+            <div class="cta-journey-num" aria-hidden="true">3</div>
+            <div class="cta-journey-label">Plan</div>
+            <div class="cta-journey-desc">Compare buildings side-by-side and export data to support solar investment decisions</div>
+          </div>
+        </div>
+
+        <!-- Benefits strip -->
+        <div class="cta-benefits" role="list" aria-label="Key benefits">
+          <div class="cta-benefit" role="listitem">
+            <span class="cta-benefit-check" aria-hidden="true">✓</span> Free &amp; open data
+          </div>
+          <div class="cta-benefit-divider" aria-hidden="true"></div>
+          <div class="cta-benefit" role="listitem">
+            <span class="cta-benefit-check" aria-hidden="true">✓</span> 19,000+ buildings analysed
+          </div>
+          <div class="cta-benefit-divider" aria-hidden="true"></div>
+          <div class="cta-benefit" role="listitem">
+            <span class="cta-benefit-check" aria-hidden="true">✓</span> No sign-up required
+          </div>
+        </div>
+
+        <!-- Primary CTA -->
         <div class="cta-actions">
           <button class="btn-cta" @click="goToExplore">Explore the 3D Map →</button>
           <RouterLink class="btn-cta-ghost" to="/precincts">View Precinct Rankings</RouterLink>
@@ -210,10 +244,11 @@
 </template>
 
 <script setup>
+// Landing page — marketing/overview content with a hero, feature sections, and links into the app.
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainNavbar from '../components/MainNavbar.vue'
-import logoUrl          from '../pictures/Logo.png'
+import logoUrl          from '../pictures/Project logo.png'
 import icon3DBuilding   from '../pictures/3D Building Extrusion.png'
 import iconSolarScore   from '../pictures/Solar Score Ranking.png'
 import iconRoofType     from '../pictures/Roof Type Filtering.png'
@@ -229,6 +264,8 @@ import imgPrecinct      from '../pictures/Precincts Map.png'
 const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
+// Hard-coded fallback values shown while the API call is in flight (or if it fails).
+// They are replaced with real numbers from /api/v1/buildings/stats in onMounted below.
 const stats = ref([
   { value: '500+',     label: 'Buildings analysed' },
   { value: '169K m²',  label: 'Usable rooftop area' },
@@ -326,6 +363,8 @@ function goToExplore() {
   router.push('/explore')
 }
 
+// Fetch live stats from the API to replace the placeholder values above.
+// If the request fails for any reason, the hard-coded fallbacks stay in place — no error is shown.
 onMounted(async () => {
   try {
     const res = await fetch(`${API_BASE}/buildings/stats`)
@@ -368,7 +407,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   background-image:
-    linear-gradient(to right, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.32) 58%, rgba(0,0,0,0.08) 100%),
+    linear-gradient(to right, rgba(var(--black-rgb),0.62) 0%, rgba(var(--black-rgb),0.32) 58%, rgba(var(--black-rgb),0.08) 100%),
     url('../pictures/Home Page Background.jpg');
   background-size: cover;
   background-position: center;
@@ -393,13 +432,13 @@ onMounted(async () => {
 .hero-text {
   flex: 2;
   min-width: 0;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(var(--white-rgb),0.07);
+  border: 1px solid rgba(var(--white-rgb),0.16);
   border-radius: 18px;
   padding: 40px 46px;
   backdrop-filter: blur(20px) saturate(1.3);
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.14);
+  box-shadow: 0 6px 32px rgba(var(--black-rgb),0.22), inset 0 1px 0 rgba(var(--white-rgb),0.14);
 }
 
 .hero-eyebrow {
@@ -411,14 +450,14 @@ onMounted(async () => {
 .hero-title {
   font-family: 'DM Serif Display', serif;
   font-size: 48px; line-height: 1.12;
-  color: #fff; margin-bottom: 18px;
+  color: var(--white); margin-bottom: 18px;
 }
 
 .hero-accent { color: var(--city-light); }
 
 .hero-desc {
   font-size: 15px; line-height: 1.78;
-  color: rgba(255,255,255,0.84);
+  color: rgba(var(--white-rgb),0.84);
   margin-bottom: 32px;
   max-width: 460px;
 }
@@ -427,7 +466,7 @@ onMounted(async () => {
 
 .btn-primary {
   padding: 12px 26px;
-  background: var(--city-light); color: #fff;
+  background: var(--city-light); color: var(--white);
   border: none; border-radius: 8px;
   font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
   cursor: pointer; transition: background 0.15s;
@@ -438,13 +477,13 @@ onMounted(async () => {
 
 .btn-ghost {
   padding: 12px 22px;
-  color: rgba(255,255,255,0.82); text-decoration: none;
+  color: rgba(var(--white-rgb),0.82); text-decoration: none;
   font-size: 14px; font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.28); border-radius: 8px;
+  border: 1px solid rgba(var(--white-rgb),0.28); border-radius: 8px;
   transition: background 0.15s, color 0.15s;
   display: inline-block;
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.10); color: #fff; }
+.btn-ghost:hover { background: rgba(var(--white-rgb),0.10); color: var(--white); }
 .btn-ghost:focus-visible { outline: 3px solid var(--city-light); outline-offset: 3px; }
 
 /* Stat grid (hero right) */
@@ -455,26 +494,26 @@ onMounted(async () => {
 }
 
 .stat-card {
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.24);
+  background: rgba(var(--white-rgb),0.12);
+  border: 1px solid rgba(var(--white-rgb),0.24);
   border-radius: 14px;
   padding: 24px 22px;
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 4px 24px rgba(var(--black-rgb),0.16), inset 0 1px 0 rgba(var(--white-rgb),0.18);
   transition: background 0.2s;
 }
-.stat-card:hover { background: rgba(255,255,255,0.18); }
+.stat-card:hover { background: rgba(var(--white-rgb),0.18); }
 
 .stat-val {
   font-family: 'DM Serif Display', serif;
-  font-size: 30px; color: #fff;
+  font-size: 30px; color: var(--white);
   margin-bottom: 6px;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.22);
+  text-shadow: 0 1px 8px rgba(var(--black-rgb),0.22);
 }
 
 .stat-label {
-  font-size: 12px; color: rgba(255,255,255,0.68); line-height: 1.4;
+  font-size: 12px; color: rgba(var(--white-rgb),0.68); line-height: 1.4;
 }
 
 /* ── Section system ───────────────────────────────────────── */
@@ -559,9 +598,7 @@ onMounted(async () => {
   z-index: 1;
 }
 
-.split--rev {
-  /* columns are already in correct order: media, text */
-}
+
 
 .split-text {
   display: flex;
@@ -604,7 +641,7 @@ onMounted(async () => {
 .split-img {
   width: 100%;
   border-radius: 16px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 24px 64px rgba(var(--black-rgb),0.14), 0 4px 16px rgba(var(--black-rgb),0.08);
   object-fit: cover;
 }
 
@@ -638,7 +675,7 @@ onMounted(async () => {
 }
 
 .panel-item:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.09);
+  box-shadow: 0 8px 32px rgba(var(--black-rgb),0.09);
   transform: translateY(-2px);
 }
 
@@ -745,7 +782,7 @@ onMounted(async () => {
 }
 
 .bento-card:hover {
-  box-shadow: 0 8px 28px rgba(0,0,0,0.09);
+  box-shadow: 0 8px 28px rgba(var(--black-rgb),0.09);
   transform: translateY(-2px);
 }
 
@@ -772,6 +809,94 @@ onMounted(async () => {
   padding-bottom: 100px;
 }
 
+/* User journey */
+.cta-journey {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin: 48px 0 0;
+  flex-wrap: wrap;
+}
+
+.cta-journey-step {
+  flex: 1;
+  min-width: 160px;
+  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.cta-journey-num {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--city-light);
+  color: #fff;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.cta-journey-label {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--nav-text);
+  margin-bottom: 8px;
+}
+
+.cta-journey-desc {
+  font-size: 13px;
+  color: var(--nav-text-muted);
+  line-height: 1.6;
+}
+
+.cta-journey-arrow {
+  font-size: 22px;
+  color: var(--city-light);
+  opacity: 0.5;
+  padding: 0 4px;
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+
+/* Benefits strip */
+.cta-benefits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 36px 0 0;
+  flex-wrap: wrap;
+}
+
+.cta-benefit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--nav-text-muted);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cta-benefit-check {
+  color: var(--city-light);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.cta-benefit-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--ink-border);
+  flex-shrink: 0;
+}
+
 .cta-actions {
   display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
   margin-top: 36px;
@@ -779,7 +904,7 @@ onMounted(async () => {
 
 .btn-cta {
   padding: 14px 30px;
-  background: var(--city-light); color: #fff;
+  background: var(--city-light); color: var(--white);
   border: none; border-radius: 8px;
   font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
   cursor: pointer; transition: background 0.15s;
@@ -792,11 +917,11 @@ onMounted(async () => {
   padding: 14px 26px;
   color: var(--nav-link); text-decoration: none;
   font-size: 15px; font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.20); border-radius: 8px;
+  border: 1px solid rgba(var(--white-rgb),0.20); border-radius: 8px;
   transition: background 0.15s, color 0.15s;
   display: inline-block;
 }
-.btn-cta-ghost:hover { background: rgba(255,255,255,0.07); color: var(--nav-text); border-color: rgba(255,255,255,0.38); }
+.btn-cta-ghost:hover { background: rgba(var(--white-rgb),0.07); color: var(--nav-text); border-color: rgba(var(--white-rgb),0.38); }
 .btn-cta-ghost:focus-visible { outline: 3px solid var(--city-light); outline-offset: 3px; }
 
 /* ── Footer ───────────────────────────────────────────────── */
