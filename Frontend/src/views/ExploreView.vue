@@ -1263,6 +1263,12 @@ const formattedSunTime = computed(() => {
   return `${String(hour).padStart(2, '0')}:${minute}`
 })
 
+const selectedSimulationDateLabel = computed(() => {
+  if (sunPathSeason.value === 'summer') return '21 Dec'
+  if (sunPathSeason.value === 'winter') return '21 Jun'
+  return '21 Mar'
+})
+
 // Updated: Current sun data returned by the backend Sun Path API.
 const currentSunData = ref({
   hour: 12,
@@ -1293,6 +1299,15 @@ const unobstructedUsableAreaLabel = computed(() => {
   if (!selectedBuilding.value) return 'Select a building'
   if (unobstructedUsableAreaM2.value == null) return 'Calculating...'
   return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
+})
+
+const shadowImpactLabel = computed(() => {
+  if (!selectedBuilding.value) return 'Select a building'
+
+  const coverage = Number(shadowCoveragePct.value || 0)
+  if (coverage < 10) return 'Low'
+  if (coverage < 35) return 'Moderate'
+  return 'High'
 })
 
 // Loads a full day's sun position data from the backend for one of the three seasons.
@@ -2377,21 +2392,15 @@ async function updateSunSimulation() {
         sunPathSeason.value,
         Number(sunPathTime.value),
       )
-      shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
-      shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
-      unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
-      if (unobstructedUsableAreaM2.value == null) updateFallbackUnobstructedUsableArea()
-      shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
       if (impact) {
         shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
         shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
         unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
+        if (unobstructedUsableAreaM2.value == null) updateFallbackUnobstructedUsableArea()
         shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
-        shadowImpactSource.value = 'backend'
       } else {
-        unobstructedUsableAreaM2.value = null
+        updateFallbackUnobstructedUsableArea()
         shadowOverlayFeatures.value = []
-        shadowImpactSource.value = 'frontend'
       }
     } catch (err) {
       console.error('Shadow impact API failed:', err)
