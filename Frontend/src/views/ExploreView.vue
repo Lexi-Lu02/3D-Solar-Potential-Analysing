@@ -1035,12 +1035,12 @@ async function fetchGeoJson(url) {
 // MapLibre paint properties only accept literal hex values — they can't read CSS variables.
 // These colours are intentionally kept in sync with the :root palette in style.css.
 const MAP_COLORS = {
-  solarExcellent:  '#09332C',
-  solarGood:       '#5A9072',
-  solarModerate:   '#BED4C7',
-  solarPoor:       '#F8AB90',
-  solarVeryPoor:   '#FA1029',
-  selected:        '#FFD966',
+  solarExcellent:  '#1A5C48',
+  solarGood:       '#5A9060',
+  solarModerate:   '#C8D4A0',
+  solarPoor:       '#F09090',
+  solarVeryPoor:   '#E81040',
+  selected:        '#4A90D9',
   compare:         '#8CA28F',
   lineStroke:      '#1C1710',
 }
