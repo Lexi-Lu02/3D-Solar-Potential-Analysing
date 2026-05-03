@@ -239,11 +239,11 @@ let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from 
 // selectedOutline → --map-outline-selected, defaultOutline → --map-outline-default,
 // lineStroke → --map-line-stroke).
 const MAP_COLORS = {
-  solarExcellent: '#09332C',
-  solarGood:      '#5A9072',
-  solarModerate:  '#BED4C7',
-  solarPoor:      '#F8AB90',
-  solarVeryPoor:  '#FA1029',
+  solarExcellent: '#1A5C48',
+  solarGood:      '#5A9060',
+  solarModerate:  '#C8D4A0',
+  solarPoor:      '#F09090',
+  solarVeryPoor:  '#E81040',
   buildingBase:   '#2A2A26',
   top5Outline:    '#D4743A',
   selectedOutline:'#FFD966',
@@ -251,23 +251,35 @@ const MAP_COLORS = {
   lineStroke:     '#1C1710',
 }
 
+// 14 colours interpolated across the 5 anchor points (rank 1 = best = index 0)
 const TIER_COLORS = [
-  MAP_COLORS.solarExcellent,
-  MAP_COLORS.solarGood,
-  MAP_COLORS.solarModerate,
-  MAP_COLORS.solarPoor,
-  MAP_COLORS.solarVeryPoor,
+  '#1A5C48',  // rank 1
+  '#2E6C4F',  // rank 2
+  '#417C57',  // rank 3
+  '#558C5E',  // rank 4
+  '#7CA574',  // rank 5
+  '#9EBA87',  // rank 6
+  '#C0CF9B',  // rank 7
+  '#CECA9E',  // rank 8
+  '#DBB599',  // rank 9
+  '#E7A094',  // rank 10
+  '#EF868A',  // rank 11
+  '#ED5F71',  // rank 12
+  '#EB3759',  // rank 13
+  '#E81040',  // rank 14
 ]
-const TIER_LABELS = ['Excellent', 'Good', 'Moderate', 'Poor', 'Very Poor']
+const TIER_LABELS = [
+  'Rank 1','Rank 2','Rank 3','Rank 4','Rank 5','Rank 6','Rank 7',
+  'Rank 8','Rank 9','Rank 10','Rank 11','Rank 12','Rank 13','Rank 14',
+]
 
-// Splits precincts into 5 equal bands (quintiles) based on their rank.
-// Rank 1 = the best precinct = tier 0 (Excellent). Rank last = tier 4 (Very Poor).
+// Maps rank directly to one of 14 colour indices.
 function quintileTier(rank, total) {
-  if (total <= 0) return 2
-  return Math.min(4, Math.floor((rank - 1) / total * 5))
+  if (total <= 0) return 6
+  return Math.min(13, Math.floor((rank - 1) / total * 14))
 }
 function tierColor(tier) { return TIER_COLORS[tier] ?? MAP_COLORS.solarModerate }
-function tierLabel(tier) { return TIER_LABELS[tier] ?? 'Moderate' }
+function tierLabel(tier) { return TIER_LABELS[tier] ?? `Rank ${tier + 1}` }
 
 const isLoading     = ref(true)
 const loadingText   = ref('Loading building data…')

@@ -18,11 +18,11 @@
   --text-muted: #909088;
 
   /* ── Solar tier palette ───────────────────────────────── */
-  --solar-very-high: #09332C;
-  --solar-high:      #5A9072;
-  --solar-med:       #BED4C7;
-  --solar-low:       #F8AB90;
-  --solar-very-low:  #FA1029;
+  --solar-very-high: #1A5C48;
+  --solar-high:      #5A9060;
+  --solar-med:       #C8D4A0;
+  --solar-low:       #F09090;
+  --solar-very-low:  #E81040;
 
   /* ── Accent (warm architectural gold) ────────────────── */
   --accent: #C8A870;
