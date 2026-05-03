@@ -1,0 +1,23 @@
+feature,gain_importance
+suburb_Kensington,0.18467088
+suburb_Melbourne,0.13386497
+suburb_Parkville,0.13309015
+building_height_m,0.07942929
+lng,0.054282654
+suburb_West Melbourne,0.053479504
+roof_area_m2,0.037831265
+suburb_North Melbourne,0.037314348
+roof_top_elevation_m,0.036091678
+suburb_Port Melbourne,0.030049145
+suburb_Carlton,0.02780538
+suburb_Flemington,0.027351568
+roof_perimeter_m,0.02379526
+suburb_Docklands,0.022101935
+suburb_South Yarra,0.018331695
+suburb_Southbank,0.01815378
+roof_aspect_deg,0.01700705
+roof_elongation,0.01680412
+suburb_East Melbourne,0.016097357
+roof_compactness,0.0148887895
+suburb_South Wharf,0.011675273
+suburb_Carlton North,0.0058838907
