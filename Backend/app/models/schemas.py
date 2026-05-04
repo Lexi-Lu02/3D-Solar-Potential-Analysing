@@ -206,6 +206,10 @@ class YieldResponse(BaseModel):
     kwh_monthly: list[YieldMonthlyItem] = Field(
         ..., description="12 个月的发电量明细（has_data=False 时为空列表）"
     )
+    solar_score_avg: float | None = Field(
+        None, ge=1, le=5,
+        description="Mean patch rating on the 1–5 survey scale. NULL when no rooftop_solar record exists."
+    )
     assumptions: YieldAssumptions = Field(
         ..., description="本次计算所用的参数，供前端透明展示"
     )
