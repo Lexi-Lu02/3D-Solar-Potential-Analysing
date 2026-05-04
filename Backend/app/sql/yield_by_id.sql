@@ -9,7 +9,8 @@
 -- the service layer treats that as has_data=false and returns zero kWh.
 SELECT
     b.structure_id,
-    s.usable_roof_area
+    s.usable_roof_area,
+    s.solar_score_avg
 FROM buildings b
 LEFT JOIN rooftop_solar s ON s.structure_id = b.structure_id
 WHERE b.id = %(id)s;
