@@ -97,7 +97,7 @@ const navItems = [
 }
 
 .main-nav-subtitle {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--nav-text-muted);
   margin-top: 2px;
 }
@@ -112,7 +112,7 @@ const navItems = [
 .main-nav-link {
   text-decoration: none;
   color: var(--nav-link);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   padding: 7px 12px;
   border-radius: 9px;
@@ -164,7 +164,7 @@ const navItems = [
   color: var(--nav-active-color);
   border: 1px solid var(--ink-active-border);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -181,7 +181,7 @@ const navItems = [
   }
 
   .main-nav-link {
-    font-size: 12px;
+    font-size: 13px;
     padding: 6px 9px;
   }
 }
