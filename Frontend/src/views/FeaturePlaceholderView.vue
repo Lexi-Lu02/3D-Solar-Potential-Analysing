@@ -4,7 +4,7 @@
     <section class="placeholder-content">
       <h1>{{ title }}</h1>
       <p>{{ description }}</p>
-      <RouterLink class="placeholder-cta" to="/explore">Open 3D Explore</RouterLink>
+      <RouterLink class="placeholder-cta" to="/explore">Explore the Map</RouterLink>
     </section>
   </div>
 </template>

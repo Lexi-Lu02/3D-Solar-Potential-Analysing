@@ -20,7 +20,7 @@
               generation, and support sustainable urban planning.
             </p>
             <div class="hero-actions">
-              <button class="btn-primary" @click="goToExplore" aria-label="Explore the 3D Solar Map">
+              <button class="btn-primary" @click="goToExplore" aria-label="Explore the Map">
                 Explore the Map →
               </button>
               <a class="btn-ghost" href="#features" aria-label="See platform features">See features</a>
@@ -52,7 +52,7 @@
             <ul class="bullet-list" aria-label="3D Explore features">
               <li v-for="f in exploreFeatures" :key="f">{{ f }}</li>
             </ul>
-            <RouterLink class="text-link" to="/explore" aria-label="Open the 3D Map">Open 3D Map →</RouterLink>
+            <RouterLink class="text-link" to="/explore" aria-label="Explore the Map">Explore the Map →</RouterLink>
           </div>
           <div class="split-media">
             <img :src="img3dExplore" alt="Screenshot of the 3D solar explore map" class="split-img" />
@@ -95,7 +95,7 @@
             <ul class="bullet-list" aria-label="Precincts features">
               <li v-for="f in precinctFeatures" :key="f">{{ f }}</li>
             </ul>
-            <RouterLink class="text-link" to="/precincts" aria-label="View Precinct Rankings">View Precincts →</RouterLink>
+            <RouterLink class="text-link" to="/precincts" aria-label="View Precinct">View Precinct →</RouterLink>
           </div>
         </div>
       </div>
@@ -185,8 +185,8 @@
 
         <!-- Primary CTA -->
         <div class="cta-actions">
-          <button class="btn-cta" @click="goToExplore">Explore the 3D Map →</button>
-          <RouterLink class="btn-cta-ghost" to="/precincts">View Precinct Rankings</RouterLink>
+          <button class="btn-cta" @click="goToExplore">Explore the Map →</button>
+          <RouterLink class="btn-cta-ghost" to="/precincts">View Precinct</RouterLink>
         </div>
       </div>
     </section>
@@ -318,7 +318,7 @@ const steps = [
   },
   {
     title: 'Analyse',
-    desc: 'Review solar score, annual generation, financial payback, and environmental impact in one panel.',
+    desc: 'Review solar score, estimated system size, indicative cost, and payback/CO₂ outcome, then compare buildings or export a report.',
   },
   {
     title: 'Plan',
@@ -442,7 +442,7 @@ onMounted(async () => {
 }
 
 .hero-eyebrow {
-  font-size: 11px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1.4px;
   color: var(--city-light); margin-bottom: 16px;
 }
@@ -513,7 +513,7 @@ onMounted(async () => {
 }
 
 .stat-label {
-  font-size: 12px; color: rgba(var(--white-rgb),0.68); line-height: 1.4;
+  font-size: 13px; color: rgba(var(--white-rgb),0.68); line-height: 1.4;
 }
 
 /* ── Section system ───────────────────────────────────────── */
@@ -544,7 +544,7 @@ onMounted(async () => {
 
 /* ── Shared typography ────────────────────────────────────── */
 .eyebrow {
-  font-size: 11px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1.4px;
   color: var(--city-light);
   margin-bottom: 12px;
@@ -618,7 +618,7 @@ onMounted(async () => {
 .bullet-list li::before {
   content: '→';
   position: absolute; left: 0;
-  color: var(--city-light); font-size: 12px; font-weight: 700;
+  color: var(--city-light); font-size: 13px; font-weight: 700;
   top: 2px;
 }
 
@@ -652,7 +652,7 @@ onMounted(async () => {
 }
 
 .panel-trio-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -692,7 +692,7 @@ onMounted(async () => {
 }
 
 .panel-desc {
-  font-size: 13px; color: var(--text-secondary);
+  font-size: 14px; color: var(--text-secondary);
   line-height: 1.6; margin-bottom: 16px;
 }
 
@@ -702,7 +702,7 @@ onMounted(async () => {
 }
 
 .panel-bullets li {
-  font-size: 13px; color: var(--text-muted);
+  font-size: 14px; color: var(--text-muted);
   padding-left: 14px; position: relative; line-height: 1.4;
 }
 .panel-bullets li::before {
@@ -799,7 +799,7 @@ onMounted(async () => {
 }
 
 .bento-desc {
-  font-size: 13px; color: var(--text-secondary);
+  font-size: 14px; color: var(--text-secondary);
   line-height: 1.65;
 }
 
@@ -850,7 +850,7 @@ onMounted(async () => {
 }
 
 .cta-journey-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--nav-text-muted);
   line-height: 1.6;
 }
@@ -875,7 +875,7 @@ onMounted(async () => {
 }
 
 .cta-benefit {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--nav-text-muted);
   padding: 0 20px;
@@ -941,21 +941,21 @@ onMounted(async () => {
 .footer-brand { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-width: 180px; }
 .footer-logo { width: 40px; height: 40px; object-fit: contain; opacity: 0.9; }
 .footer-brand-name { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--nav-text); line-height: 1.2; }
-.footer-brand-sub { font-size: 11px; color: var(--nav-text-muted); margin-top: 2px; }
+.footer-brand-sub { font-size: 13px; color: var(--nav-text-muted); margin-top: 2px; }
 
 .footer-links { display: flex; gap: 48px; flex: 1; flex-wrap: wrap; }
 .footer-col-group { display: flex; flex-direction: column; gap: 32px; }
 .footer-col { display: flex; flex-direction: column; gap: 10px; min-width: 140px; }
 .footer-col-title {
-  font-size: 11px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.8px;
   color: var(--city-light); margin-bottom: 2px;
 }
-.footer-link { font-size: 13px; color: var(--nav-text-muted); line-height: 1.4; cursor: default; text-decoration: none; }
+.footer-link { font-size: 14px; color: var(--nav-text-muted); line-height: 1.4; cursor: default; text-decoration: none; }
 .footer-link--url { cursor: pointer; transition: color 0.15s; }
 .footer-link--url:hover { color: var(--accent-warm); text-decoration: underline; }
 .footer-link--url:focus-visible { outline: 2px solid var(--accent-warm); outline-offset: 2px; border-radius: 2px; color: var(--accent-warm); }
-.footer-link--eportfolio { display: inline-block; margin-top: 6px; color: var(--city-light); font-weight: 600; font-size: 13px; }
+.footer-link--eportfolio { display: inline-block; margin-top: 6px; color: var(--city-light); font-weight: 600; font-size: 14px; }
 .footer-link--eportfolio:hover { color: var(--city-light-dim); text-decoration: underline; }
 
 /* ── Responsive ───────────────────────────────────────────── */

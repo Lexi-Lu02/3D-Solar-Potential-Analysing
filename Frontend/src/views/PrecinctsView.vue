@@ -239,7 +239,7 @@ let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from 
 // selectedOutline → --map-outline-selected, defaultOutline → --map-outline-default,
 // lineStroke → --map-line-stroke).
 const MAP_COLORS = {
-  solarExcellent: '#1A5C48',
+  solarExcellent: '#0A2E1F',
   solarGood:      '#5A9060',
   solarModerate:  '#C8D4A0',
   solarPoor:      '#F09090',
@@ -789,7 +789,7 @@ onUnmounted(() => {
 
 /* ── Header: rankings label + title ──────────────────────── */
 .rankings-label {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.9px; color: var(--city-light); margin-bottom: 5px;
 }
 
@@ -800,7 +800,7 @@ onUnmounted(() => {
 }
 .sort-tab {
   flex: 1; padding: 13px 8px; text-align: center;
-  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  font-size: 14px; font-weight: 500; color: var(--text-muted);
   background: none; border: none; border-bottom: 2px solid transparent;
   margin-bottom: -2px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
   font-family: 'DM Sans', sans-serif; white-space: nowrap;
@@ -822,7 +822,7 @@ onUnmounted(() => {
   background: var(--surface2); position: sticky; top: 0; z-index: 1;
 }
 .precinct-table-head > div {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.7px; color: var(--text-muted); transition: color 0.15s;
   justify-content: flex-end;
 }
@@ -850,7 +850,7 @@ onUnmounted(() => {
 .p-rank {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 8px; font-size: 12px; font-weight: 700;
+  border-radius: 8px; font-size: 13px; font-weight: 700;
   color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
 }
 .p-rank--top5 { background: var(--ink); color: var(--white); border-color: var(--ink); }
@@ -866,9 +866,9 @@ onUnmounted(() => {
 
 /* Data values — default muted, active sort column stands out */
 .pt-col-kwh, .pt-col-area, .pt-col-bldg {
-  font-size: 13px; color: var(--text-secondary); white-space: nowrap;
+  font-size: 14px; color: var(--text-secondary); white-space: nowrap;
 }
-.pt-col-stat { font-size: 13px; color: var(--text-secondary); }
+.pt-col-stat { font-size: 14px; color: var(--text-secondary); }
 .p-val-active {
   font-size: 14px !important; font-weight: 700 !important;
   color: var(--text-primary) !important;
@@ -881,7 +881,7 @@ onUnmounted(() => {
 }
 .mini-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 .mini-bar--gap { background: var(--danger); }
-.mini-pct { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.mini-pct { font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 
 /* ── Precinct detail panel ────────────────────────────────── */
 .precinct-detail-panel { padding: 0 20px 16px; }
@@ -892,7 +892,7 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(12px);
   background: var(--ink); color: var(--nav-text);
   border: 1px solid var(--ink-border); border-radius: 8px;
-  padding: 9px 18px; font-size: 13px;
+  padding: 9px 18px; font-size: 14px;
   opacity: 0; pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease; z-index: 9999;
 }

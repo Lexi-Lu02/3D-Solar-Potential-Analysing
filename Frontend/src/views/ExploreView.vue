@@ -3,129 +3,31 @@
     <MainNavbar />
 
     <!-- Sub-navigation bar for Explore page -->
-    <div class="explore-subnav" role="toolbar" aria-label="Explore controls">
-      <!-- Right: panel toggles -->
-      <div class="subnav-actions">
-        <button
-          class="subnav-btn"
-          :class="{ 'subnav-btn--active': filtersOpen }"
-          @click="filtersOpen = !filtersOpen"
-          :aria-pressed="filtersOpen"
-          aria-label="Toggle map filters"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
-          Filter
-        </button>
-        <button
-          class="subnav-btn"
-          :class="{ 'subnav-btn--active': comparePanelOpen }"
-          @click="toggleComparePanel"
-          :aria-pressed="comparePanelOpen"
-          aria-label="Toggle comparison panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <rect x="1" y="3" width="5" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="8" y="3" width="5" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          Comparison
-          <span v-if="compareBuildings.length > 0" class="subnav-badge">{{ compareBuildings.length }}</span>
-        </button>
-        <button
-          class="subnav-btn"
-          :class="{ 'subnav-btn--active': sidebarOpen }"
-          @click="sidebarOpen = !sidebarOpen"
-          :aria-pressed="sidebarOpen"
-          aria-label="Toggle building info panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M9 1v12" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          Building Info
-        </button>
-
-        <!-- Updated: Sun Path button -->
-        <button
-          class="subnav-btn"
-          :class="{ 'subnav-btn--active': sunPathOpen }"
-          @click="toggleSunPathPanel"
-          :aria-pressed="sunPathOpen"
-          aria-label="Toggle sun path and shadow simulation panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M7 1.2v1.6M7 11.2v1.6M1.2 7h1.6M11.2 7h1.6M2.8 2.8l1.1 1.1M10.1 10.1l1.1 1.1M10.1 3.9l1.1-1.1M2.8 11.2l1.1-1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          Sun Path
-        </button>
-      </div>
-
-      <!-- Search by Address -->
-      <div class="subnav-search-wrap" ref="searchWrapRef" role="search">
-        <label for="search-address" class="visually-hidden">Search buildings by address</label>
-        <div class="subnav-search-inner">
-          <img :src="iconSearch" alt="" aria-hidden="true" class="subnav-search-icon" />
-          <input
-            id="search-address"
-            v-model="searchId"
-            type="text"
-            class="subnav-search-input"
-            placeholder="Search by address…"
-            autocomplete="off"
-            role="combobox"
-            :aria-expanded="searchResults.length > 0 || searchLoading"
-            aria-autocomplete="list"
-            aria-controls="search-listbox"
-            :aria-activedescendant="searchFocusedIdx >= 0 ? `search-option-${searchFocusedIdx}` : undefined"
-            @input="onSearchInput"
-            @keydown="onSearchKeydown"
-          />
-          <button
-            class="subnav-search-clear"
-            v-if="searchId.length"
-            @click="searchId = ''; closeSearchDropdown()"
-            aria-label="Clear search"
-            type="button"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </button>
-        </div>
-        <!-- Dropdown: loading -->
-        <ul v-if="searchLoading" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox">
-          <li class="search-dropdown-loading" aria-live="polite">
-            <span class="search-loading-dot"></span>
-            <span class="search-loading-dot"></span>
-            <span class="search-loading-dot"></span>
-          </li>
-        </ul>
-        <!-- Dropdown: results -->
-        <ul v-else-if="searchResults.length" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox" aria-label="Address search results">
-          <li
-            v-for="(result, i) in searchResults"
-            :key="result.structure_id"
-            :id="`search-option-${i}`"
-            class="search-dropdown-item"
-            :class="{ 'search-dropdown-item--focused': searchFocusedIdx === i }"
-            role="option"
-            :aria-selected="searchFocusedIdx === i"
-            @mousedown.prevent="selectSearchResult(result)"
-            @mouseover="searchFocusedIdx = i"
-          >
-            <svg class="search-result-pin" width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
-              <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 6 3.5a1.5 1.5 0 0 1 0 3z" fill="currentColor"/>
-            </svg>
-            <span class="search-result-address">{{ result.address }}</span>
-          </li>
-        </ul>
-        <!-- Dropdown: no results -->
-        <ul v-else-if="searchDropdownOpen && searchId.trim().length >= 2 && !searchLoading" class="search-dropdown subnav-dropdown" role="listbox" id="search-listbox">
-          <li class="search-dropdown-empty">No matching addresses found</li>
-        </ul>
-        <div v-if="searchError" id="search-error-msg" class="search-error subnav-search-error" role="alert" aria-live="assertive">{{ searchError }}</div>
-      </div>
-    </div>
+    <SubnavToolbar
+      :filters-open="filtersOpen"
+      :compare-panel-open="comparePanelOpen"
+      :sun-path-open="sunPathOpen"
+      :sidebar-open="sidebarOpen"
+      :compare-count="compareBuildings.length"
+      :search-query="searchId"
+      :search-results="searchResults"
+      :search-loading="searchLoading"
+      :search-dropdown-open="searchDropdownOpen"
+      :search-focused-idx="searchFocusedIdx"
+      :search-error="searchError"
+      :icon-search="iconSearch"
+      @toggle-filters="filtersOpen = !filtersOpen"
+      @toggle-compare="toggleComparePanel"
+      @toggle-sun-path="toggleSunPathPanel"
+      @toggle-sidebar="sidebarOpen = !sidebarOpen"
+      @update:search-query="searchId = $event"
+      @search-input="onSearchInput"
+      @search-keydown="onSearchKeydown"
+      @select-result="selectSearchResult"
+      @update:search-focused-idx="searchFocusedIdx = $event"
+      @clear-search="searchId = ''; closeSearchDropdown()"
+      @close-dropdown="closeSearchDropdown"
+    />
 
     <main id="main-content" class="main">
       <div class="map-area">
@@ -136,140 +38,21 @@
           </div>
         </div>
 
-        <div v-show="filtersOpen" class="map-controls" role="group" aria-label="Map filters">
-          <div class="control-card">
-            <!-- Panel header -->
-            <div class="filter-panel-header">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              </svg>
-              <span class="filter-panel-title">Filters</span>
-              <button class="filter-panel-close" @click="filtersOpen = false" aria-label="Close filter panel">
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Applied filters -->
-            <div v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'" class="applied-filters-section">
-              <div class="applied-filters-row">
-                <span class="applied-filters-label">Applied filters</span>
-                <button class="filter-clear-all" @click="clearAllFilters" aria-label="Clear all filters">
-                  Clear all
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                </button>
-              </div>
-              <div class="applied-chips" role="list" aria-label="Active filters">
-                <span v-if="activeSolarFilter !== 'all'" class="filter-chip" role="listitem">
-                  <span class="filter-chip-dot" :style="{ background: solarTiers.find(t => t.id === activeSolarFilter)?.color }"></span>
-                  {{ solarTiers.find(t => t.id === activeSolarFilter)?.label }}
-                  <button class="filter-chip-remove" @click="filterSolar(activeSolarFilter)" :aria-label="`Remove ${solarTiers.find(t => t.id === activeSolarFilter)?.label} filter`">×</button>
-                </span>
-                <span v-if="activeFilter !== 'all'" class="filter-chip" role="listitem">
-                  {{ filters.find(f => f.type === activeFilter)?.label }}
-                  <button class="filter-chip-remove" @click="filterRoof(activeFilter)" :aria-label="`Remove ${filters.find(f => f.type === activeFilter)?.label} filter`">×</button>
-                </span>
-              </div>
-            </div>
-
-            <!-- Solar Potential section -->
-            <div class="filter-section-divider" v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'"></div>
-            <div class="control-card-toggle-row">
-              <button
-                class="map-effect-toggle"
-                :class="{ active: solarPotentialColorOn }"
-                type="button"
-                :aria-pressed="solarPotentialColorOn"
-                :aria-label="solarPotentialColorOn ? 'Turn off solar potential map colors' : 'Turn on solar potential map colors'"
-                :title="solarPotentialColorOn ? 'Hide solar potential colors' : 'Show solar potential colors'"
-                @click="toggleSolarPotentialColor"
-              >
-                <svg v-if="solarPotentialColorOn" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M1.5 7s2-3.5 5.5-3.5S12.5 7 12.5 7s-2 3.5-5.5 3.5S1.5 7 1.5 7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                  <circle cx="7" cy="7" r="1.7" stroke="currentColor" stroke-width="1.3"/>
-                </svg>
-                <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M1.5 7s2-3.5 5.5-3.5c1 0 1.9.3 2.6.8M12.5 7s-.7 1.2-1.9 2.1M4.4 9.8c.7.4 1.6.7 2.6.7 3.5 0 5.5-3.5 5.5-3.5M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button
-                class="control-card-toggle"
-                @click="solarFilterOpen = !solarFilterOpen"
-                :aria-expanded="solarFilterOpen"
-                aria-controls="solar-filter-group"
-              >
-                <span class="control-title">Solar Potential</span>
-                <svg class="chevron-icon" :class="{ 'chevron-up': solarFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-            <div id="solar-filter-group" v-show="solarFilterOpen" class="filter-group" role="group" aria-label="Solar potential filter options">
-              <button
-                v-for="t in solarTiers"
-                :key="t.id"
-                class="filter-btn"
-                :class="{ active: activeSolarFilter === t.id }"
-                :aria-pressed="activeSolarFilter === t.id"
-                :aria-label="`${t.label} solar potential, score range ${t.range}`"
-                @click="filterSolar(t.id)"
-              >
-                <div class="legend-dot" :style="{ background: t.color }" aria-hidden="true"></div>
-                {{ t.label }}<span class="tier-range">&nbsp;({{ t.range }})</span>
-              </button>
-            </div>
-
-            <!-- Roof Type section -->
-            <div class="filter-section-divider"></div>
-            <div class="control-card-toggle-row">
-              <button
-                class="map-effect-toggle"
-                :class="{ active: roofTypeEffectOn }"
-                type="button"
-                :aria-pressed="roofTypeEffectOn"
-                :aria-label="roofTypeEffectOn ? 'Turn off roof type map styling' : 'Turn on roof type map styling'"
-                :title="roofTypeEffectOn ? 'Hide roof type styling' : 'Show roof type styling'"
-                @click="toggleRoofTypeEffect"
-              >
-                <svg v-if="roofTypeEffectOn" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M1.5 7s2-3.5 5.5-3.5S12.5 7 12.5 7s-2 3.5-5.5 3.5S1.5 7 1.5 7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                  <circle cx="7" cy="7" r="1.7" stroke="currentColor" stroke-width="1.3"/>
-                </svg>
-                <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M1.5 7s2-3.5 5.5-3.5c1 0 1.9.3 2.6.8M12.5 7s-.7 1.2-1.9 2.1M4.4 9.8c.7.4 1.6.7 2.6.7 3.5 0 5.5-3.5 5.5-3.5M2 2l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button
-                class="control-card-toggle"
-                @click="roofFilterOpen = !roofFilterOpen"
-                :aria-expanded="roofFilterOpen"
-                aria-controls="roof-filter-group"
-              >
-                <span class="control-title">Roof Type</span>
-                <svg class="chevron-icon" :class="{ 'chevron-up': roofFilterOpen }" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-            <div id="roof-filter-group" v-show="roofFilterOpen" class="filter-group" role="group" aria-label="Roof type filter options">
-              <button
-                v-for="f in filters"
-                :key="f.type"
-                class="filter-btn"
-                :class="{ active: activeFilter === f.type }"
-                :aria-pressed="activeFilter === f.type"
-                :aria-label="`${f.label} filter`"
-                @click="filterRoof(f.type)"
-              >
-                <span class="roof-pattern-swatch" aria-hidden="true">
-                  <span class="roof-pattern-swatch__texture" :class="`roof-pattern-swatch__texture--${f.pattern}`"></span>
-                </span>
-                {{ f.label }}
-              </button>
-            </div>
-          </div>
-        </div>
+        <FilterPanel
+          v-show="filtersOpen"
+          :active-filter="activeFilter"
+          :active-solar-filter="activeSolarFilter"
+          :solar-potential-color-on="solarPotentialColorOn"
+          :roof-type-effect-on="roofTypeEffectOn"
+          :solar-tiers="solarTiers"
+          :filters="filters"
+          @close="filtersOpen = false"
+          @clear-all="clearAllFilters"
+          @filter-solar="filterSolar"
+          @filter-roof="filterRoof"
+          @toggle-solar-color="toggleSolarPotentialColor"
+          @toggle-roof-type="toggleRoofTypeEffect"
+        />
 
         <!-- Updated: Sun Path panel -->
         <div
@@ -363,98 +146,16 @@
 
         <!-- Comparison panel — slides up from bottom of map area -->
         <Transition name="compare-slide">
-          <div v-if="compareVisible" class="comparison-panel" role="region" aria-label="Building comparison panel" aria-live="polite">
-            <div class="comparison-header">
-              <div class="comparison-header-left">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" class="comparison-header-icon">
-                  <rect x="1" y="3" width="6" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-                  <rect x="9" y="3" width="6" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                <span class="comparison-title" id="compare-panel-title">Building Comparison</span>
-                <span class="comparison-count" :aria-label="`${compareBuildings.length} of 2 buildings selected`">{{ compareBuildings.length }} / 2</span>
-                <button
-                  class="compare-add-btn"
-                  @click="addToCompare"
-                  :disabled="!selectedBuilding || compareBuildings.some(c => c.building.structure_id === selectedBuilding.structure_id)"
-                  :class="{ 'compare-add-btn--added': compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) }"
-                  :aria-label="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Building already in comparison' : 'Add selected building to comparison'"
-                >
-                  <svg v-if="compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id)" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 6.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <svg v-else width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  {{ compareBuildings.some(c => c.building.structure_id === selectedBuilding?.structure_id) ? 'Added to Compare' : 'Add to Compare' }}
-                </button>
-              </div>
-              <button class="comparison-close-btn" @click="comparePanelOpen = false" aria-label="Close comparison panel">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-              </button>
-            </div>
-
-            <div class="comparison-body" aria-labelledby="compare-panel-title">
-              <!-- Building columns -->
-              <div
-                v-for="(item, col) in compareBuildings"
-                :key="item.building.structure_id"
-                class="comparison-col"
-              >
-                <!-- Column header -->
-                <div class="comparison-col-header">
-                  <div class="comparison-col-label">Building {{ col + 1 }}</div>
-                  <div class="comparison-building-id">
-                    {{ shortAddress(item.apiData?.address) || '#' + item.building.structure_id }}
-                  </div>
-                  <button class="comparison-remove-btn" @click="removeFromCompare(col)" :aria-label="`Remove Structure ${item.building.structure_id} from comparison`">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                  </button>
-                </div>
-
-                <!-- Score hero -->
-                <div class="comparison-score-hero">
-                  <div class="comparison-score-circle" :style="{ '--score-color': scoreColor(item.building.solar_score) }">
-                    <span class="comparison-score-num">{{ item.building.solar_score ?? '—' }}</span>
-                    <span class="comparison-score-unit">/100</span>
-                  </div>
-                  <div class="comparison-score-meta">
-                    <div class="comparison-tier-badge" :style="{ background: scoreColor(item.building.solar_score) + '22', color: scoreColor(item.building.solar_score), borderColor: scoreColor(item.building.solar_score) + '55' }">
-                      {{ scoreTier(item.building.solar_score) }}
-                    </div>
-                    <div class="comparison-score-bar-track">
-                      <div class="comparison-score-bar-fill" :style="{ width: Math.min(100, item.building.solar_score || 0) + '%', background: scoreColor(item.building.solar_score) }"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Metric rows -->
-                <div class="comparison-metrics">
-                  <div
-                    v-for="(metric, mi) in compareMetrics(item)"
-                    :key="metric.label"
-                    class="comparison-metric-row"
-                    :class="{ 'comparison-winner': compareWinners[mi]?.[col] }"
-                  >
-                    <span class="comparison-metric-label">{{ metric.label }}</span>
-                    <span class="comparison-metric-val">
-                      {{ metric.display }}
-                      <span v-if="compareWinners[mi]?.[col]" class="comparison-winner-badge" aria-label="Winner">★</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- VS divider (only when 2 buildings) -->
-              <div v-if="compareBuildings.length === 2" class="comparison-vs" aria-hidden="true">VS</div>
-
-              <!-- Empty slot -->
-              <div v-if="compareBuildings.length < 2" class="comparison-empty-col">
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true" class="comparison-empty-icon">
-                  <rect x="2" y="2" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-                  <path d="M14 9v10M9 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-                <div class="comparison-empty-hint">Click a building,<br>then <strong>Add to Compare</strong></div>
-              </div>
-            </div>
-          </div>
+          <ComparisonPanel
+            v-if="compareVisible"
+            :compare-buildings="compareBuildings"
+            :selected-building="selectedBuilding"
+            :active-panel="activeTab"
+            @add="addToCompare"
+            @remove="removeFromCompare"
+            @clear="clearCompare"
+            @close="comparePanelOpen = false"
+          />
         </Transition>
 
         <!-- Sun Path bottom panel -->
@@ -572,7 +273,7 @@
             </div>
             <div v-else class="building-panel visible">
               <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
-              <div class="score-bar-wrap">
+              <div class="score-bar-wrap" :class="scoreCardClass">
                 <div class="score-header">
                   <span class="score-label-group">
                     <span class="score-label">Solar Score</span>
@@ -583,7 +284,7 @@
                       aria-label="Toggle solar score explanation"
                     >?</button>
                   </span>
-                  <span class="score-value">{{ score }}</span>
+                  <span class="score-value" :style="{ color: tierColor }">{{ score }}</span>
                 </div>
                 <div class="score-bar">
                   <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
@@ -646,80 +347,22 @@
               </div>
 
               <!-- Formula explanation card -->
-              <div v-if="formulaKwhAnnual > 0" class="formula-card">
-                <button class="formula-card-toggle" @click="formulaCardOpen = !formulaCardOpen" :aria-expanded="formulaCardOpen">
-                  <span class="formula-card-title">How We Calculate Annual Generation</span>
-                  <svg class="chevron-icon" :class="{ 'chevron-up': formulaCardOpen }" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                    <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-                <Transition name="formula-collapse">
-                <div v-if="formulaCardOpen" class="formula-rows">
-                  <div class="formula-row">
-                    <span class="formula-row-label">Usable Roof Area</span>
-                    <span class="formula-row-val">
-                      {{ (solarApiData?.usableAreaM2 ?? selectedBuilding?.usable_roof_area ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} m²
-                    </span>
-                  </div>
-                  <div class="formula-row formula-row-op">
-                    <span class="formula-row-label">Panel Efficiency</span>
-                    <span class="formula-row-val">× 20%</span>
-                  </div>
-                  <div class="formula-row formula-row-op">
-                    <span class="formula-row-label">Performance Ratio</span>
-                    <span class="formula-row-val">× 75%</span>
-                  </div>
-                  <div class="formula-row formula-row-op">
-                    <span class="formula-row-label">Peak Sun Hours/Day</span>
-                    <span class="formula-row-val">
-                      × {{ solarApiData?.sunshineHours != null
-                            ? (Math.round(solarApiData.sunshineHours / 365 * 10) / 10).toFixed(1) + ' kWh/m²/day'
-                            : '4.1 kWh/m²/day' }}
-                    </span>
-                  </div>
-                  <div class="formula-row formula-row-op">
-                    <span class="formula-row-label">Days per Year</span>
-                    <span class="formula-row-val">× 365</span>
-                  </div>
-                  <div class="formula-row formula-result">
-                    <span class="formula-row-label">Annual Electricity Generation</span>
-                    <span class="formula-row-val">{{ formulaKwhAnnual.toLocaleString() }} kWh</span>
-                  </div>
-                </div>
-                </Transition>
-              </div>
+              <FormulaCard
+                v-if="formulaKwhAnnual > 0"
+                :formula-kwh-annual="formulaKwhAnnual"
+                :solar-api-data="solarApiData"
+                :selected-building="selectedBuilding"
+              />
 
               <div class="section-title">Monthly Generation</div>
-              <div v-if="monthlyOutput.length === 0" class="monthly-no-data">No solar data available for this building</div>
-              <div v-else class="monthly-chart" role="img" :aria-label="`Monthly solar output chart. ${monthlyOutput.map(m => `${m.month}: ${m.kwh.toLocaleString()} kWh`).join(', ')}`">
-                <div class="monthly-bars" role="list">
-                  <div
-                    v-for="(m, i) in monthlyOutput"
-                    :key="m.month"
-                    class="monthly-bar-col"
-                    :class="{ 'monthly-bar-col--hovered': hoveredMonthIdx === i }"
-                    role="listitem"
-                    tabindex="0"
-                    :aria-label="`${m.month}: ${m.kwh.toLocaleString()} kWh`"
-                    @mouseenter="hoveredMonthIdx = i"
-                    @mouseleave="hoveredMonthIdx = null"
-                    @focus="hoveredMonthIdx = i"
-                    @blur="hoveredMonthIdx = null"
-                    @keydown.enter="hoveredMonthIdx = hoveredMonthIdx === i ? null : i"
-                    @keydown.space.prevent="hoveredMonthIdx = hoveredMonthIdx === i ? null : i"
-                  >
-                    <div class="monthly-tooltip" v-if="hoveredMonthIdx === i" aria-hidden="true">
-                      {{ m.kwh.toLocaleString() }} kWh
-                    </div>
-                    <div class="monthly-bar-wrap">
-                      <div class="monthly-bar" :style="{ height: m.pct + '%' }" aria-hidden="true"></div>
-                    </div>
-                    <div class="monthly-bar-label" aria-hidden="true">{{ m.month }}</div>
-                  </div>
-                </div>
+              <MonthlyChart :monthly-output="monthlyOutput" />
+              <div class="section-title">Planning Actions</div>
+              <div class="planning-actions">
+                <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
+                <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
+                <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
               </div>
-              <button class="share-btn" @click="shareBuilding">Copy Shareable Link</button>
-              <p class="share-btn-desc">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
+              <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
             </template>
             <template v-else-if="activeTab === 'finance'">
@@ -833,6 +476,14 @@
                   <div class="fin-assumption-row"><span>Panel efficiency</span><span>20%</span></div>
                   <div class="fin-assumption-row"><span>Performance ratio</span><span>75%</span></div>
                 </div>
+
+                <div class="section-title">Planning Actions</div>
+                <div class="planning-actions">
+                  <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
+                </div>
+                <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
 
               </div>
             </template>
@@ -957,6 +608,14 @@
                   <div class="fin-assumption-row"><span>System lifespan</span><span>25 years</span></div>
                 </div>
 
+                <div class="section-title">Planning Actions</div>
+                <div class="planning-actions">
+                  <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
+                </div>
+                <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
+
               </div>
             </template>
           </div>
@@ -992,6 +651,73 @@
     </main>
 
     <div class="toast" role="status" aria-live="polite" aria-atomic="true" :class="{ show: toastVisible }">{{ toastMessage }}</div>
+
+    <!-- Onboarding overlay — shown on first visit only -->
+    <Transition name="onboarding-fade">
+      <div v-if="showOnboarding" class="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div class="onboarding-card">
+          <button class="onboarding-skip" @click="dismissOnboarding" aria-label="Skip introduction">✕</button>
+
+          <div class="onboarding-header">
+            <div class="onboarding-sun" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="2.6" stroke="var(--city-light)" stroke-width="1.4"/>
+                <path d="M7 1v1.6M7 11.4V13M1 7h1.6M11.4 7H13M2.8 2.8l1.1 1.1M10.1 10.1l1.1 1.1M10.1 3.9l1.1-1.1M2.8 11.2l1.1-1.1" stroke="var(--city-light)" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h2 class="onboarding-title" id="onboarding-title">Welcome to SolarMap</h2>
+            <p class="onboarding-sub">Explore rooftop solar potential across 19,000 Melbourne CBD buildings — free, open, no sign-up.</p>
+          </div>
+
+          <div class="onboarding-steps" role="list" aria-label="Getting started steps">
+            <div class="onboarding-step" role="listitem">
+              <div class="onboarding-step-num" aria-hidden="true">1</div>
+              <div class="onboarding-step-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="onboarding-step-label">Filter</div>
+              <div class="onboarding-step-desc">Use <strong>Filter</strong> to highlight buildings by solar potential tier or roof type</div>
+            </div>
+
+            <div class="onboarding-arrow" aria-hidden="true">→</div>
+
+            <div class="onboarding-step" role="listitem">
+              <div class="onboarding-step-num" aria-hidden="true">2</div>
+              <div class="onboarding-step-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="onboarding-step-label">Click a Building</div>
+              <div class="onboarding-step-desc">Click any 3D building on the map to select it and open its solar profile</div>
+            </div>
+
+            <div class="onboarding-arrow" aria-hidden="true">→</div>
+
+            <div class="onboarding-step" role="listitem">
+              <div class="onboarding-step-num" aria-hidden="true">3</div>
+              <div class="onboarding-step-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="12" width="4" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
+                  <rect x="10" y="7" width="4" height="14" rx="1" stroke="currentColor" stroke-width="2"/>
+                  <rect x="17" y="3" width="4" height="18" rx="1" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="onboarding-step-label">View Estimates</div>
+              <div class="onboarding-step-desc">See annual energy output, financial payback, CO₂ savings, and shadow analysis</div>
+            </div>
+          </div>
+
+          <div class="onboarding-actions">
+            <button class="onboarding-cta" @click="dismissOnboarding">Start Exploring →</button>
+          </div>
+          <p class="onboarding-note">Tip: use the search bar above to jump straight to a street address</p>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -1006,6 +732,11 @@ export default { name: 'ExploreView' }
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import maplibregl from 'maplibre-gl'
 import MainNavbar from '../components/MainNavbar.vue'
+import MonthlyChart from '../components/MonthlyChart.vue'
+import FormulaCard from '../components/FormulaCard.vue'
+import SubnavToolbar from '../components/SubnavToolbar.vue'
+import ComparisonPanel from '../components/ComparisonPanel.vue'
+import FilterPanel from '../components/FilterPanel.vue'
 import iconCompare   from '../pictures/Compare.png'
 import iconSearch    from '../pictures/Search.png'
 import iconSolarCell from '../pictures/solar-cell.png'
@@ -1035,7 +766,7 @@ async function fetchGeoJson(url) {
 // MapLibre paint properties only accept literal hex values — they can't read CSS variables.
 // These colours are intentionally kept in sync with the :root palette in style.css.
 const MAP_COLORS = {
-  solarExcellent:  '#1A5C48',
+  solarExcellent:  '#0A2E1F',
   solarGood:       '#5A9060',
   solarModerate:   '#C8D4A0',
   solarPoor:       '#F09090',
@@ -1088,13 +819,12 @@ const searchResults = ref([])
 const searchLoading = ref(false)
 const searchFocusedIdx = ref(-1)
 const searchDropdownOpen = ref(false)
-const searchWrapRef = ref(null)
 let searchDebounceTimer = null
-const sidebarOpen = ref(true)
-const filtersOpen = ref(true)
+const hasOnboarded = localStorage.getItem('SOLARMAP_ONBOARDED')
+const showOnboarding = ref(!hasOnboarded)
+const sidebarOpen = ref(!!hasOnboarded)
+const filtersOpen = ref(!!hasOnboarded)
 const comparePanelOpen = ref(false)
-const solarFilterOpen = ref(true)
-const roofFilterOpen = ref(true)
 const compareBuildings = ref([])
 
 // Updated: Sun Path state
@@ -1109,9 +839,7 @@ const shadowOverlayFeatures = ref([])
 const unobstructedUsableAreaM2 = ref(null)
 
 const compareVisible = computed(() => comparePanelOpen.value)
-const hoveredMonthIdx = ref(null)
 const scoreExplOpen = ref(false)
-const formulaCardOpen = ref(false)
 const activeTab = ref('details')
 
 // kWh estimate with three fallback tiers, because not every building has every data source:
@@ -1225,11 +953,11 @@ const filters = [
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
 const solarTiers = [
-  { id: 'very-high', label: 'Excellent',  range: '80-100', color: MAP_COLORS.solarExcellent, min: 80, max: null },
-  { id: 'high',      label: 'Good',       range: '60-79',  color: MAP_COLORS.solarGood,      min: 60, max: 80 },
-  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: MAP_COLORS.solarModerate,  min: 40, max: 60 },
-  { id: 'low',       label: 'Poor',       range: '20-39',  color: MAP_COLORS.solarPoor,      min: 20, max: 40 },
-  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20 },
+  { id: 'very-high', label: 'Excellent',  range: '80-100', color: MAP_COLORS.solarExcellent, min: 80, max: null, bars: 5 },
+  { id: 'high',      label: 'Good',       range: '60-79',  color: MAP_COLORS.solarGood,      min: 60, max: 80,   bars: 4 },
+  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: MAP_COLORS.solarModerate,  min: 40, max: 60,   bars: 3 },
+  { id: 'low',       label: 'Poor',       range: '20-39',  color: MAP_COLORS.solarPoor,      min: 20, max: 40,   bars: 2 },
+  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20,   bars: 1 },
 ]
 
 const score = computed(() => {
@@ -1253,6 +981,13 @@ const tierColor = computed(() => {
   if (s >= 40) return 'var(--solar-med)'
   if (s >= 20) return 'var(--solar-low)'
   return 'var(--solar-very-low)'
+})
+
+const scoreCardClass = computed(() => {
+  const s = score.value
+  // Light tier colors (Moderate/Poor) need a darker surface for contrast.
+  const usesLightTierColor = s >= 20 && s < 60
+  return usesLightTierColor ? 'score-bar-wrap--light-tier' : 'score-bar-wrap--dark-tier'
 })
 
 // Updated: Sun Path computed
@@ -1580,6 +1315,12 @@ function filterSolar(tierId) {
   applyFilters()
 }
 
+function dismissOnboarding() {
+  showOnboarding.value = false
+  localStorage.setItem('SOLARMAP_ONBOARDED', '1')
+  filtersOpen.value = true
+}
+
 function toggleComparePanel() {
   comparePanelOpen.value = !comparePanelOpen.value
   if (comparePanelOpen.value) sunPathOpen.value = false
@@ -1615,11 +1356,6 @@ function closeSearchDropdown() {
   searchDropdownOpen.value = false
 }
 
-function onSearchClickOutside(e) {
-  if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
-    closeSearchDropdown()
-  }
-}
 
 function onSearchKeydown(e) {
   const len = searchResults.value.length
@@ -1678,7 +1414,7 @@ async function selectSearchResult(result) {
   solarApiLoading.value = true
 
   if (map) {
-    map.setFilter('building-selected', ['==', ['get', 'structure_id'], sid])
+    updateHighlights()
     const lng = Number(result.lng) || Number(props.lng)
     const lat = Number(result.lat) || Number(props.lat)
     if (lat && lng) {
@@ -1705,60 +1441,25 @@ async function selectSearchResult(result) {
   updateSunSimulation()
 }
 
-function scoreColor(score) {
-  const s = Number(score) || 0
-  if (s >= 80) return 'var(--solar-very-high)'
-  if (s >= 60) return 'var(--solar-high)'
-  if (s >= 40) return 'var(--solar-med)'
-  if (s >= 20) return 'var(--solar-low)'
-  return 'var(--solar-very-low)'
-}
-
-function scoreTier(score) {
-  const s = Number(score) || 0
-  if (s >= 80) return 'Excellent'
-  if (s >= 60) return 'Good'
-  if (s >= 40) return 'Moderate'
-  if (s >= 20) return 'Poor'
-  return 'Very Poor'
-}
-
-function compareMetrics(item) {
-  const b = item.building
-  const api = item.apiData
-  const kwh = api?.kwhAnnual ?? null
-  const area = api?.usableAreaM2 ?? null
-  const roofArea = api?.roofAreaM2 ?? null
-  const usableRatio = area != null && roofArea ? Math.round((area / roofArea) * 100) : null
-  const maxPanels = api?.maxPanels ?? null
-  const sunHours = api?.sunshineHours ?? null
-  const sunIntensity = sunHours != null && roofArea ? Math.round(sunHours / roofArea * 10) / 10 : null
-  return [
-    { label: 'Roof Type',        display: b.roof_type || '—',                                                          raw: null },
-    { label: 'Sun Hrs / m²',     display: sunIntensity != null ? sunIntensity + ' hrs/m²' : '—',                      raw: sunIntensity ?? 0 },
-    { label: 'Annual kWh',       display: kwh != null ? Number(kwh).toLocaleString() + ' kWh' : '—',                 raw: kwh ?? 0 },
-    { label: 'Usable Area',      display: area != null ? Number(area).toFixed(1) + ' m²' : '—',                      raw: area ?? 0 },
-    { label: 'Usable Ratio',     display: usableRatio != null ? usableRatio + '%' : '—',                              raw: usableRatio ?? 0 },
-    { label: 'Max Solar Panels', display: maxPanels != null ? Number(maxPanels).toLocaleString() : '—',               raw: maxPanels ?? 0 },
-  ]
-}
-
-const compareWinners = computed(() => {
-  if (compareBuildings.value.length < 2) return []
-  const m0 = compareMetrics(compareBuildings.value[0])
-  const m1 = compareMetrics(compareBuildings.value[1])
-  return m0.map((_, i) => {
-    if (m0[i].raw === null || m1[i].raw === null) return [false, false]
-    if (m0[i].raw > m1[i].raw) return [true, false]
-    if (m1[i].raw > m0[i].raw) return [false, true]
-    return [false, false]
-  })
-})
 
 function updateCompareHighlight() {
   if (!map) return
   const ids = compareBuildings.value.map(c => c.building.structure_id)
   map.setFilter('building-compare', ['in', ['get', 'structure_id'], ['literal', ids.length ? ids : [-1]]])
+  updateHighlights()
+}
+
+function updateHighlights() {
+  if (!map) return
+  const ids = new Set()
+  if (selectedBuilding.value) ids.add(Number(selectedBuilding.value.structure_id))
+  for (const c of compareBuildings.value) ids.add(Number(c.building.structure_id))
+  const idArr = [...ids]
+  map.setFilter('building-selected',
+    idArr.length > 0
+      ? ['in', ['get', 'structure_id'], ['literal', idArr]]
+      : ['==', ['get', 'structure_id'], -1]
+  )
 }
 
 function addToCompare() {
@@ -1771,6 +1472,20 @@ function addToCompare() {
   const entry = {
     building: { ...selectedBuilding.value },
     apiData: solarApiData.value ? { ...solarApiData.value } : null,
+    analysis: {
+      solar: {
+        annualKwh: formulaKwhAnnual.value > 0 ? formulaKwhAnnual.value : null,
+        usableAreaM2: solarApiData.value?.usableAreaM2 ?? null,
+        roofAreaM2: solarApiData.value?.roofAreaM2 ?? null,
+        sunshineHours: solarApiData.value?.sunshineHours ?? null,
+      },
+      finance: financialMetrics.value
+        ? { ...financialMetrics.value }
+        : null,
+      env: envMetrics.value
+        ? { ...envMetrics.value }
+        : null,
+    },
   }
   if (compareBuildings.value.length >= 2) compareBuildings.value.shift()
   compareBuildings.value.push(entry)
@@ -1975,7 +1690,7 @@ async function openBuildingFromUrl() {
   solarApiLoading.value = true
 
   if (map) {
-    map.setFilter('building-selected', ['==', ['get', 'structure_id'], id])
+    updateHighlights()
 
     const lng = Number(props.lng)
     const lat = Number(props.lat)
@@ -2720,7 +2435,7 @@ function initMap() {
           solarApiLoading.value = true
           sidebarOpen.value = true
 
-          map.setFilter('building-selected', ['==', ['get', 'structure_id'], Number(props.structure_id)])
+          updateHighlights()
 
           const lng = Number(props.lng)
           const lat = Number(props.lat)
@@ -2766,11 +2481,9 @@ onMounted(() => {
   setTimeout(() => {
     if (!map) initMap()
   }, 50)
-  document.addEventListener('mousedown', onSearchClickOutside)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', onSearchClickOutside)
   if (toastTimer) clearTimeout(toastTimer)
 
   // Updated: stop sun animation timer
