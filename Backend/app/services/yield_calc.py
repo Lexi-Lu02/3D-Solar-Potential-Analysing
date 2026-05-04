@@ -63,6 +63,7 @@ def fetch_yield_by_structure_id(conn: Connection, structure_id: int) -> YieldRes
 
     usable_area = _safe_float(row.get("usable_roof_area"))
     has_data = row.get("usable_roof_area") is not None and usable_area > 0
+    solar_score_avg = row.get("solar_score_avg")
 
     if not has_data:
         return YieldResponse(
@@ -70,6 +71,7 @@ def fetch_yield_by_structure_id(conn: Connection, structure_id: int) -> YieldRes
             has_data=False,
             kwh_annual=0,
             kwh_monthly=[],
+            solar_score_avg=float(solar_score_avg) if solar_score_avg is not None else None,
             assumptions=YieldAssumptions(
                 panel_efficiency=PANEL_EFFICIENCY,
                 performance_ratio=PERFORMANCE_RATIO,
@@ -86,6 +88,7 @@ def fetch_yield_by_structure_id(conn: Connection, structure_id: int) -> YieldRes
         has_data=True,
         kwh_annual=round(kwh_annual),
         kwh_monthly=monthly,
+        solar_score_avg=float(solar_score_avg) if solar_score_avg is not None else None,
         assumptions=YieldAssumptions(
             panel_efficiency=PANEL_EFFICIENCY,
             performance_ratio=PERFORMANCE_RATIO,

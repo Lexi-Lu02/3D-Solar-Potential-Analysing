@@ -87,7 +87,7 @@
           class="filter-btn"
           :class="{ active: activeSolarFilter === t.id }"
           :aria-pressed="activeSolarFilter === t.id"
-          :aria-label="`${t.label} solar potential, score range ${t.range} out of 100`"
+          :aria-label="`${t.label} solar potential, score range ${t.range} out of 5`"
           @click="$emit('filter-solar', t.id)"
         >
           <div class="tier-visual" aria-hidden="true">
@@ -104,7 +104,7 @@
           </div>
           <div class="tier-text">
             <span class="tier-name">{{ t.label }}</span>
-            <span class="tier-score">{{ t.range }} / 100</span>
+            <span class="tier-score">{{ t.range }} / 5</span>
           </div>
         </button>
       </div>

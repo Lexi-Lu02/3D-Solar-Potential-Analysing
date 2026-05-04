@@ -284,17 +284,19 @@
                       aria-label="Toggle solar score explanation"
                     >?</button>
                   </span>
-                  <span class="score-value" :style="{ color: tierColor }">{{ score }}</span>
+                  <span class="score-value" :style="{ color: tierColor }">
+                    {{ score !== null ? score.toFixed(1) + ' / 5' : 'No Data' }}
+                  </span>
                 </div>
                 <div class="score-bar">
-                  <div class="score-fill" :style="{ width: Math.min(100, Math.max(0, score)) + '%', background: tierColor }"></div>
+                  <div class="score-fill" :style="{ width: score !== null ? ((score / 5) * 100) + '%' : '0%', background: tierColor }"></div>
                 </div>
                 <div class="score-tier" :style="{ color: tierColor }">{{ tier }}</div>
                 <Transition name="score-expl">
                   <div v-if="scoreExplOpen" class="score-explanation">
-                    Composite of <strong>roof quality</strong> (sunshine intensity per m²)
-                    and <strong>energy output</strong> (annual kWh), each normalised 0–100
-                    and weighted equally.
+                    Rated <strong>1–5</strong> from the City of Melbourne rooftop solar survey.
+                    5 = Excellent, 1 = Very Poor. Shows <strong>No Data</strong> when the
+                    building has no survey record.
                   </div>
                 </Transition>
               </div>
@@ -953,40 +955,43 @@ const filters = [
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
 const solarTiers = [
-  { id: 'very-high', label: 'Excellent',  range: '80-100', color: MAP_COLORS.solarExcellent, min: 80, max: null, bars: 5 },
-  { id: 'high',      label: 'Good',       range: '60-79',  color: MAP_COLORS.solarGood,      min: 60, max: 80,   bars: 4 },
-  { id: 'medium',    label: 'Moderate',   range: '40-59',  color: MAP_COLORS.solarModerate,  min: 40, max: 60,   bars: 3 },
-  { id: 'low',       label: 'Poor',       range: '20-39',  color: MAP_COLORS.solarPoor,      min: 20, max: 40,   bars: 2 },
-  { id: 'very-low',  label: 'Very Poor',  range: '0-19',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20,   bars: 1 },
+  { id: 'very-high', label: 'Excellent',  range: '4.5-5',   color: MAP_COLORS.solarExcellent, min: 80, max: null, bars: 5 },
+  { id: 'high',      label: 'Good',       range: '3.5-4.4', color: MAP_COLORS.solarGood,      min: 60, max: 80,   bars: 4 },
+  { id: 'medium',    label: 'Moderate',   range: '2.5-3.4', color: MAP_COLORS.solarModerate,  min: 40, max: 60,   bars: 3 },
+  { id: 'low',       label: 'Poor',       range: '1.5-2.4', color: MAP_COLORS.solarPoor,      min: 20, max: 40,   bars: 2 },
+  { id: 'very-low',  label: 'Very Poor',  range: '1-1.4',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20,   bars: 1 },
 ]
 
+// solar_score_avg from rooftop_solar survey: 1 (worst) to 5 (best), null when no survey data.
 const score = computed(() => {
-  if (!selectedBuilding.value) return 0
-  return Number(selectedBuilding.value.solar_score || 0)
+  if (!selectedBuilding.value) return null
+  return yieldData.value?.solar_score_avg ?? null
 })
 
 const tier = computed(() => {
   const s = score.value
-  if (s >= 80) return 'Excellent'
-  if (s >= 60) return 'Good'
-  if (s >= 40) return 'Moderate'
-  if (s >= 20) return 'Poor'
+  if (s === null) return 'No Data'
+  if (s >= 4.5) return 'Excellent'
+  if (s >= 3.5) return 'Good'
+  if (s >= 2.5) return 'Moderate'
+  if (s >= 1.5) return 'Poor'
   return 'Very Poor'
 })
 
 const tierColor = computed(() => {
   const s = score.value
-  if (s >= 80) return 'var(--solar-very-high)'
-  if (s >= 60) return 'var(--solar-high)'
-  if (s >= 40) return 'var(--solar-med)'
-  if (s >= 20) return 'var(--solar-low)'
+  if (s === null) return 'var(--text-secondary)'
+  if (s >= 4.5) return 'var(--solar-very-high)'
+  if (s >= 3.5) return 'var(--solar-high)'
+  if (s >= 2.5) return 'var(--solar-med)'
+  if (s >= 1.5) return 'var(--solar-low)'
   return 'var(--solar-very-low)'
 })
 
 const scoreCardClass = computed(() => {
   const s = score.value
   // Light tier colors (Moderate/Poor) need a darker surface for contrast.
-  const usesLightTierColor = s >= 20 && s < 60
+  const usesLightTierColor = s !== null && s >= 1.5 && s < 3.5
   return usesLightTierColor ? 'score-bar-wrap--light-tier' : 'score-bar-wrap--dark-tier'
 })
 
@@ -1549,9 +1554,9 @@ function exportBuildingCsv() {
     ['--- BUILDING DETAILS ---', ''],
     ['Building ID', selectedBuilding.value.structure_id || selectedBuilding.value.objectid || '—'],
     ['Address', shortAddress(selectedAddress.value)],
-    ['Solar Score', score.value],
+    ['Solar Score (1–5)', score.value !== null ? score.value.toFixed(1) : 'No Data'],
     ['Solar Tier', tier.value],
-    ['Solar Score Explanation', 'Composite of roof quality (sunshine intensity per m²) and energy output (annual kWh), each normalised 0–100 and weighted equally.'],
+    ['Solar Score Explanation', 'Rated 1–5 from the City of Melbourne rooftop solar survey. 5 = Excellent, 1 = Very Poor.'],
     ['Roof Type', selectedBuilding.value.roof_type || 'Unknown'],
     ['Building Height', (selectedBuilding.value.building_height || 0).toFixed(1) + ' m'],
     ['Usable Ratio', usableRatio],
