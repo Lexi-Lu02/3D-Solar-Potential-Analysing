@@ -1,155 +1,99 @@
-"""
-Step 5: 推理 + 2015→2023 ID 交叉映射 + 写库 (solar_score_v2)。
+"""Step 5: predict on 2023 buildings, optionally upsert to solar_score_v2.
 
-- 读 dataset_2015_full.parquet (含所有 2015 footprint, 标签可能为 NaN)
-- 用 artifacts/xgb.pkl 预测 1–5
-- (pred-1)/4*100 线性映 0–100, 与 Backend 现有显示一致
-- 用 Data wrangling/buildings.csv 中的 2023 structure_id + lat/lng 做
-  KD-Tree 最近邻, 建立 2015 struct_id → 2023 structure_id 映射
-- 默认仅落盘 CSV; 加 --write-db 才连接 PostgreSQL 写表 solar_score_v2
+Reads dataset_2023.parquet (built by build_features_2023.py from PG),
+runs the LightGBM trained on 2015 features+labels, linearly maps 1–5 → 0–100,
+writes per-structure_id rows to PG (no crosswalk needed — keys already align).
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings(
+    "ignore", message="X does not have valid feature names"
+)
 
 import joblib
 import numpy as np
 import pandas as pd
-from scipy.spatial import cKDTree
 
-from _preprocess import CATEGORICAL_FEATURES, NUMERIC_FEATURES, TARGET  # noqa: F401
+from _db import get_connection
+from _preprocess import CATEGORICAL_FEATURES, NUMERIC_FEATURES  # noqa: F401
 
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
 ARTIFACTS = HERE / "artifacts"
-DATASET_FULL = DATA_DIR / "dataset_2015_full.parquet"
+DATASET_2023 = DATA_DIR / "dataset_2023.parquet"
 
-BUILDINGS_2023_CSV = (
-    HERE.parent / "Data wrangling" / "buildings.csv"
-)
+PREDICTIONS_CSV = ARTIFACTS / "predictions_2023.csv"
 
-PREDICTIONS_CSV = ARTIFACTS / "predictions_2015.csv"
-CROSSWALK_CSV = ARTIFACTS / "id_crosswalk_2015_to_2023.csv"
-JOINED_CSV = ARTIFACTS / "predictions_with_2023_id.csv"
-
-# 与 Backend/app/services/building_query.py 现有映射一致
+# label scale clamps (1 = Very Poor, 5 = Excellent)
 MIN_RAW = 1.0
 MAX_RAW = 5.0
-
-
-# ---------------------------------------------------------------------------
-MODEL_NAME = "xgb"
+MODEL_NAME = "lgb"
 
 
 def predict() -> pd.DataFrame:
     model_path = ARTIFACTS / f"{MODEL_NAME}.pkl"
     if not model_path.exists():
         sys.exit(f"[ERROR] {model_path} not found; run train.py first")
-    if not DATASET_FULL.exists():
-        sys.exit(f"[ERROR] {DATASET_FULL} not found; run build_features.py")
+    if not DATASET_2023.exists():
+        sys.exit(f"[ERROR] {DATASET_2023} not found; run build_features_2023.py")
 
-    df = pd.read_parquet(DATASET_FULL)
+    df = pd.read_parquet(DATASET_2023)
+    n_total = len(df)
+    print(f"[predict] {n_total} buildings in 2023 dataset")
+
     feature_cols = NUMERIC_FEATURES + CATEGORICAL_FEATURES
-    # 缺失值最简单处理: 数值列用中位数, suburb 用 'UNKNOWN'
-    n_missing_numeric = df[NUMERIC_FEATURES].isna().any(axis=1).sum()
+    n_missing = df[NUMERIC_FEATURES].isna().any(axis=1).sum()
+    if n_missing:
+        print(f"  [info] {n_missing} rows had missing numeric features "
+              f"(filled with median before predict)")
     df[NUMERIC_FEATURES] = df[NUMERIC_FEATURES].apply(
         lambda c: c.fillna(c.median()), axis=0
     )
     df[CATEGORICAL_FEATURES[0]] = df[CATEGORICAL_FEATURES[0]].fillna("UNKNOWN")
 
     pipe = joblib.load(model_path)
-    raw = pipe.predict(df[feature_cols])
-    # 钳到 [1,5] 防止外推超界
-    raw = np.clip(raw, MIN_RAW, MAX_RAW)
-    score_0_100 = ((raw - MIN_RAW) / (MAX_RAW - MIN_RAW) * 100.0).round().astype(int)
+    raw_pred = pipe.predict(df[feature_cols])
+    raw_pred = np.clip(raw_pred, MIN_RAW, MAX_RAW)
+    score_0_100 = ((raw_pred - MIN_RAW) / (MAX_RAW - MIN_RAW) * 100.0).round().astype(int)
 
     out = pd.DataFrame({
-        "struct_id_2015": df["struct_id"].astype(int),
-        "lat": df["lat"],
-        "lng": df["lng"],
-        "predicted_score_1_5": np.round(raw, 3),
+        "structure_id": df["structure_id"].astype(int).to_numpy(),
+        "lat": df["lat"].to_numpy(),
+        "lng": df["lng"].to_numpy(),
+        "suburb": df["suburb"].to_numpy(),
+        "predicted_score_1_5": np.round(raw_pred, 3),
         "predicted_score_0_100": score_0_100,
-        "had_label": df["solar_score_avg"].notna(),
-        "expert_score_1_5": df["solar_score_avg"],
         "model_version": MODEL_NAME,
     })
-    print(f"[predict] {len(out)} buildings; "
-          f"{n_missing_numeric} had missing numeric features (filled with median)")
     out.to_csv(PREDICTIONS_CSV, index=False)
     print(f"  -> {PREDICTIONS_CSV}")
+
+    print("\nscore distribution:")
+    bin_edges = [-1, 20, 40, 60, 80, 100]
+    bin_labels = ["VeryPoor (0-20)", "Poor (20-40)", "Moderate (40-60)",
+                  "Good (60-80)", "Excellent (80-100)"]
+    bins = pd.cut(out["predicted_score_0_100"], bins=bin_edges, labels=bin_labels)
+    for label, count in bins.value_counts().sort_index().items():
+        pct = 100 * count / len(out)
+        print(f"  {label:<22} {count:>6}  ({pct:5.1f}%)")
     return out
 
 
-# ---------------------------------------------------------------------------
-def build_crosswalk(predictions: pd.DataFrame) -> pd.DataFrame:
-    if not BUILDINGS_2023_CSV.exists():
-        sys.exit(f"[ERROR] {BUILDINGS_2023_CSV} not found")
-
-    print(f"[crosswalk] loading 2023 buildings from {BUILDINGS_2023_CSV.name} ...")
-    b23 = pd.read_csv(
-        BUILDINGS_2023_CSV,
-        usecols=["structure_id", "lat", "lng"],
-    )
-    print(f"  {len(b23)} 2023 buildings")
-
-    tree = cKDTree(b23[["lat", "lng"]].to_numpy())
-    dist, nn = tree.query(predictions[["lat", "lng"]].to_numpy(), k=1)
-
-    cross = pd.DataFrame({
-        "struct_id_2015": predictions["struct_id_2015"].to_numpy(),
-        "structure_id_2023": b23["structure_id"].to_numpy()[nn],
-        "match_distance_deg": dist,  # 单位是经纬度度数
-    })
-    # 经验阈值仅用于打印诊断, 不影响数据
-    far = (cross["match_distance_deg"] > 0.0005).sum()  # ≈ 50 m
-    print(f"  matched; {far} pairs > ~50 m apart (worst-case fallback)")
-    cross.to_csv(CROSSWALK_CSV, index=False)
-    print(f"  -> {CROSSWALK_CSV}")
-    return cross
-
-
-def join_predictions_with_crosswalk(
-    predictions: pd.DataFrame, cross: pd.DataFrame
-) -> pd.DataFrame:
-    # 一个 2023 building 可能被多个 2015 building 映到; 取分数最高 (避免大楼被某个小棚屋覆盖)
-    j = predictions.merge(cross, on="struct_id_2015", how="inner")
-    j = j.sort_values("predicted_score_1_5", ascending=False)
-    j = j.drop_duplicates("structure_id_2023", keep="first")
-    j.to_csv(JOINED_CSV, index=False)
-    print(f"[join] {len(j)} unique 2023 buildings have a predicted score")
-    print(f"  -> {JOINED_CSV}")
-    return j
-
-
-# ---------------------------------------------------------------------------
-def write_db(joined: pd.DataFrame, model_version: str) -> None:
-    try:
-        import psycopg2
-        import psycopg2.extras
-    except ImportError:
-        sys.exit("[ERROR] psycopg2 not installed; pip install psycopg2-binary")
-
-    # 与 Data wrangling/solar score.py 保持一致的连接信息
-    DB_HOST = "3.26.146.10"
-    DB_PORT = 5432
-    DB_NAME = "melbourne_solar"
-    DB_USER = "teamuser"
-    DB_PASSWORD = "123456"
-
-    print(f"[db] connecting to {DB_HOST}:{DB_PORT}/{DB_NAME} ...")
-    conn = psycopg2.connect(
-        host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
-        user=DB_USER, password=DB_PASSWORD,
-    )
+def write_db(predictions: pd.DataFrame, model_version: str) -> None:
+    print(f"\n[db] writing solar_score_v2 ...")
+    conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS solar_score_v2 (
-            structure_id_2023      INTEGER PRIMARY KEY,
-            struct_id_2015         INTEGER,
+            structure_id           INTEGER PRIMARY KEY,
             predicted_score_1_5    NUMERIC(4, 3),
             predicted_score_0_100  INTEGER CHECK (predicted_score_0_100 BETWEEN 0 AND 100),
             model_version          TEXT NOT NULL,
@@ -158,26 +102,43 @@ def write_db(joined: pd.DataFrame, model_version: str) -> None:
     """)
     conn.commit()
 
+    # legacy schema (had structure_id_2023 / struct_id_2015 / had_label) → recreate
+    cur.execute("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name='solar_score_v2'
+    """)
+    cols = {r[0] for r in cur.fetchall()}
+    if "structure_id_2023" in cols:
+        print("  [migrate] dropping old solar_score_v2 schema (had crosswalk fields)")
+        cur.execute("DROP TABLE solar_score_v2")
+        cur.execute("""
+            CREATE TABLE solar_score_v2 (
+                structure_id           INTEGER PRIMARY KEY,
+                predicted_score_1_5    NUMERIC(4, 3),
+                predicted_score_0_100  INTEGER CHECK (predicted_score_0_100 BETWEEN 0 AND 100),
+                model_version          TEXT NOT NULL,
+                computed_at            TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        conn.commit()
+
+    import psycopg2.extras
     rows = [
         (
-            int(r.structure_id_2023),
-            int(r.struct_id_2015),
+            int(r.structure_id),
             float(r.predicted_score_1_5),
             int(r.predicted_score_0_100),
             model_version,
         )
-        for r in joined.itertuples(index=False)
+        for r in predictions.itertuples(index=False)
     ]
-
     psycopg2.extras.execute_batch(
         cur,
         """
         INSERT INTO solar_score_v2
-            (structure_id_2023, struct_id_2015,
-             predicted_score_1_5, predicted_score_0_100, model_version)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (structure_id_2023) DO UPDATE SET
-            struct_id_2015        = EXCLUDED.struct_id_2015,
+            (structure_id, predicted_score_1_5, predicted_score_0_100, model_version)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (structure_id) DO UPDATE SET
             predicted_score_1_5   = EXCLUDED.predicted_score_1_5,
             predicted_score_0_100 = EXCLUDED.predicted_score_0_100,
             model_version         = EXCLUDED.model_version,
@@ -189,25 +150,22 @@ def write_db(joined: pd.DataFrame, model_version: str) -> None:
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[db] wrote {len(rows)} rows to solar_score_v2")
+    print(f"  wrote {len(rows)} rows to solar_score_v2")
 
 
-# ---------------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--write-db", action="store_true",
-        help="also write to PostgreSQL solar_score_v2 (default: only CSV)",
+        help="upsert solar_score_v2 in PG (default: CSV only)",
     )
     args = parser.parse_args()
 
     print(f"=== Step 5: infer (model={MODEL_NAME}) ===\n")
     preds = predict()
-    cross = build_crosswalk(preds)
-    joined = join_predictions_with_crosswalk(preds, cross)
 
     if args.write_db:
-        write_db(joined, MODEL_NAME)
+        write_db(preds, MODEL_NAME)
     else:
         print("\n[hint] DB write skipped; pass --write-db to upsert solar_score_v2")
 

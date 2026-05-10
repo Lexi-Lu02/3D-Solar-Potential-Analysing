@@ -1,13 +1,4 @@
-"""
-Step 1: 数据获取与校验。
-
-- 校验用户已下载的 2015 building outlines CSV（列、行数、几何字段）
-- 从 NASA POWER 拉 2015 全年 daily 全天空向下短波辐照（ALLSKY_SFC_SW_DWN），
-  覆盖 Melbourne CBD bbox 的格点（含小 buffer），缓存到本地
-
-不做任何主观加权或筛选；只做"该数据源是否可读"的最小校验，以及把外部 API
-原样落盘到磁盘。
-"""
+"""Step 1: validate 2015 footprint CSV + cache NASA POWER 2015 daily irradiance."""
 
 from __future__ import annotations
 
@@ -21,7 +12,7 @@ import pandas as pd
 import requests
 
 # ---------------------------------------------------------------------------
-# 路径常量（全部相对本文件，便于在任何工作目录调用）
+# paths (resolved relative to this file)
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
@@ -31,7 +22,7 @@ NASA_DIR = RAW_2015 / "nasa_power"
 NASA_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# 校验 footprint CSV
+# footprint validation
 # ---------------------------------------------------------------------------
 EXPECTED_COLS = {
     "Geo Point",
@@ -45,14 +36,14 @@ EXPECTED_COLS = {
 
 
 def validate_footprint() -> pd.DataFrame:
-    """读取 + 严格校验 building outlines 2015 CSV。"""
+    """Read + sanity-check 2015 building outlines CSV."""
     if not FOOTPRINT_CSV.exists():
         sys.exit(
             f"[ERROR] footprint CSV not found at {FOOTPRINT_CSV}\n"
-            f"        请把 building-outlines-2015.csv 放到该路径"
+            f"        place building-outlines-2015.csv there"
         )
 
-    # utf-8-sig 处理 BOM；csv 列里含 JSON，pandas 默认引擎能正确解析
+    # utf-8-sig handles BOM; pandas default engine parses JSON-in-CSV ok
     df = pd.read_csv(FOOTPRINT_CSV, encoding="utf-8-sig")
     n_total = len(df)
 
@@ -61,13 +52,13 @@ def validate_footprint() -> pd.DataFrame:
     if missing:
         sys.exit(f"[ERROR] missing columns: {sorted(missing)}")
     if extra:
-        print(f"[warn] unexpected extra columns (will ignore): {sorted(extra)}")
+        print(f"[warn] unexpected extra columns (ignored): {sorted(extra)}")
 
     n_buildings = (df["geom_type"] == "Building").sum()
     n_struct_id_unique = df["struct_id"].nunique()
     n_geom_present = df["Geo Shape"].notna().sum()
 
-    # 抽样校验 Geo Shape 是合法 JSON
+    # spot-check Geo Shape JSON parsing
     sample = df["Geo Shape"].dropna().sample(min(20, n_geom_present), random_state=0)
     bad_json = 0
     for s in sample:
@@ -88,27 +79,23 @@ def validate_footprint() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# NASA POWER 拉取
+# NASA POWER fetch
 # ---------------------------------------------------------------------------
 NASA_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
-NASA_PARAMETERS = "ALLSKY_SFC_SW_DWN"  # 全天空向下短波辐照，单位 kWh/m²/day
-NASA_COMMUNITY = "RE"                  # Renewable Energy
+NASA_PARAMETERS = "ALLSKY_SFC_SW_DWN"  # all-sky downward shortwave (kWh/m²/day)
+NASA_COMMUNITY = "RE"
 START_DATE = "20150101"
 END_DATE = "20151231"
 
-# CBD bbox 含 buffer（包含周边 suburb 以保 KD-Tree 边界点）
-# Melbourne CBD: lat -37.78..-37.83, lng 144.92..145.00
+# bbox covers Melbourne CBD plus margin so KD-Tree edges don't degenerate
 LAT_MIN, LAT_MAX = -37.86, -37.76
 LNG_MIN, LNG_MAX = 144.88, 145.04
 
-# NASA POWER 原生分辨率约 0.5°，但 API 端会对小范围请求做插值。
-# 用 0.05° (~5 km) 步长拉一个网格，KD-Tree 能给每栋建筑唯一的最近邻；
-# 即使返回值在 CBD 内差异不大，也保留这个粒度方便未来切换更高分辨率源。
+# native NASA POWER res ≈ 0.5°; 0.05° step gives ~12 points across CBD
 GRID_STEP = 0.05
 
 
 def grid_points() -> list[tuple[float, float]]:
-    """返回 (lat, lng) 列表，覆盖 CBD bbox。"""
     pts: list[tuple[float, float]] = []
     lat = LAT_MIN
     while lat <= LAT_MAX + 1e-9:
@@ -121,7 +108,7 @@ def grid_points() -> list[tuple[float, float]]:
 
 
 def fetch_one_point(lat: float, lng: float) -> Path:
-    """拉一个格点的 2015 全年 daily 辐照，缓存为 CSV。已存在则跳过。"""
+    """Cache 365 daily values for one (lat,lng). Skip if cached."""
     out_path = NASA_DIR / f"power_{lat:+.4f}_{lng:+.4f}.csv"
     if out_path.exists() and out_path.stat().st_size > 0:
         print(f"  [skip] cached: {out_path.name}")
@@ -137,6 +124,7 @@ def fetch_one_point(lat: float, lng: float) -> Path:
         "format": "JSON",
     }
 
+    # exponential backoff on transient failures
     for attempt in range(1, 4):
         try:
             r = requests.get(NASA_URL, params=params, timeout=60)
@@ -175,13 +163,9 @@ def fetch_nasa_power() -> None:
     for (lat, lng) in pts:
         fetch_one_point(lat, lng)
 
-    # 写一份索引方便后续 build_features.py 直接读
+    # index for downstream KD-Tree lookup
     index_rows = [
-        {
-            "lat": lat,
-            "lng": lng,
-            "csv": f"power_{lat:+.4f}_{lng:+.4f}.csv",
-        }
+        {"lat": lat, "lng": lng, "csv": f"power_{lat:+.4f}_{lng:+.4f}.csv"}
         for (lat, lng) in pts
     ]
     idx_path = NASA_DIR / "index.csv"
@@ -192,12 +176,8 @@ def fetch_nasa_power() -> None:
     print(f"[nasa] index written to {idx_path}")
 
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
 def main() -> None:
-    print("=== Step 1: fetch_data ===")
-    print()
+    print("=== Step 1: fetch_data ===\n")
 
     print("--- A. validate footprint CSV ---")
     validate_footprint()

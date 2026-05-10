@@ -1,19 +1,18 @@
-"""共享的预处理 + 特征清单。
+"""Shared feature lists + preprocessor. Imported by train/evaluate/infer.
 
-train.py / evaluate.py / infer.py 都从本模块 import，
-确保 joblib pickle 在反序列化时能找到自定义函数。
+Keep functions importable so joblib pickle resolves them at load time.
 """
 
 from __future__ import annotations
 
-import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 
 
-NUMERIC_FEATURES: list[str] = [
+# roof geometry — no lat/lng (no physical meaning at CBD scale; pure spatial overfit proxy)
+GEOMETRY_FEATURES: list[str] = [
     "roof_area_m2",
     "roof_perimeter_m",
     "roof_compactness",
@@ -21,13 +20,31 @@ NUMERIC_FEATURES: list[str] = [
     "roof_top_elevation_m",
     "roof_aspect_deg",
     "roof_elongation",
-    "lat",
-    "lng",
+]
+# NASA POWER irradiance — near-constant within CBD; VarianceThreshold drops these
+IRRADIANCE_FEATURES: list[str] = [
     "annual_solar_kwh_m2",
     "winter_solar_kwh_m2_day",
     "summer_solar_kwh_m2_day",
     "solar_seasonality",
 ]
+# neighbour shading proxy at 50m / 100m
+NEIGHBOUR_FEATURES: list[str] = [
+    "nbr_count_50m",
+    "nbr_max_height_50m",
+    "nbr_mean_height_50m",
+    "nbr_taller_count_50m",
+    "nbr_shading_index_50m",
+    "nbr_count_100m",
+    "nbr_max_height_100m",
+    "nbr_mean_height_100m",
+    "nbr_taller_count_100m",
+    "nbr_shading_index_100m",
+]
+NUMERIC_FEATURES: list[str] = (
+    GEOMETRY_FEATURES + IRRADIANCE_FEATURES + NEIGHBOUR_FEATURES
+)
+# 2015 footprint.suburb at train; precincts.name lookup at infer (same 14 strings)
 CATEGORICAL_FEATURES: list[str] = ["suburb"]
 TARGET: str = "solar_score_avg"
 
@@ -36,22 +53,17 @@ TEST_SIZE: float = 0.2
 CV_FOLDS: int = 5
 
 
-def safe_log1p(x: np.ndarray) -> np.ndarray:
-    """log1p with negative inputs clipped to 0; avoids RuntimeWarning."""
-    return np.log1p(np.clip(x, a_min=0, a_max=None))
-
-
 def make_preprocessor() -> ColumnTransformer:
+    """LightGBM-friendly minimal preprocessor.
+
+    numeric: VarianceThreshold(0) only — drops constant columns (irradiance).
+        no log1p: tree splits scale-invariant; old log1p+clip silently dropped lat.
+        no StandardScaler: no effect on tree splits.
+    categorical: OneHotEncoder(handle_unknown='ignore').
+    """
     numeric_pipe = Pipeline(
         steps=[
-            (
-                "log1p",
-                FunctionTransformer(
-                    safe_log1p, validate=False, feature_names_out="one-to-one"
-                ),
-            ),
             ("var", VarianceThreshold(threshold=0.0)),
-            ("scale", StandardScaler()),
         ]
     )
     cat_pipe = Pipeline(
