@@ -53,7 +53,7 @@ const navItems = [
   { label: 'Home',        to: '/',          icon: iconHome      },
   { label: '3D Explore',  to: '/explore',   icon: iconExplore   },
   { label: 'Precincts',   to: '/precincts', icon: iconPrecincts },
-  { label: 'AI Insights', to: '/insights',  icon: iconInsights,  disabled: true },
+  { label: 'AI Insights', to: '/insights',  icon: iconInsights}, // disabled: true reomve
 ]
 </script>
 
