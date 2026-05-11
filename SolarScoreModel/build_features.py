@@ -1,9 +1,12 @@
-"""Step 2 (train): assemble 2015 footprint + 2015 patch labels into training dataset.
+"""Step 1+2 (train): validate 2015 footprint CSV, then assemble training dataset.
 
-A: load footprint CSV → GeoDataFrame
+A: validate + load footprint CSV → GeoDataFrame
 B: spatial-join green_roof_solar patches → labels per struct_id
-C/D: geometric / neighbour features (shared with build_features_2023.py)
+C: geometric features
+D: neighbour shading proxy features
 E: write dataset_2015.parquet (labelled) + dataset_2015_full.parquet
+
+(fetch_data.py has been merged into this script; no separate data-fetch step needed.)
 """
 
 from __future__ import annotations
@@ -47,11 +50,40 @@ MIN_PATCH_AREA_M2 = 4.0  # drop noise patches
 
 ID_COL = "struct_id"
 
+EXPECTED_COLS = {"Geo Point", "Geo Shape", "geom_type", "ovlhgt_ahd", "suburb", "struct_id", "base_ahd"}
+
+
+def validate_footprint(df: pd.DataFrame) -> None:
+    """Sanity-check 2015 building outlines CSV columns and Geo Shape JSON."""
+    missing = EXPECTED_COLS - set(df.columns)
+    extra = set(df.columns) - EXPECTED_COLS
+    if missing:
+        sys.exit(f"[ERROR] missing columns in footprint CSV: {sorted(missing)}")
+    if extra:
+        print(f"    [warn] unexpected extra columns (ignored): {sorted(extra)}")
+
+    n_geom_present = df["Geo Shape"].notna().sum()
+    sample = df["Geo Shape"].dropna().sample(min(20, n_geom_present), random_state=0)
+    bad_json = sum(
+        1 for s in sample
+        if not (lambda o: "coordinates" in o and "type" in o)(json.loads(s))
+        if json.loads(s) is not None
+    )
+    if bad_json:
+        print(f"    [warn] {bad_json}/{len(sample)} Geo Shape entries failed JSON parse")
+
+    print(f"    rows total: {len(df)}  |  "
+          f"Building rows: {(df['geom_type'] == 'Building').sum()}  |  "
+          f"unique struct_id: {df['struct_id'].nunique()}")
+
 
 def load_footprint() -> gpd.GeoDataFrame:
-    print("[A] loading 2015 footprint CSV ...")
-    df = pd.read_csv(FOOTPRINT_CSV, encoding="utf-8-sig")
-    df = df[df["geom_type"] == "Building"].copy()
+    print("[A] validating + loading 2015 footprint CSV ...")
+    if not FOOTPRINT_CSV.exists():
+        sys.exit(f"[ERROR] footprint CSV not found: {FOOTPRINT_CSV}")
+    df_raw = pd.read_csv(FOOTPRINT_CSV, encoding="utf-8-sig")
+    validate_footprint(df_raw)
+    df = df_raw[df_raw["geom_type"] == "Building"].copy()
     print(f"    {len(df)} Building rows")
 
     geoms: list[BaseGeometry | None] = []
@@ -139,7 +171,7 @@ def build_labels(footprint: gpd.GeoDataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    print("=== Step 2: build_features (2015 training data) ===\n")
+    print("=== Step 1+2: build_features (2015 training data) ===\n")
 
     fp = load_footprint()
     labels = build_labels(fp)
