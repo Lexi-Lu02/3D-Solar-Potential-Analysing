@@ -4,7 +4,9 @@ import HomeView from '../views/HomeView.vue'
 import PasswordView from '../views/PasswordView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import PrecinctsView from '../views/PrecinctsView.vue'
-import FeaturePlaceholderView from '../views/FeaturePlaceholderView.vue'
+import AiInsightsView from '../views/AiInsightsView.vue'
+
+
 
 // sessionStorage persists auth for the current browser tab only — closing the tab logs you out.
 let isAuthenticated = sessionStorage.getItem('auth') === 'true'
@@ -38,14 +40,10 @@ const router = createRouter({
     {
       path: '/insights',
       name: 'insights',
-      component: FeaturePlaceholderView,
-      props: {
-        title: 'AI Insights',
-        description: 'This section will surface explainable AI recommendations from building-level and precinct-level data.',
-      },
+      component: AiInsightsView,
       meta: { requiresAuth: true },
     },
-    {
+    { 
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
