@@ -17,7 +17,7 @@ import HomeView from '../views/HomeView.vue'
 import PasswordView from '../views/PasswordView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import PrecinctsView from '../views/PrecinctsView.vue'
-import AiInsightsView from '../views/AiInsightsView.vue'
+import InsightsView from '../views/InsightsView.vue'
 
 
 
@@ -72,7 +72,7 @@ const router = createRouter({
       // AI Insights page — plain-English Q&A interface over solar data.
       path: '/insights',
       name: 'insights',
-      component: AiInsightsView,
+      component: InsightsView,
       meta: { requiresAuth: true },
     },
     { 
