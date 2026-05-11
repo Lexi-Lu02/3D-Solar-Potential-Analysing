@@ -13,14 +13,13 @@
 // createRouter   → builds the router object
 // createWebHistory → uses clean URLs like /explore instead of /#/explore
 import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
+import PasswordView from '../views/PasswordView.vue'
+import ExploreView from '../views/ExploreView.vue'
+import PrecinctsView from '../views/PrecinctsView.vue'
+import AiInsightsView from '../views/AiInsightsView.vue'
 
-// Import every page component so the router knows what to show.
-import HomeView               from '../views/HomeView.vue'
-import PasswordView           from '../views/PasswordView.vue'
-import ExploreView            from '../views/ExploreView.vue'
-import PrecinctsView          from '../views/PrecinctsView.vue'
-import FeaturePlaceholderView from '../views/FeaturePlaceholderView.vue'
-import InsightsView           from '../views/InsightsView.vue'
+
 
 // ── Authentication state ──────────────────────────────────────────────────────
 //
@@ -73,11 +72,10 @@ const router = createRouter({
       // AI Insights page — plain-English Q&A interface over solar data.
       path: '/insights',
       name: 'insights',
-      component: InsightsView,
+      component: AiInsightsView,
       meta: { requiresAuth: true },
     },
-    {
-      // Catch-all: any URL that doesn't match the routes above sends the user to home.
+    { 
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
