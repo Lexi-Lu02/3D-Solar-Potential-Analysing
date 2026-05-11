@@ -724,35 +724,70 @@
 </template>
 
 <script>
+// Named export — required for KeepAlive in App.vue to keep the map alive
+// when navigating to other pages and back.
 export default { name: 'ExploreView' }
 </script>
 
 <script setup>
-// 3D Explore page — the main interactive map. Renders every Melbourne CBD building
-// as a 3D extrusion colour-coded by solar score, and opens a three-panel analysis
-// (Solar Potential / Financial / Environmental) when a building is clicked.
+// ─────────────────────────────────────────────────────────────────────────────
+// ExploreView.vue — The main 3D interactive map page.
+//
+// This is the most complex page in the app. It:
+//   • Renders 40,000+ Melbourne CBD buildings as 3D extrusions on a MapLibre map
+//   • Colours each building by its solar score (green = great, red = poor)
+//   • Opens a 3-tab sidebar when a building is clicked:
+//       Tab 1 — Solar Potential: score, area, monthly chart, formula breakdown
+//       Tab 2 — Financial Analysis: payback period, installation cost, annual savings
+//       Tab 3 — Environmental Impact: CO₂ saved, trees equivalent, homes powered
+//   • Provides an address search bar with dropdown results
+//   • Allows filtering buildings by roof type and solar tier
+//   • Supports side-by-side comparison of up to 2 buildings
+//   • Simulates sun position and shadow on the map for any time of day
+//   • Shows a first-time onboarding modal
+//
+// Data flow:
+//   1. Load combined-buildings.geojson (40k+ building footprints + scores)
+//   2. On building click → fetch detailed solar/yield data from the backend API
+//   3. Calculate financial and environmental metrics from the energy estimate
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Vue's reactivity helpers.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+
+// MapLibre GL JS — the open-source map rendering engine.
 import maplibregl from 'maplibre-gl'
-import MainNavbar from '../components/MainNavbar.vue'
-import MonthlyChart from '../components/MonthlyChart.vue'
-import FormulaCard from '../components/FormulaCard.vue'
-import SubnavToolbar from '../components/SubnavToolbar.vue'
-import ComparisonPanel from '../components/ComparisonPanel.vue'
-import FilterPanel from '../components/FilterPanel.vue'
-import iconCompare   from '../pictures/Compare.png'
-import iconSearch    from '../pictures/Search.png'
-import iconSolarCell from '../pictures/solar-cell.png'
+
+// Shared components used on this page.
+import MainNavbar     from '../components/MainNavbar.vue'
+import MonthlyChart   from '../components/MonthlyChart.vue'   // bar chart of monthly kWh
+import FormulaCard    from '../components/FormulaCard.vue'    // collapsible formula breakdown
+import SubnavToolbar  from '../components/SubnavToolbar.vue'  // sub-navigation toolbar with search
+import ComparisonPanel from '../components/ComparisonPanel.vue' // bottom comparison panel
+import FilterPanel    from '../components/FilterPanel.vue'    // floating filter card
+
+// Icon images used in the sidebar.
+import iconCompare     from '../pictures/Compare.png'
+import iconSearch      from '../pictures/Search.png'
+import iconSolarCell   from '../pictures/solar-cell.png'
 import iconProfits     from '../pictures/profits.png'
 import iconPlanetEarth from '../pictures/planet-earth.png'
+
+// useRoute gives us access to the current URL (used to read ?building= query parameter
+// that is set when someone shares a direct link to a building's analysis).
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-// URLs come from .env so they can point at the EC2 server in production or a local file in dev.
+// ── URL configuration ─────────────────────────────────────────────────────────
+// These come from the .env file so they can point to different servers/paths in
+// development vs production. The || is the fallback if the env var isn't set.
 const GEOJSON_PATH   = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 
-// Fetches a GeoJSON file and validates that the server actually returned JSON (not an HTML error page).
+// ── GeoJSON fetch helper ──────────────────────────────────────────────────────
+// Fetches a GeoJSON file and validates that the server actually returned JSON
+// (not an HTML error page that looks like a 200 response).
 async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
   const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
@@ -765,8 +800,10 @@ async function fetchGeoJson(url) {
   return res
 }
 
-// MapLibre paint properties only accept literal hex values — they can't read CSS variables.
+// ── Map colour constants ──────────────────────────────────────────────────────
+// MapLibre paint properties only accept literal hex values — they cannot read CSS variables.
 // These colours are intentionally kept in sync with the :root palette in style.css.
+// Changing a colour here should also be changed in the matching CSS variable.
 const MAP_COLORS = {
   solarExcellent:  '#0A2E1F',
   solarGood:       '#5A9060',
@@ -787,12 +824,14 @@ const SOLAR_DISABLED_EXTRUSION_COLOR = '#DED8CA'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
-// In-memory caches keyed by structure_id (or season for sun path).
-// Avoids re-fetching the same building data every time the user clicks the same building.
-const solarApiCache = new Map()
-const yieldCache = new Map()
-const shadowImpactCache = new Map()
-const sunPathCache = new Map()
+// ── API response caches ───────────────────────────────────────────────────────
+// Each Map stores API responses keyed by structure_id (or date for sun path).
+// When the user clicks the same building again, we return the cached result
+// instead of making another network request (faster, reduces server load).
+const solarApiCache   = new Map()   // Google Solar API data per building
+const yieldCache      = new Map()   // annual kWh + monthly breakdown per building
+const shadowImpactCache = new Map() // shadow analysis per building+date+hour
+const sunPathCache    = new Map()   // full-day sun position data per season
 
 // Fixed calendar dates used for the three sun simulation seasons.
 const SUN_PATH_DATES = {
@@ -802,47 +841,75 @@ const SUN_PATH_DATES = {
 }
 const NEARBY_SHADOW_RADIUS_M = 260
 
-const isLoading = ref(true)
+// ── Reactive state ────────────────────────────────────────────────────────────
+// All these ref() variables are reactive — when you change .value,
+// Vue automatically re-renders the relevant parts of the template.
+
+// Loading overlay state — shown while the GeoJSON is being downloaded.
+const isLoading   = ref(true)
 const loadingText = ref('Loading Melbourne building data...')
+
+// The building the user last clicked on the map.
+// null = no building selected (sidebar shows the "click a building" placeholder).
 const selectedBuilding = ref(null)
-const activeFilter = ref('all')
-const activeSolarFilter = ref('all')
+
+// Currently active filter values.
+// 'all' means no filter is applied (show all buildings).
+const activeFilter       = ref('all')   // roof type filter (e.g. 'Flat', 'Hip')
+const activeSolarFilter  = ref('all')   // solar tier filter (e.g. 'very-high')
+
+// Whether the solar colour gradient / roof type effect are currently painted on the map.
 const solarPotentialColorOn = ref(true)
-const roofTypeEffectOn = ref(true)
+const roofTypeEffectOn      = ref(true)
+
+// Toast notification state (the brief popup message).
 const toastMessage = ref('')
 const toastVisible = ref(false)
-const solarApiData = ref(null)
-const yieldData = ref(null)
-const solarApiLoading = ref(false)
+
+// Data fetched from the backend API for the selected building.
+const solarApiData  = ref(null)   // Google Solar API data (panels, area, sunshine hours)
+const yieldData     = ref(null)   // City of Melbourne survey data (annual kWh, score)
+const solarApiLoading = ref(false)  // true while API requests are in progress
+
+// The street address of the selected building (fetched separately from /address endpoint).
 const selectedAddress = ref(null)
-const searchId = ref('')
-const searchError = ref('')
-const searchResults = ref([])
-const searchLoading = ref(false)
-const searchFocusedIdx = ref(-1)
-const searchDropdownOpen = ref(false)
-let searchDebounceTimer = null
-const hasOnboarded = localStorage.getItem('SOLARMAP_ONBOARDED')
-const showOnboarding = ref(!hasOnboarded)
-const sidebarOpen = ref(!!hasOnboarded)
-const filtersOpen = ref(!!hasOnboarded)
-const comparePanelOpen = ref(false)
-const compareBuildings = ref([])
 
-// Updated: Sun Path state
-const sunPathOpen = ref(false)
-const sunPathSeason = ref('summer')
-const sunPathTime = ref(12)
-const sunAnimating = ref(false)
-const sunAnimationTimer = ref(null)
-const shadowCoveragePct = ref(0)
-const shadowCasterCount = ref(0)
-const shadowOverlayFeatures = ref([])
-const unobstructedUsableAreaM2 = ref(null)
+// Address search state.
+const searchId           = ref('')      // the current text typed in the search box
+const searchError        = ref('')      // error message if the search API fails
+const searchResults      = ref([])      // array of matching building objects
+const searchLoading      = ref(false)   // true while waiting for search results
+const searchFocusedIdx   = ref(-1)      // which dropdown item is keyboard-highlighted (-1 = none)
+const searchDropdownOpen = ref(false)   // whether the results dropdown is visible
+let searchDebounceTimer  = null         // timer handle to delay API calls while typing
 
-const compareVisible = computed(() => comparePanelOpen.value)
-const scoreExplOpen = ref(false)
-const activeTab = ref('details')
+// Onboarding overlay — shown on first visit, then hidden forever (stored in localStorage).
+// localStorage persists across browser sessions (unlike sessionStorage which clears on tab close).
+const hasOnboarded   = localStorage.getItem('SOLARMAP_ONBOARDED')
+const showOnboarding = ref(!hasOnboarded)   // true = show, false = hidden
+// First-time users see the sidebar and filters closed so the onboarding modal is more prominent.
+const sidebarOpen    = ref(!!hasOnboarded)  // !! converts null → false, string → true
+const filtersOpen    = ref(!!hasOnboarded)
+
+// Comparison panel state.
+const comparePanelOpen = ref(false)     // whether the comparison panel is visible
+const compareBuildings = ref([])        // array of up to 2 buildings being compared
+
+// Sun path & shadow simulation state.
+const sunPathOpen     = ref(false)      // whether the sun path panel is visible
+const sunPathSeason   = ref('summer')  // selected season: 'summer', 'equinox', or 'winter'
+const sunPathTime     = ref(12)         // selected hour (6–18, supports 0.5 steps for :30)
+const sunAnimating    = ref(false)      // true when the "Play" animation is running
+const sunAnimationTimer = ref(null)     // setInterval handle for the animation loop
+const shadowCoveragePct = ref(0)        // estimated % of the selected building's roof that is shaded
+const shadowCasterCount = ref(0)        // number of nearby buildings casting shadows
+const shadowOverlayFeatures = ref([])   // GeoJSON features used to draw shadow polygons
+const unobstructedUsableAreaM2 = ref(null)  // roof area not covered by shadow (m²)
+
+// Sidebar state.
+const compareVisible = computed(() => comparePanelOpen.value)  // alias for template clarity
+const scoreExplOpen  = ref(false)     // whether the solar score explanation tooltip is open
+const activeTab      = ref('details') // which sidebar tab is active: 'details', 'finance', or 'env'
 
 // kWh estimate with three fallback tiers, because not every building has every data source:
 //   1. Backend yield API — from the City of Melbourne rooftop solar survey (~31% of buildings)
@@ -925,26 +992,46 @@ const envMetrics = computed(() => {
   return { co2Kg, treesEquiv, petrolLitres, carsOffRoad, homesPowered, lifetimeCo2T, annualKwh, carbonKgPerKwh }
 })
 
+// Calculates the financial metrics for the Finance Analysis tab.
+// All numbers are estimates — they appear in the sidebar and the CSV export.
 const financialMetrics = computed(() => {
   if (!selectedBuilding.value) return null
   const annualKwh = formulaKwhAnnual.value
   if (!annualKwh || annualKwh <= 0) return null
+  // Use the Google Solar API panel count if available; otherwise null so the cost shows "—"
   const maxPanels       = solarApiData.value?.maxPanels ?? null
+  // Some buildings have a non-standard panel size from the Solar API — fall back to the 400W constant
   const panelCapacityW  = solarApiData.value?.panelCapacityWatts ?? PANEL_CAPACITY_W
+  // installCost = number of panels × watts per panel × cost per watt
   const installCost     = maxPanels != null ? Math.round(maxPanels * panelCapacityW * COST_PER_WATT_AUD) : null
+  // annualSavings = energy we'd have to buy from the grid × electricity tariff
   const annualSavings = Math.round(annualKwh * TARIFF_AUD_KWH)
+  // paybackYears = how many years of savings it takes to recover the installation cost
+  // Rounded to 1 decimal place (e.g., 7.3 years)
   const paybackYears  = installCost && annualSavings > 0 ? Math.round((installCost / annualSavings) * 10) / 10 : null
   return { annualKwh, installCost, annualSavings, paybackYears, maxPanels, panelCapacityW }
 })
 
-let map = null
-let toastTimer = null
-let compassIdx = 0
+// ── Map instance and non-reactive helpers ─────────────────────────────────────
+// These are plain JavaScript variables, NOT Vue refs.
+// They're outside Vue's reactivity system because the map object and lookup tables
+// don't need to trigger re-renders — they're only used inside functions.
+
+let map = null           // the MapLibre map instance (assigned in initMap)
+let toastTimer = null    // setTimeout handle for auto-hiding the toast
+let compassIdx = 0       // tracks which compass heading we're currently on
+
 // Quick lookup tables built once when GeoJSON loads — avoids scanning all 40k features on every click.
+// Using a Map (key-value store) gives O(1) lookup by structure_id, much faster than find().
 let buildingIndex = new Map()        // structure_id → properties (for the sidebar panels)
 let buildingFeatureIndex = new Map() // structure_id → full GeoJSON feature (needed for shadow geometry)
 
+// When the user clicks the compass button, cycle through these 8 cardinal/intercardinal headings
+// so they can quickly snap the map to a clean orientation.
 const COMPASS_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]
+
+// Each entry describes one roof type button shown in the FilterPanel.
+// `pattern` and `patternId` are used by createRoofPatternImage() to draw distinct hatching on the map.
 const filters = [
   { type: 'Flat', label: 'Flat Roofs', pattern: 'flat', patternId: 'roof-pattern-flat' },
   { type: 'Hip', label: 'Hip Roofs', pattern: 'diagonal', patternId: 'roof-pattern-hip' },
@@ -952,8 +1039,12 @@ const filters = [
   { type: 'Pyramid', label: 'Pyramid Roofs', pattern: 'triangles', patternId: 'roof-pattern-pyramid' },
   { type: 'Shed', label: 'Shed Roofs', pattern: 'horizontal', patternId: 'roof-pattern-shed' },
 ]
+// Plain list of type strings — used when we need to loop over all roof types without the extra metadata.
 const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 
+// Defines the 5 solar quality tiers shown in FilterPanel and the sidebar score card.
+// `min`/`max` are the solar_score thresholds (0–100 scale used in the GeoJSON).
+// `bars` controls how many signal-strength bars to draw in the UI (1–5).
 const solarTiers = [
   { id: 'very-high', label: 'Excellent',  range: '4.5-5',   color: MAP_COLORS.solarExcellent, min: 80, max: null, bars: 5 },
   { id: 'high',      label: 'Good',       range: '3.5-4.4', color: MAP_COLORS.solarGood,      min: 60, max: 80,   bars: 4 },
@@ -962,12 +1053,19 @@ const solarTiers = [
   { id: 'very-low',  label: 'Very Poor',  range: '1-1.4',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20,   bars: 1 },
 ]
 
-// solar_score_avg from rooftop_solar survey: 1 (worst) to 5 (best), null when no survey data.
+// ── Solar score display helpers ───────────────────────────────────────────────
+// The "solar score" (1–5) comes from the City of Melbourne rooftop solar survey.
+// It measures average irradiance across the roof area — 5 means excellent solar potential.
+// ~31% of buildings have this data; the rest show "No Data".
+
+// Reads the score from the yield API response for the selected building.
+// Returns null if no building is selected OR if the survey data doesn't cover this building.
 const score = computed(() => {
   if (!selectedBuilding.value) return null
   return yieldData.value?.solar_score_avg ?? null
 })
 
+// Converts a numeric score (1–5) into a human-readable tier label for the sidebar.
 const tier = computed(() => {
   const s = score.value
   if (s === null) return 'No Data'
@@ -978,6 +1076,8 @@ const tier = computed(() => {
   return 'Very Poor'
 })
 
+// Returns the CSS variable name for the tier's colour.
+// Uses CSS custom properties (defined in style.css :root) so the design system stays consistent.
 const tierColor = computed(() => {
   const s = score.value
   if (s === null) return 'var(--text-secondary)'
@@ -988,6 +1088,8 @@ const tierColor = computed(() => {
   return 'var(--solar-very-low)'
 })
 
+// Some tier colours (yellow/orange) are light — we swap to a darker card background
+// so the white score number stays readable (WCAG colour contrast requirement).
 const scoreCardClass = computed(() => {
   const s = score.value
   // Light tier colors (Moderate/Poor) need a darker surface for contrast.
@@ -1030,17 +1132,23 @@ const sunMetrics = computed(() => {
   }
 })
 
+// Formats the shadow coverage percentage for display in the sun path panel.
+// Shows "Select a building" when nothing is clicked, otherwise e.g. "34%".
 const shadowCoverageLabel = computed(() => {
   if (!selectedBuilding.value) return 'Select a building'
   return `${Math.round(shadowCoveragePct.value)}%`
 })
 
+// Formats the unobstructed usable area (roof area not covered by shadow) for display.
+// null means the calculation is still running or hasn't been triggered yet.
 const unobstructedUsableAreaLabel = computed(() => {
   if (!selectedBuilding.value) return 'Select a building'
   if (unobstructedUsableAreaM2.value == null) return 'Calculating...'
   return `${Number(unobstructedUsableAreaM2.value).toFixed(1)} m²`
 })
 
+// Converts a raw coverage percentage into a 3-level impact word shown in the sun path panel.
+// < 10% = Low, 10–35% = Moderate, > 35% = High
 const shadowImpactLabel = computed(() => {
   if (!selectedBuilding.value) return 'Select a building'
 
@@ -1078,19 +1186,27 @@ async function fetchSunPath(season) {
   return data
 }
 
+// Fetches the shadow impact analysis for one building at a specific date and time.
+// The backend calculates which nearby buildings cast shadows on the selected building's roof
+// and returns the coverage percentage and a GeoJSON overlay for the map.
+// Results are cached by (structureId, date, hour) so scrubbing the time slider
+// only fetches each unique combination once.
 async function fetchShadowImpact(structureId, season, hour) {
   const date = SUN_PATH_DATES[season] || SUN_PATH_DATES.summer
   const normalizedHour = Number(hour)
   const cacheKey = `shadow_${structureId}_${date}_${normalizedHour}`
 
+  // Return from in-memory cache if we've already fetched this combination
   if (shadowImpactCache.has(cacheKey)) return shadowImpactCache.get(cacheKey)
 
+  // Build the query string, e.g. "?date=2025-12-21&hour=14"
   const params = new URLSearchParams({
     date,
     hour: String(normalizedHour),
   })
   const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/shadow-impact?${params}`)
 
+  // 404 means the backend has no shadow data for this building — cache null to avoid retrying
   if (res.status === 404) {
     shadowImpactCache.set(cacheKey, null)
     return null
@@ -1137,7 +1253,11 @@ async function fetchSolarApiData(structureId) {
   }
 }
 
-// Updated: Pick the closest backend sample for the current slider time.
+// The sun path API returns hourly data points (e.g., 6:00, 6:30, 7:00 … 18:00).
+// The time slider can be dragged to any 30-minute increment.
+// This function finds the sample whose hour value is numerically closest to the slider value
+// so we always display a real data point, not an interpolated guess.
+// Uses Array.reduce to scan all samples in one pass and return the winner.
 function findClosestSunSample(samples, hour) {
   if (!Array.isArray(samples) || samples.length === 0) return null
 
@@ -1148,6 +1268,9 @@ function findClosestSunSample(samples, hour) {
   }, samples[0])
 }
 
+// Fetches annual kWh output and monthly breakdown from the City of Melbourne survey API.
+// Returns null if this building has no survey data (the most common case — only ~31% are covered).
+// Cached by structure_id so clicking the same building twice is instant.
 async function fetchYieldData(structureId) {
   if (yieldCache.has(structureId)) return yieldCache.get(structureId)
   try {
@@ -1162,6 +1285,9 @@ async function fetchYieldData(structureId) {
   }
 }
 
+// Fetches the street address for a building from the backend.
+// This is a separate API call because address lookup can be slow — we call it after the
+// solar data is already displayed so the user sees data immediately while the address loads.
 async function fetchAddressForBuilding(structureId) {
   try {
     const res = await fetch(`${API_BASE}/buildings/by-structure/${structureId}/address`)
@@ -1173,6 +1299,9 @@ async function fetchAddressForBuilding(structureId) {
   }
 }
 
+// Shows a brief pop-up notification ("toast") at the bottom of the screen.
+// Clears any existing toast first so rapid calls don't stack up.
+// The toast auto-hides after 1.8 seconds using setTimeout.
 function showToast(message) {
   if (toastTimer) clearTimeout(toastTimer)
   toastMessage.value = message
@@ -1262,6 +1391,9 @@ function createRoofPatternImage(pattern) {
   return ctx.getImageData(0, 0, size, size)
 }
 
+// Registers each roof type's hatching pattern as a named image inside MapLibre.
+// MapLibre uses these image names in the 'fill-pattern' paint property to tile the pattern
+// across rooftops. We skip registration if the image was already added (e.g., after a hot reload).
 function addRoofTypePatternImages() {
   filters.forEach((roofFilter) => {
     if (map.hasImage?.(roofFilter.patternId)) return
@@ -1269,19 +1401,30 @@ function addRoofTypePatternImages() {
   })
 }
 
+// Returns true if a roof type's pattern/outline layers should currently be shown.
+// The layer is hidden if: (a) the roof type effect toggle is off, or
+// (b) the user has filtered to a different roof type.
 function roofTypeLayerVisible(roofType) {
   return roofTypeEffectOn.value && (activeFilter.value === 'all' || activeFilter.value === roofType)
 }
 
+// Synchronises the map's visual state with the current filter toggles.
+// Called whenever solarPotentialColorOn, roofTypeEffectOn, activeFilter, or activeSolarFilter change.
+// Does three things:
+//   1. Switches the extrusion colour between the solar gradient and a plain grey
+//   2. Shows/hides each roof type's hatch pattern layer
+//   3. Applies the combined filter expression to each layer so hidden buildings disappear
 function applyRoofTypeEffect() {
   if (!map?.getLayer('building-extrusion')) return
 
+  // Toggle between the 5-colour solar gradient and a uniform grey
   map.setPaintProperty(
     'building-extrusion',
     'fill-extrusion-color',
     solarPotentialColorOn.value ? SOLAR_EXTRUSION_COLOR : SOLAR_DISABLED_EXTRUSION_COLOR
   )
 
+  // Update each roof type's pattern and outline layers
   ROOF_TYPES.forEach((roofType) => {
     const visible = roofTypeLayerVisible(roofType)
     const filter = buildCombinedFilter(roofType, activeSolarFilter.value)
@@ -1298,62 +1441,83 @@ function applyRoofTypeEffect() {
   })
 }
 
+// One-stop shop to apply both the combined filter and the roof type effect to the map.
+// Called by filterRoof() and filterSolar() after the filter state refs are updated.
 function applyFilters() {
   if (!map) return
   map.setFilter('building-extrusion', buildCombinedFilter(activeFilter.value, activeSolarFilter.value))
   applyRoofTypeEffect()
 }
 
+// Trims a full address to its first 3 comma-separated parts (street number, street, suburb).
+// "123 Collins Street, Melbourne, Victoria 3000" → "123 Collins Street, Melbourne, Victoria 3000"
+// Returns '—' when no address is available (no data sentinel).
 function shortAddress(addr) {
   if (!addr) return '—'
   const parts = addr.split(',')
   return parts.slice(0, 3).join(',').trim()
 }
 
+// Toggles a roof type filter on/off (clicking the same type twice clears it).
+// After updating the ref, calls applyFilters() to push the change to the map immediately.
 function filterRoof(type) {
   activeFilter.value = activeFilter.value === type ? 'all' : type
   applyFilters()
 }
 
+// Same as filterRoof but for solar tier filtering.
+// Clicking "Excellent" when it's already active resets to 'all' (show all tiers).
 function filterSolar(tierId) {
   activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
   applyFilters()
 }
 
+// Called when the user clicks "Start Exploring →" in the onboarding modal.
+// Hides the modal, persists that fact to localStorage (so it never shows again),
+// and opens the filter panel so they can start interacting right away.
 function dismissOnboarding() {
   showOnboarding.value = false
   localStorage.setItem('SOLARMAP_ONBOARDED', '1')
   filtersOpen.value = true
 }
 
+// Toggles the comparison panel open/closed.
+// Closes the sun path panel if it was open — the two bottom panels can't overlap.
 function toggleComparePanel() {
   comparePanelOpen.value = !comparePanelOpen.value
   if (comparePanelOpen.value) sunPathOpen.value = false
 }
 
+// Toggles the sun path/shadow simulation panel open/closed.
+// Closes the comparison panel to avoid overlap.
 function toggleSunPathPanel() {
   sunPathOpen.value = !sunPathOpen.value
   if (sunPathOpen.value) comparePanelOpen.value = false
 }
 
+// Flips the solar colour gradient on or off and shows a short toast confirming the change.
 function toggleSolarPotentialColor() {
   solarPotentialColorOn.value = !solarPotentialColorOn.value
   applyRoofTypeEffect()
   showToast(`Solar potential colors ${solarPotentialColorOn.value ? 'on' : 'off'}`)
 }
 
+// Flips the roof type hatching overlays on or off and confirms with a toast.
 function toggleRoofTypeEffect() {
   roofTypeEffectOn.value = !roofTypeEffectOn.value
   applyRoofTypeEffect()
   showToast(`Roof type styling ${roofTypeEffectOn.value ? 'on' : 'off'}`)
 }
 
+// Resets both active filters to 'all' and refreshes the map so all buildings are visible again.
 function clearAllFilters() {
   activeFilter.value = 'all'
   activeSolarFilter.value = 'all'
   applyFilters()
 }
 
+// Hides the search dropdown by clearing all related state.
+// Called when the user presses Escape, clicks outside, or selects a result.
 function closeSearchDropdown() {
   searchResults.value = []
   searchLoading.value = false
@@ -1362,11 +1526,18 @@ function closeSearchDropdown() {
 }
 
 
+// Handles keyboard navigation in the search dropdown.
+// This makes the search accessible to keyboard-only users (required by WCAG 2.1):
+//   Escape → close the dropdown
+//   Arrow Down → highlight the next result (wraps around at the bottom)
+//   Arrow Up   → highlight the previous result (wraps around at the top)
+//   Enter      → select the highlighted result (or the first one if none highlighted)
+// % len ensures the index wraps: going past the last item goes back to the first.
 function onSearchKeydown(e) {
   const len = searchResults.value.length
   if (e.key === 'Escape') { closeSearchDropdown(); return }
   if (e.key === 'ArrowDown') {
-    e.preventDefault()
+    e.preventDefault()  // prevents the page from scrolling when pressing arrow keys
     searchFocusedIdx.value = len ? (searchFocusedIdx.value + 1) % len : -1
     return
   }
@@ -1382,36 +1553,52 @@ function onSearchKeydown(e) {
   }
 }
 
+// Fires every time the user types in the search box.
+// Uses a debounce pattern: we wait 250ms after the last keypress before sending the request.
+// This prevents sending one API call per keystroke (which would be ~10 calls for "Collins St").
+// Only starts searching once 2+ characters are typed (avoid overwhelming the API with single letters).
 function onSearchInput() {
   searchFocusedIdx.value = -1
-  clearTimeout(searchDebounceTimer)
+  clearTimeout(searchDebounceTimer)      // cancel any pending search from the previous keystroke
   const q = searchId.value.trim()
-  if (q.length < 2) { closeSearchDropdown(); return }
+  if (q.length < 2) { closeSearchDropdown(); return }  // too short — wait for more input
   searchDropdownOpen.value = true
   searchLoading.value = true
   searchDebounceTimer = setTimeout(async () => {
+    // This inner function runs 250ms after the user stops typing
     try {
       const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(searchId.value.trim())}`)
+      // encodeURIComponent ensures special characters (spaces, "&") are URL-safe
       searchResults.value = res.ok ? await res.json() : []
     } catch {
       searchResults.value = []
     } finally {
-      searchLoading.value = false
+      searchLoading.value = false   // hide the loading spinner regardless of success/failure
     }
   }, 250)
 }
 
+// Called when the user clicks a search result or presses Enter on a highlighted result.
+// Steps:
+//   1. Close the dropdown and fill the search input with the chosen address
+//   2. Look up the building in our local index (avoids a round-trip network request)
+//   3. Set the selected building in state (shows the sidebar)
+//   4. Fly the camera to the building's coordinates with a smooth animation
+//   5. Fetch solar API + yield data in parallel (Promise.all)
+//   6. Refresh the sun simulation for the newly selected building
 async function selectSearchResult(result) {
   searchResults.value = []
   searchDropdownOpen.value = false
   searchError.value = ''
   searchId.value = result.address || String(result.structure_id)
 
+  // Look up the building's cached properties by structure_id
   const props = buildingIndex.get(Number(result.structure_id))
   if (!props) { searchError.value = 'Building not found in map data'; return }
 
   const sid = Number(props.structure_id)
 
+  // Pre-populate the sidebar immediately with GeoJSON properties (no API wait)
   selectedBuilding.value = props
   solarApiData.value = null
   yieldData.value = null
@@ -1419,16 +1606,17 @@ async function selectSearchResult(result) {
   solarApiLoading.value = true
 
   if (map) {
-    updateHighlights()
+    updateHighlights()  // immediately highlight this building on the map
     const lng = Number(result.lng) || Number(props.lng)
     const lat = Number(result.lat) || Number(props.lat)
     if (lat && lng) {
+      // Smooth animated camera fly-to — easing function creates a natural acceleration/deceleration
       map.flyTo({
         center: [lng, lat],
-        zoom: Math.max(map.getZoom(), 15.5),
+        zoom: Math.max(map.getZoom(), 15.5),  // zoom in but never zoom OUT (Math.max)
         pitch: 55,
         duration: 1200,
-        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),  // ease-in-out curve
       })
     }
   }
@@ -1447,6 +1635,9 @@ async function selectSearchResult(result) {
 }
 
 
+// Updates the 'building-compare' map layer filter to highlight the 1–2 comparison buildings
+// in the teal/green colour defined by COMPARE_BUILDING_COLOR.
+// We use [-1] as a dummy filter when the list is empty — no real structure_id equals -1.
 function updateCompareHighlight() {
   if (!map) return
   const ids = compareBuildings.value.map(c => c.building.structure_id)
@@ -1454,19 +1645,28 @@ function updateCompareHighlight() {
   updateHighlights()
 }
 
+// Updates the 'building-selected' layer to highlight the currently selected building (blue)
+// AND any buildings in the comparison list. We use a Set to deduplicate (in case the
+// selected building is also in the comparison list).
 function updateHighlights() {
   if (!map) return
   const ids = new Set()
   if (selectedBuilding.value) ids.add(Number(selectedBuilding.value.structure_id))
   for (const c of compareBuildings.value) ids.add(Number(c.building.structure_id))
   const idArr = [...ids]
+  // ['in', field, ['literal', array]] is a MapLibre filter that matches any feature
+  // whose `structure_id` property appears in the given array.
   map.setFilter('building-selected',
     idArr.length > 0
       ? ['in', ['get', 'structure_id'], ['literal', idArr]]
-      : ['==', ['get', 'structure_id'], -1]
+      : ['==', ['get', 'structure_id'], -1]  // match nothing when list is empty
   )
 }
 
+// Adds the currently selected building to the comparison list (max 2 buildings).
+// Snapshots all the currently computed data (solar, financial, environmental) at this moment
+// so the comparison panel stays stable even if the user clicks another building afterwards.
+// If the list is already full (2 buildings), the oldest entry is removed first (.shift()).
 function addToCompare() {
   if (!selectedBuilding.value) return
   const sid = selectedBuilding.value.structure_id
@@ -1474,6 +1674,8 @@ function addToCompare() {
     showToast('Already in comparison')
     return
   }
+  // { ...object } creates a shallow copy — the comparison panel's data won't change
+  // if the user selects a different building and those refs update.
   const entry = {
     building: { ...selectedBuilding.value },
     apiData: solarApiData.value ? { ...solarApiData.value } : null,
@@ -1492,29 +1694,41 @@ function addToCompare() {
         : null,
     },
   }
+  // Drop the oldest building when at capacity (acts like a queue with max size 2)
   if (compareBuildings.value.length >= 2) compareBuildings.value.shift()
   compareBuildings.value.push(entry)
-  comparePanelOpen.value = true
+  comparePanelOpen.value = true  // automatically open the comparison panel
   showToast('Added to comparison')
   updateCompareHighlight()
 }
 
+// Removes the comparison building at position `idx` (0 or 1) from the list.
+// Called from the × buttons inside ComparisonPanel.
 function removeFromCompare(idx) {
   compareBuildings.value.splice(idx, 1)
   updateCompareHighlight()
 }
 
+// Empties the entire comparison list and removes the highlight from the map.
 function clearCompare() {
   compareBuildings.value = []
   updateCompareHighlight()
 }
 
+// Makes a single cell value safe to embed in a CSV file.
+// Rule: wrap everything in double quotes, and escape any internal double quotes by doubling them.
+// e.g., the value: She said "hello"  →  CSV cell: "She said ""hello"""
 function toCsvSafe(value) {
   const stringValue = value == null ? '' : String(value)
   const escaped = stringValue.replace(/"/g, '""')
   return `"${escaped}"`
 }
 
+// Generates a .csv file from all the data shown in the sidebar and triggers a browser download.
+// The file contains three sections: Building Details, Financial Analysis, Environmental Impact.
+// Uses Blob + URL.createObjectURL() — a browser API that lets JavaScript create a downloadable
+// file without any server involvement. The link is programmatically "clicked" to start the download,
+// then immediately cleaned up.
 function exportBuildingCsv() {
   if (!selectedBuilding.value) {
     showToast('Select a building first')
@@ -1678,15 +1892,20 @@ async function shareBuilding() {
   }
 }
 
+// Reads the ?buildingId= query parameter from the current URL and, if present,
+// automatically selects that building on the map and loads its data.
+// This enables the "Copy Shareable Link" feature: someone pastes the link,
+// the page loads, and this function immediately jumps to the building.
+// Called inside initMap() after the GeoJSON has finished loading.
 async function openBuildingFromUrl() {
-  const buildingId = route.query.buildingId
-  if (!buildingId) return
+  const buildingId = route.query.buildingId  // e.g. "12345" from ?buildingId=12345
+  if (!buildingId) return  // no deep-link parameter — do nothing
 
   const id = Number(buildingId)
 
-  // Updated: buildingIndex stores properties, not full feature
+  // Look up the building in the in-memory index (already populated from GeoJSON)
   const props = buildingIndex.get(id)
-  if (!props) return
+  if (!props) return  // building ID not found in the data — silently skip
 
   selectedBuilding.value = props
   solarApiData.value = null
@@ -1695,20 +1914,16 @@ async function openBuildingFromUrl() {
   solarApiLoading.value = true
 
   if (map) {
-    updateHighlights()
+    updateHighlights()  // immediately highlight the building before API data arrives
 
     const lng = Number(props.lng)
     const lat = Number(props.lat)
 
     if (lat && lng) {
-      map.flyTo({
-        center: [lng, lat],
-        zoom: 16,
-        pitch: 55,
-        duration: 1200,
-      })
+      map.flyTo({ center: [lng, lat], zoom: 16, pitch: 55, duration: 1200 })
     }
 
+    // Fetch both data sources in parallel — Promise.all waits for both before continuing
     ;[solarApiData.value, yieldData.value] = await Promise.all([
       fetchSolarApiData(id),
       fetchYieldData(id),
@@ -1718,16 +1933,19 @@ async function openBuildingFromUrl() {
 
   solarApiLoading.value = false
 
-  // Updated: update sun simulation after deep link open
-  await updateSunSimulation()
+  await updateSunSimulation()  // update the sun/shadow overlay for this building
 }
 
-// Updated: Sun Path controls
+// ── Sun path animation controls ───────────────────────────────────────────────
+
+// Called when the user switches season (summer/equinox/winter).
+// Resets the time to midday (12:00) and re-fetches the sun position for the new date.
 async function applySeasonPreset() {
   sunPathTime.value = 12
   await updateSunSimulation()
 }
 
+// Resets the sun simulation to its default state: summer, midday, no animation.
 async function resetSunSimulation() {
   sunPathSeason.value = 'summer'
   sunPathTime.value = 12
@@ -1735,6 +1953,9 @@ async function resetSunSimulation() {
   await updateSunSimulation()
 }
 
+// Starts or stops the animated time-lapse that steps through the day from 6:00 to 18:00.
+// Uses setInterval to advance 30 minutes every 900ms, creating a "sun arc" animation.
+// The time wraps from 18:00 back to 6:00 so the animation loops continuously.
 function toggleSunAnimation() {
   if (sunAnimating.value) {
     stopSunAnimation()
@@ -1743,12 +1964,14 @@ function toggleSunAnimation() {
 
   sunAnimating.value = true
   sunAnimationTimer.value = window.setInterval(async () => {
-    const next = Number(sunPathTime.value) + 0.5
-    sunPathTime.value = next > 18 ? 6 : next
+    const next = Number(sunPathTime.value) + 0.5  // advance by 30 minutes each tick
+    sunPathTime.value = next > 18 ? 6 : next       // wrap around: after 18:00 → 6:00
     await updateSunSimulation()
-  }, 900)
+  }, 900)  // 900ms per step = about 22 seconds per full day sweep
 }
 
+// Stops the time-lapse animation and clears the interval timer.
+// clearInterval() is important — without it the timer would keep running even after the component unmounts.
 function stopSunAnimation() {
   sunAnimating.value = false
   if (sunAnimationTimer.value) {
@@ -1757,7 +1980,13 @@ function stopSunAnimation() {
   }
 }
 
-// Updated: geometry helpers + map source updater
+// ── Geometry helpers for shadow calculation ───────────────────────────────────
+// These functions implement the trigonometry needed to project building shadows
+// onto the ground plane given the sun's current altitude and azimuth angles.
+
+// Returns the most reliable height estimate for a building.
+// Priority: explicit building_height field → (max_elevation - base_height) → 20m fallback.
+// The 20m default covers most low-rise Melbourne CBD buildings when data is missing.
 function getEffectiveBuildingHeight(building) {
   const explicitHeight = Number(building?.building_height)
   if (Number.isFinite(explicitHeight) && explicitHeight > 0) return explicitHeight
@@ -1768,29 +1997,42 @@ function getEffectiveBuildingHeight(building) {
     return max - base
   }
 
-  return 20
+  return 20  // fallback: assume ~6-storey building
 }
 
+// Calculates how far a building's shadow extends on the ground.
+// Physics: shadow_length = height_difference / tan(sun_altitude)
+// When the sun is very low (altitude near 0°), tan approaches 0 and shadows become extremely long.
+// We cap at 8× building height to prevent unrealistically huge shadows.
+// receiverHeight lets us account for buildings casting shadows onto elevated rooftops (not ground).
 function getShadowLengthByHeightDifference(casterHeight, receiverHeight = 0) {
   const altitude = Number(currentSunData.value?.altitude_deg || 0)
-  if (altitude <= 0) return 0
+  if (altitude <= 0) return 0  // sun is below horizon — no shadow
 
   const heightDiff = Math.max(0, casterHeight - receiverHeight)
-  if (heightDiff <= 0) return 0
+  if (heightDiff <= 0) return 0  // caster isn't taller than receiver — no shadow falls on it
 
-  const rad = altitude * Math.PI / 180
+  const rad = altitude * Math.PI / 180  // convert degrees to radians (Math.tan requires radians)
   const tan = Math.tan(rad)
-  if (tan <= 0.01) return casterHeight * 8
+  if (tan <= 0.01) return casterHeight * 8  // near-horizon sun — use the cap
 
-  return Math.min(heightDiff / tan, casterHeight * 8)
+  return Math.min(heightDiff / tan, casterHeight * 8)  // normal shadow + apply cap
 }
 
+// Converts a displacement in meters (dx = east-west, dy = north-south) to a new
+// longitude/latitude point. Used to shift a building's footprint in the direction
+// of the shadow projection.
+// The longitude correction (÷ cos(lat)) accounts for the fact that degrees of longitude
+// represent fewer meters as you get further from the equator.
 function shiftLngLat(lng, lat, dxMeters, dyMeters) {
-  const dLat = dyMeters / 111320
-  const dLng = dxMeters / (111320 * Math.cos(lat * Math.PI / 180))
+  const dLat = dyMeters / 111320               // 111,320 meters per degree of latitude (constant)
+  const dLng = dxMeters / (111320 * Math.cos(lat * Math.PI / 180))  // shrinks near poles
   return [lng + dLng, lat + dLat]
 }
 
+// Returns all ring arrays (outer boundary + holes) from a Polygon or MultiPolygon geometry.
+// GeoJSON Polygon: coordinates = [outerRing, hole1, hole2, ...]
+// GeoJSON MultiPolygon: coordinates = [polygon1, polygon2, ...] where each polygon has rings
 function getPolygonRings(geometry) {
   if (!geometry) return []
   if (geometry.type === 'Polygon') return geometry.coordinates.map((ring) => ring)
@@ -1798,11 +2040,15 @@ function getPolygonRings(geometry) {
   return []
 }
 
+// Returns just the first (outer) ring of a polygon, which is the building footprint outline.
+// Holes (interior rings) are ignored for shadow calculations.
 function getMainOuterRing(geometry) {
   const rings = getPolygonRings(geometry)
   return rings.length ? rings[0] : null
 }
 
+// Computes the centroid (geographic centre) of a polygon by averaging all vertex coordinates.
+// Used as a quick point-in-polygon seed check before doing more expensive full ray casting.
 function getFeatureCenter(feature) {
   const ring = getMainOuterRing(feature?.geometry)
   if (!ring?.length) return null
@@ -1815,9 +2061,13 @@ function getFeatureCenter(feature) {
     latSum += Number(lat)
   })
 
-  return [lngSum / ring.length, latSum / ring.length]
+  return [lngSum / ring.length, latSum / ring.length]  // simple arithmetic mean
 }
 
+// Ray casting algorithm: determines whether a 2D point is inside a polygon ring.
+// Fires a conceptual ray from the point to the right (+x direction) and counts
+// how many polygon edges it crosses. An odd count = inside, even count = outside.
+// The tiny +0.0000000001 prevents division by zero when an edge is perfectly horizontal.
 function pointInRing(point, ring) {
   const [px, py] = point
   let inside = false
@@ -1829,12 +2079,15 @@ function pointInRing(point, ring) {
       ((yi > py) !== (yj > py)) &&
       (px < ((xj - xi) * (py - yi)) / (yj - yi + 0.0000000001) + xi)
 
-    if (intersects) inside = !inside
+    if (intersects) inside = !inside  // flip: odd crossings = inside
   }
 
   return inside
 }
 
+// Computes a bounding box (min/max lat/lng rectangle) for a polygon ring.
+// Much faster to compare than doing full point-in-polygon on every nearby building —
+// we first reject buildings whose bboxes don't overlap before running the expensive check.
 function bboxFromRing(ring) {
   let minLng = Infinity
   let minLat = Infinity
@@ -1851,10 +2104,15 @@ function bboxFromRing(ring) {
   return { minLng, minLat, maxLng, maxLat }
 }
 
+// Returns true if two bounding boxes overlap.
+// The condition reads: "they DON'T NOT-overlap" (double negation of the four non-overlap cases).
+// a is fully left of b, b is fully left of a, a is fully below b, or a is fully above b.
 function bboxIntersects(a, b) {
   return !(a.maxLng < b.minLng || a.minLng > b.maxLng || a.maxLat < b.minLat || a.minLat > b.maxLat)
 }
 
+// Expands a bounding box outward by a given number of meters in all directions.
+// Used to create a search radius: e.g., "find all buildings within 260m of the selected building".
 function expandBboxByMeters(box, metres) {
   const centerLat = (box.minLat + box.maxLat) / 2
   const latDelta = metres / 111320
@@ -1868,13 +2126,18 @@ function expandBboxByMeters(box, metres) {
   }
 }
 
+// Quick check: does a shadow polygon potentially overlap with the receiver building?
+// Uses three increasingly expensive tests, stopping early when possible:
+//   1. Bounding box check (cheapest — just compare 4 numbers)
+//   2. Point-in-polygon: is the receiver's center inside the shadow? (fast for large overlaps)
+//   3. Any vertex of the receiver's ring inside the shadow? (catches partial overlaps)
 function polygonMayIntersectShadow(receiverFeature, shadowRing) {
   const receiverRing = getMainOuterRing(receiverFeature?.geometry)
   if (!receiverRing?.length || !shadowRing?.length) return false
 
   const receiverBox = bboxFromRing(receiverRing)
   const shadowBox = bboxFromRing(shadowRing)
-  if (!bboxIntersects(receiverBox, shadowBox)) return false
+  if (!bboxIntersects(receiverBox, shadowBox)) return false  // no overlap possible
 
   const receiverCenter = getFeatureCenter(receiverFeature)
   if (receiverCenter && pointInRing(receiverCenter, shadowRing)) return true
@@ -1882,21 +2145,27 @@ function polygonMayIntersectShadow(receiverFeature, shadowRing) {
   return receiverRing.some((point) => pointInRing(point, shadowRing))
 }
 
+// Estimates what percentage of a building's roof is covered by shadows.
+// Uses a Monte Carlo-style sampling grid: we place 18×18 = 324 test points across the
+// bounding box of the roof, check which ones are inside the roof AND inside a shadow,
+// then compute shadedSamples / roofSamples as the coverage fraction.
+// 18 steps gives ~5% precision — fast enough for real-time slider updates.
 function estimateShadowCoveragePct(receiverRing, shadowRings) {
   if (!receiverRing?.length || !shadowRings.length) return 0
 
   const box = bboxFromRing(receiverRing)
-  const steps = 18
+  const steps = 18   // grid resolution — 18×18 = 324 sample points
   let roofSamples = 0
   let shadedSamples = 0
 
   for (let x = 0; x < steps; x += 1) {
     for (let y = 0; y < steps; y += 1) {
+      // Place point at the centre of each grid cell (+0.5 avoids testing on the exact boundary)
       const lng = box.minLng + ((x + 0.5) / steps) * (box.maxLng - box.minLng)
       const lat = box.minLat + ((y + 0.5) / steps) * (box.maxLat - box.minLat)
       const point = [lng, lat]
 
-      if (!pointInRing(point, receiverRing)) continue
+      if (!pointInRing(point, receiverRing)) continue  // skip: this point is outside the roof
 
       roofSamples += 1
       if (shadowRings.some((ring) => pointInRing(point, ring))) shadedSamples += 1
@@ -1904,9 +2173,11 @@ function estimateShadowCoveragePct(receiverRing, shadowRings) {
   }
 
   if (!roofSamples) return 0
-  return Math.round((shadedSamples / roofSamples) * 100)
+  return Math.round((shadedSamples / roofSamples) * 100)  // e.g., 34%
 }
 
+// Returns the best available usable roof area estimate for a building.
+// Priority: survey usable_roof_area → total footprint_area → null (no data).
 function getEstimatedUsableRoofArea(building) {
   const usableArea = Number(building?.usable_roof_area)
   if (Number.isFinite(usableArea) && usableArea > 0) return usableArea
@@ -1917,6 +2188,9 @@ function getEstimatedUsableRoofArea(building) {
   return null
 }
 
+// Updates the "unobstructed usable area" display when the backend shadow API doesn't have data.
+// Formula: unobstructed = usable_area × (1 - shadow_coverage%)
+// This is a rough estimate — the backend's value (when available) is more accurate.
 function updateFallbackUnobstructedUsableArea() {
   const area = getEstimatedUsableRoofArea(selectedBuilding.value)
   unobstructedUsableAreaM2.value = area == null
@@ -1924,6 +2198,10 @@ function updateFallbackUnobstructedUsableArea() {
     : Math.round(area * Math.max(0, 1 - shadowCoveragePct.value / 100) * 10) / 10
 }
 
+// Creates a GeoJSON LineString feature representing the sun's direction arrow
+// drawn on the map (the amber/yellow line radiating from the selected building).
+// The line is 80 meters long and points in the direction the sun is located
+// (azimuth = compass bearing clockwise from North).
 function buildSunDirectionFeature() {
   if (!selectedBuilding.value?.lng || !selectedBuilding.value?.lat) return null
 
@@ -1932,9 +2210,9 @@ function buildSunDirectionFeature() {
   const az = sunMetrics.value.azimuth
 
   const lineLengthMeters = 80
-  const rad = az * Math.PI / 180
-  const dxMeters = Math.sin(rad) * lineLengthMeters
-  const dyMeters = Math.cos(rad) * lineLengthMeters
+  const rad = az * Math.PI / 180           // convert azimuth degrees → radians
+  const dxMeters = Math.sin(rad) * lineLengthMeters  // east component of the line
+  const dyMeters = Math.cos(rad) * lineLengthMeters  // north component of the line
   const [endLng, endLat] = shiftLngLat(lng, lat, dxMeters, dyMeters)
 
   return {
@@ -1942,19 +2220,25 @@ function buildSunDirectionFeature() {
     geometry: {
       type: 'LineString',
       coordinates: [
-        [lng, lat],
-        [endLng, endLat],
+        [lng, lat],        // starts at the building centre
+        [endLng, endLat],  // ends 80m in the sun's direction
       ],
     },
     properties: {},
   }
 }
 
+// Creates the GeoJSON polygon for a "shadow volume" cast by a caster building
+// in the direction AWAY from the sun (shadow azimuth = sun azimuth + 180°).
+// The polygon is formed by combining the caster's footprint ring with a shifted copy:
+//   [original ring] + [shifted ring reversed] + [first point to close]
+// This creates a trapezoid-like shape that represents the shadow on the ground.
+// Used for VISUAL display of all nearby buildings' shadows (the dark overlay layer).
 function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
   const ring = getMainOuterRing(casterFeature?.geometry)
   if (!ring?.length) return null
 
-  const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360
+  const shadowAzimuth = (sunMetrics.value.azimuth + 180) % 360  // opposite direction to sun
   const shadowLength = getShadowLengthByHeightDifference(casterHeight, 0)
   if (shadowLength <= 0) return null
 
@@ -1968,9 +2252,9 @@ function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
     geometry: {
       type: 'Polygon',
       coordinates: [[
-        ...ring,
-        ...shiftedRing.slice().reverse(),
-        ring[0],
+        ...ring,                         // caster footprint at ground level
+        ...shiftedRing.slice().reverse(), // shifted copy in reverse (closes the polygon correctly)
+        ring[0],                         // explicitly close the ring
       ]],
     },
     properties: {
@@ -1979,6 +2263,10 @@ function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
   }
 }
 
+// Similar to buildSelectedBuildingShadowFeature but accounts for the height of the RECEIVER
+// (the building whose roof we're analysing). A short building near a tall tower only has
+// a shadow cast on it if the shadow falls at or above the receiver's roof height.
+// Used to find which buildings ACTUALLY affect the selected building (not just nearby ones).
 function buildCasterShadowFeature(casterFeature, receiverHeight) {
   const ring = getMainOuterRing(casterFeature?.geometry)
   if (!ring?.length) return null
@@ -2010,6 +2298,9 @@ function buildCasterShadowFeature(casterFeature, receiverHeight) {
   }
 }
 
+// Creates a GeoJSON polygon for the SELECTED building's own footprint, tagged as
+// 'shadow-receiver'. This triggers the red outline and fill shown on the selected building
+// when it is in shadow, making it obvious which roof is being analysed.
 function buildReceiverShadowFeature(receiverFeature) {
   const ring = getMainOuterRing(receiverFeature?.geometry)
   if (!ring?.length) return null
@@ -2027,6 +2318,16 @@ function buildReceiverShadowFeature(receiverFeature) {
   }
 }
 
+// Orchestrates the full shadow calculation for the selected building.
+// Steps:
+//   1. Reset all shadow state
+//   2. Get the selected building's footprint from the feature index
+//   3. Build a 260m search box around it
+//   4. For every building inside that box, project its shadow and check if it hits the receiver
+//   5. Count how many casters actually affect the receiver (shadowCasterCount)
+//   6. Estimate what % of the roof is in shadow (shadowCoveragePct) using the sampling grid
+//   7. Return the list of GeoJSON features to draw on the map
+// This runs entirely in the browser — no server request needed for the visual overlay.
 function buildShadowInteractionFeatures() {
   shadowCoveragePct.value = 0
   shadowCasterCount.value = 0
@@ -2089,12 +2390,21 @@ function buildShadowInteractionFeatures() {
     : visualShadowFeatures
 }
 
+// Master function called whenever the sun slider moves or the season changes.
+// Coordinates all the shadow-related updates:
+//   1. Fetch the sun position data for the current season (cached after first load)
+//   2. Find the closest hourly sample to the slider's current time
+//   3. Update currentSunData (altitude, azimuth) — this is read by sunMetrics computed
+//   4. Build the client-side shadow geometry (visual overlays for all nearby buildings)
+//   5. Try to fetch the backend's more accurate shadow analysis for the selected building
+//   6. Update both the sun direction source and the shadow projection source on the map
+// The backend data (step 5) takes priority over our client-side estimate (step 4).
 async function updateSunSimulation() {
   try {
     const path = await fetchSunPath(sunPathSeason.value)
     const sample = findClosestSunSample(path.samples, Number(sunPathTime.value))
 
-    if (sample) currentSunData.value = sample
+    if (sample) currentSunData.value = sample  // triggers re-render of altitude/azimuth display
   } catch (err) {
     console.error('Sun path API failed:', err)
     showToast('Sun path unavailable')
@@ -2102,23 +2412,27 @@ async function updateSunSimulation() {
 
   if (!map) return
 
-  const sunFeature = buildSunDirectionFeature()
-  const shadowFeatures = buildShadowInteractionFeatures()
+  // Build client-side shadow geometry (fast, purely local computation)
+  const sunFeature = buildSunDirectionFeature()     // the amber direction arrow
+  const shadowFeatures = buildShadowInteractionFeatures()  // dark shadow polygons
 
   if (selectedBuilding.value?.structure_id) {
     try {
+      // Try the backend API for a more accurate shadow analysis
       const impact = await fetchShadowImpact(
         selectedBuilding.value.structure_id,
         sunPathSeason.value,
         Number(sunPathTime.value),
       )
       if (impact) {
+        // Use server values — override the client-side estimates
         shadowCoveragePct.value = Number(impact.shadow_coverage_pct || 0)
         shadowCasterCount.value = Number(impact.shadow_caster_count || 0)
         unobstructedUsableAreaM2.value = impact.unobstructed_usable_area_m2 ?? null
         if (unobstructedUsableAreaM2.value == null) updateFallbackUnobstructedUsableArea()
-        shadowOverlayFeatures.value = impact.overlay_geojson?.features || []
+        shadowOverlayFeatures.value = impact.overlay_geojson?.features || []  // rooftop segments
       } else {
+        // Backend has no data for this building — keep the client-side estimates
         updateFallbackUnobstructedUsableArea()
         shadowOverlayFeatures.value = []
       }
@@ -2129,6 +2443,8 @@ async function updateSunSimulation() {
     }
   }
 
+  // Push updated GeoJSON to the map's live data sources
+  // setData() replaces the entire FeatureCollection and MapLibre re-renders the layer immediately
   const sunSource = map.getSource('sun-direction')
   if (sunSource) {
     sunSource.setData({
@@ -2142,14 +2458,20 @@ async function updateSunSimulation() {
     shadowSource.setData({
       type: 'FeatureCollection',
       features: [
-        ...shadowFeatures,
-        ...shadowOverlayFeatures.value,
+        ...shadowFeatures,              // client-side geometry (visual shadow volumes)
+        ...shadowOverlayFeatures.value, // server-side rooftop segment overlay
       ],
     })
   }
 }
 
 // ── Precinct helpers (mirror of PrecinctsView) ────────────────────────────────
+// These are lightweight versions of the point-in-polygon helpers from PrecinctsView.
+// They're used here to determine which precincts have at least one building with solar data,
+// so only those precincts get the boundary outline on the Explore map.
+// Prefixed with _p to distinguish them from the full-featured versions above.
+
+// Computes the bounding box of a GeoJSON polygon or multipolygon feature.
 function _pBBox(f) {
   const g = f.geometry; if (!g) return null
   const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map(p => p[0])
@@ -2163,6 +2485,7 @@ function _pBBox(f) {
   return { minX, maxX, minY, maxY }
 }
 
+// Ray-casting point-in-polygon test for a single ring (no holes).
 function _pInRing(px, py, ring) {
   let inside = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -2172,6 +2495,7 @@ function _pInRing(px, py, ring) {
   return inside
 }
 
+// Tests whether a point is inside a GeoJSON feature (supports Polygon and MultiPolygon).
 function _pInFeature(px, py, f) {
   const g = f.geometry
   if (!g) return false
@@ -2179,52 +2503,77 @@ function _pInFeature(px, py, f) {
   return rings.some(r => _pInRing(px, py, r))
 }
 
+// ── Map initialisation ────────────────────────────────────────────────────────
+// Creates the MapLibre map, registers all data sources and layers, and wires up
+// all click/hover event listeners. Called once from onMounted.
+//
+// Layer rendering order (bottom → top — later layers paint on top of earlier ones):
+//   1. building-extrusion   — main 3D buildings, coloured by solar score
+//   2. roof-pattern-{type}  — hatching overlays per roof type (one per type)
+//   3. building-compare     — teal highlight for comparison buildings
+//   4. building-selected    — blue highlight for the clicked building
+//   5. sun-direction-line   — amber arrow showing sun direction
+//   6. shadow-projection-fill — dark shadow polygons on the ground
+//   7. shadow-rooftop-overlay — coloured rooftop segments (shaded = red, clear = green)
+//   8. shadow-receiver-outline — red border on the analysed building
+//   9. roof-outline-{type}  — thin borders matching each roof type's hatching
+//  10. precinct-boundary    — green district outlines
 function initMap() {
+  // Create the map and point it at Melbourne CBD
   map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-    center: [144.9631, -37.814],
-    zoom: 12.2,
-    pitch: 48,
-    bearing: -17,
-    antialias: true,
+    container: 'map',    // the id of the <div> in the template
+    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',  // light basemap
+    center: [144.9631, -37.814],  // Melbourne CBD coordinates [longitude, latitude]
+    zoom: 12.2,          // roughly the CBD at ~1:10,000 scale
+    pitch: 48,           // degrees of tilt (0 = top-down, 60 = nearly horizontal)
+    bearing: -17,        // rotate slightly counter-clockwise (makes Collins St horizontal)
+    antialias: true,     // smooth edges on buildings (uses WebGL MSAA)
   })
 
+  // Add the built-in zoom/rotate controls in the top-right corner
   map.addControl(new maplibregl.NavigationControl(), 'top-right')
 
+  // Customise the compass button: instead of resetting to North, cycle through 8 headings.
+  // setTimeout(fn, 0) delays execution until after MapLibre has rendered the controls to the DOM.
   setTimeout(() => {
     const compassBtn = document.querySelector('.maplibregl-ctrl-compass')
     if (!compassBtn || !map) return
+    // useCapture: true lets us intercept the click before MapLibre's own handler runs
     compassBtn.addEventListener(
       'click',
       (event) => {
-        event.stopImmediatePropagation()
-        compassIdx = (compassIdx + 1) % COMPASS_BEARINGS.length
+        event.stopImmediatePropagation()  // prevent MapLibre's default "reset to North" behaviour
+        compassIdx = (compassIdx + 1) % COMPASS_BEARINGS.length  // advance to next preset
         map.easeTo({
           bearing: COMPASS_BEARINGS[compassIdx],
           duration: 900,
-          easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+          easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),  // ease-in-out
         })
       },
       true
     )
   }, 0)
 
+  // map.on('load') fires after the basemap tiles have finished loading.
+  // Everything that adds sources/layers must happen inside this callback.
   map.on('load', () => {
     fetchGeoJson(GEOJSON_PATH)
       .then((response) => response.json())
       .then(async (data) => {
-        isLoading.value = false
+        isLoading.value = false  // hide the loading overlay
 
-        // Updated: keep both properties index and full feature index
+        // Build the two in-memory lookup tables from the GeoJSON features
+        // This is the O(n) scan we do ONCE — after this all lookups are O(1)
         data.features.forEach(f => {
           buildingIndex.set(Number(f.properties.structure_id), f.properties)
           buildingFeatureIndex.set(Number(f.properties.structure_id), f)
         })
 
+        // Register the GeoJSON as a named source — all layers will reference this source by name
         map.addSource('melbourne-buildings', { type: 'geojson', data })
-        addRoofTypePatternImages()
+        addRoofTypePatternImages()  // pre-register the hatch pattern images
 
+        // Layer 1: main 3D building extrusions coloured by solar score
         map.addLayer({
           id: 'building-extrusion',
           type: 'fill-extrusion',
@@ -2237,6 +2586,9 @@ function initMap() {
           },
         })
 
+        // Layers 2a-2e: roof type hatching — one fill layer per roof type
+        // Each layer uses the registered pattern image as its 'fill-pattern'
+        // These are 2D flat overlays on top of the 3D extrusions
         filters.forEach((roofFilter) => {
           map.addLayer({
             id: `roof-pattern-${roofFilter.type}`,
@@ -2253,6 +2605,9 @@ function initMap() {
           })
         })
 
+        // Layer 3: comparison buildings (teal/green colour)
+        // Starts with a filter that matches nothing (structure_id = -1 never exists)
+        // Updated by updateCompareHighlight() when buildings are added to comparison
         map.addLayer({
           id: 'building-compare',
           type: 'fill-extrusion',
@@ -2266,6 +2621,8 @@ function initMap() {
           },
         })
 
+        // Layer 4: selected building (blue) — also starts matching nothing
+        // Updated by updateHighlights() on every building click/search
         map.addLayer({
           id: 'building-selected',
           type: 'fill-extrusion',
@@ -2279,7 +2636,8 @@ function initMap() {
           },
         })
 
-        // Updated: Sun Path sources and layers
+        // Sun direction and shadow layers use separate GeoJSON sources
+        // that are updated dynamically by updateSunSimulation()
         map.addSource('sun-direction', {
           type: 'geojson',
           data: {
@@ -2288,17 +2646,19 @@ function initMap() {
           },
         })
 
+        // Layer 5: the amber arrow pointing in the direction of the sun
         map.addLayer({
           id: 'sun-direction-line',
           type: 'line',
           source: 'sun-direction',
           paint: {
-            'line-color': '#F59E0B',
+            'line-color': '#F59E0B',  // amber/yellow — matches sun icon colour
             'line-width': 3,
             'line-opacity': 0.95,
           },
         })
 
+        // Source for all shadow-related polygons — updated by updateSunSimulation()
         map.addSource('shadow-projection', {
           type: 'geojson',
           data: {
@@ -2307,6 +2667,10 @@ function initMap() {
           },
         })
 
+        // Layer 6: ground-level shadow fills (dark grey for normal shadows, red tint on receiver)
+        // The MapLibre 'match' expression works like a switch statement on feature properties:
+        //   if kind === 'shadow-receiver' → red fill
+        //   otherwise → dark grey fill (shadow-volume)
         map.addLayer({
           id: 'shadow-projection-fill',
           type: 'fill',
@@ -2315,25 +2679,28 @@ function initMap() {
             'match',
             ['get', 'kind'],
             ['shadow-volume', 'shadow-receiver'],
-            true,
-            false,
+            true,    // show these kinds
+            false,   // hide everything else
           ],
           paint: {
             'fill-color': [
               'match',
               ['get', 'kind'],
-              'shadow-receiver', '#DC2626',
-              '#1F2937',
+              'shadow-receiver', '#DC2626',  // red for the analysed building
+              '#1F2937',                     // dark grey for shadow volumes
             ],
             'fill-opacity': [
               'match',
               ['get', 'kind'],
-              'shadow-receiver', 0.32,
-              0.18,
+              'shadow-receiver', 0.32,  // slightly more opaque on the receiver
+              0.18,                     // semi-transparent shadow volumes
             ],
           },
         })
 
+        // Layer 7: server-provided rooftop segment overlay (3D extrusions on the roof)
+        // Red segments = shaded, Green segments = direct sunlight
+        // Offset slightly above roof height (base + 0.25, height + 0.55) to sit on top of 3D buildings
         map.addLayer({
           id: 'shadow-rooftop-overlay',
           type: 'fill-extrusion',
@@ -2349,8 +2716,8 @@ function initMap() {
             'fill-extrusion-color': [
               'match',
               ['get', 'kind'],
-              'rooftop-shaded', '#DC2626',
-              'rooftop-unobstructed', '#16A34A',
+              'rooftop-shaded', '#DC2626',       // red = in shadow
+              'rooftop-unobstructed', '#16A34A', // green = clear sky
               '#16A34A',
             ],
             'fill-extrusion-base': ['+', ['coalesce', ['get', 'roof_height'], 0], 0.25],
@@ -2359,6 +2726,8 @@ function initMap() {
           },
         })
 
+        // Layer 8: red outline around the selected (receiver) building when in shadow
+        // The opacity expression hides the outline for non-receiver features (avoids all shadows getting outlined)
         map.addLayer({
           id: 'shadow-receiver-outline',
           type: 'line',
@@ -2369,12 +2738,13 @@ function initMap() {
             'line-opacity': [
               'match',
               ['get', 'kind'],
-              'shadow-receiver', 0.9,
-              0,
+              'shadow-receiver', 0.9,  // visible for the analysed building
+              0,                        // invisible for shadow volumes
             ],
           },
         })
 
+        // Layers 9a-9e: thin outlines matching each roof type's hatch — reinforces the visual grouping
         filters.forEach((roofFilter) => {
           map.addLayer({
             id: `roof-outline-${roofFilter.type}`,
@@ -2391,27 +2761,37 @@ function initMap() {
             },
           })
         })
+
+        // Apply the current filter state (in case the user had filters active before the map loaded)
         applyFilters()
 
         try {
+          // Layer 10 (optional): precinct boundary outlines in dark green.
+          // Only draw boundaries for precincts that have at least one building with data.
+          // Algorithm:
+          //   1. Pre-compute bounding boxes for all precinct polygons (cheap initial filter)
+          //   2. Loop through building features — for each, check which precinct it falls in
+          //   3. Once we've found one building per precinct, stop early (Set.size === pFeatures.length)
+          // This is the same algorithm used in PrecinctsView.aggregateBuildings().
           const pRes = await fetchGeoJson(PRECINCTS_PATH).catch(() => null)
           if (pRes) {
             const precinctData = await pRes.json()
             const pFeatures = precinctData.features
-            const bboxes = pFeatures.map(_pBBox)
+            const bboxes = pFeatures.map(_pBBox)  // pre-compute one bounding box per precinct
 
-            const hasData = new Set()
+            const hasData = new Set()  // set of precinct_ids that have at least one building
             for (const bf of data.features) {
-              if (hasData.size === pFeatures.length) break
+              if (hasData.size === pFeatures.length) break  // early exit: all precincts found
               const px = bf.properties.lng, py = bf.properties.lat
-              if (!px || !py) continue
+              if (!px || !py) continue  // skip buildings without coordinates
               for (let pi = 0; pi < pFeatures.length; pi++) {
-                if (hasData.has(pFeatures[pi].properties.precinct_id)) continue
+                if (hasData.has(pFeatures[pi].properties.precinct_id)) continue  // already found
                 const bb = bboxes[pi]
+                // Bounding box pre-filter: skip if the building can't possibly be in this precinct
                 if (!bb || px < bb.minX || px > bb.maxX || py < bb.minY || py > bb.maxY) continue
-                if (!_pInFeature(px, py, pFeatures[pi])) continue
+                if (!_pInFeature(px, py, pFeatures[pi])) continue  // precise point-in-polygon check
                 hasData.add(pFeatures[pi].properties.precinct_id)
-                break
+                break  // this building is in precinct pi — move to the next building
               }
             }
 
@@ -2420,9 +2800,10 @@ function initMap() {
               id: 'precinct-boundary',
               type: 'line',
               source: 'melbourne-precincts-explore',
+              // Only draw outlines for precincts in our hasData set
               filter: ['in', ['get', 'precinct_id'], ['literal', [...hasData]]],
               paint: {
-                'line-color': '#1B5E20',
+                'line-color': '#1B5E20',  // dark green — matches the solar theme palette
                 'line-width': 1.5,
                 'line-opacity': 0.85,
               },
@@ -2430,72 +2811,87 @@ function initMap() {
           }
         } catch { /* silently skip if precinct file unavailable */ }
 
+        // Map click handler: fires when the user clicks on a building extrusion.
+        // event.features[0] contains the GeoJSON properties of the clicked building.
         map.on('click', 'building-extrusion', async (event) => {
           if (!event.features?.length) return
           const props = event.features[0].properties
+
+          // Update reactive state immediately so the sidebar shows a loading placeholder
           selectedBuilding.value = props
-          solarApiData.value = null
+          solarApiData.value = null    // clear old building's data right away
           yieldData.value = null
           selectedAddress.value = null
           solarApiLoading.value = true
-          sidebarOpen.value = true
+          sidebarOpen.value = true     // ensure the sidebar is visible
 
-          updateHighlights()
+          updateHighlights()  // immediately colour this building blue on the map
 
           const lng = Number(props.lng)
           const lat = Number(props.lat)
           if (lat && lng) {
             map.flyTo({
               center: [lng, lat],
-              zoom: Math.max(map.getZoom(), 15.5),
+              zoom: Math.max(map.getZoom(), 15.5),  // zoom in to at least 15.5 (building-level)
               pitch: 55,
               duration: 1200,
               easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
             })
           }
 
+          // Fetch solar and yield data simultaneously — Promise.all waits for both
           const sid = Number(props.structure_id)
           ;[solarApiData.value, yieldData.value] = await Promise.all([
             fetchSolarApiData(sid),
             fetchYieldData(sid),
           ])
+          // Address may already be in the Solar API response; only hit the address endpoint if not
           selectedAddress.value = solarApiData.value?.address || await fetchAddressForBuilding(sid)
           solarApiLoading.value = false
 
-          // Updated: update sun simulation after map click
-          updateSunSimulation()
+          updateSunSimulation()  // update shadow overlay for the newly selected building
         })
 
+        // Show a pointer cursor when hovering over a clickable building
         map.on('mouseenter', 'building-extrusion', () => {
           map.getCanvas().style.cursor = 'pointer'
         })
         map.on('mouseleave', 'building-extrusion', () => {
-          map.getCanvas().style.cursor = ''
+          map.getCanvas().style.cursor = ''  // restore default cursor
         })
 
+        // Check if the URL has a ?buildingId= parameter and auto-select that building
         await openBuildingFromUrl()
       })
       .catch((err) => {
         console.error(err)
-        loadingText.value = `Error loading buildings: ${err.message}`
+        loadingText.value = `Error loading buildings: ${err.message}`  // shown in the loading overlay
       })
   })
 }
 
+// onMounted runs once, immediately after Vue has attached this component's <template>
+// to the actual webpage. The 50ms setTimeout is a small safety margin to ensure the
+// #map <div> has been fully painted by the browser before MapLibre tries to attach to it.
+// Without this delay, MapLibre's canvas resize logic can misread the container dimensions.
 onMounted(() => {
   setTimeout(() => {
-    if (!map) initMap()
+    if (!map) initMap()  // guard against React StrictMode / hot-reload double-mounting
   }, 50)
 })
 
+// onUnmounted runs when the user navigates away from this page.
+// IMPORTANT: because App.vue wraps this component in <KeepAlive>, this component is NOT
+// actually destroyed when you click to another tab — it stays mounted. onUnmounted only
+// fires when the app is fully closed or the route is permanently removed.
+// We still clean up timers and the map to release GPU memory and prevent leaks.
 onUnmounted(() => {
   if (toastTimer) clearTimeout(toastTimer)
 
-  // Updated: stop sun animation timer
-  stopSunAnimation()
+  stopSunAnimation()  // stop the setInterval timer if the animation was running
 
   if (map) {
-    map.remove()
+    map.remove()  // releases the WebGL context and frees GPU memory
     map = null
   }
 })

@@ -2,6 +2,13 @@
   Global stylesheet — all CSS custom properties (design tokens) and shared component
   styles live here so every page should pick them up without importing anything extra.
   Scoped styles inside .vue files still override these when needed.
+
+  WHY CSS CUSTOM PROPERTIES (--variables)?
+  Instead of typing "#D4743A" everywhere, we define it once here as --city-light.
+  If we ever need to change the brand colour, one edit here updates the whole app.
+  In templates you reference them like: color: var(--city-light);
+  In JavaScript (MapLibre paint specs only accept raw hex, so we duplicate the values
+  in MAP_COLORS objects in ExploreView and PrecinctsView — comments there explain why).
 */
 :root {
   /* ── Surfaces ─────────────────────────────────────────── */
@@ -83,7 +90,24 @@
   --map-outline-selected: #FFD966;
   --map-line-stroke: #1C1710;
 }
+/*
+  UNIVERSAL RESET
+  box-sizing: border-box — changes how width/height are calculated.
+    Default (content-box): width = content only. Padding/border ADD to the total.
+    border-box: width = content + padding + border. Much more predictable for layout.
+  margin/padding: 0 — browsers have default spacing on elements like <p>, <h1>, <ul>.
+    We clear these so our own designs start from a known zero baseline.
+*/
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/*
+  FULL-HEIGHT LAYOUT
+  height: 100vh — "100% of the viewport height" (the visible browser window).
+  overflow: hidden on body prevents the whole page from scrolling. Instead, individual
+  sections (like the sidebar) scroll independently.
+  #app uses display: flex + flex-direction: column so the navbar (fixed height) sits
+  at the top and the map area (flex: 1) fills all remaining vertical space.
+*/
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--bg);
@@ -130,6 +154,20 @@ body {
   border-radius: 20px; border: 1px solid rgba(190,56,32,0.40);
   text-transform: uppercase; letter-spacing: 0.5px;
 }
+/*
+  MAP LAYOUT SYSTEM
+  The map takes up all available space via nested flexbox:
+    #app (column)
+      → MainNavbar (fixed height, flex-shrink: 0)
+      → .map-page (flex: 1 = fills all remaining height, column)
+          → SubnavToolbar (fixed height)
+          → .main (flex: 1 = fills rest, row)
+              → .map-area (flex: 1 = fills all remaining width)
+                  → #map (position: absolute; inset: 0 = covers 100% of map-area)
+              → .sidebar (fixed 430px width, shrinks/hides on click)
+  position: relative on .map-area creates the coordinate origin for #map's absolute positioning.
+  inset: 0 is shorthand for top: 0; right: 0; bottom: 0; left: 0 (fill parent completely).
+*/
 .map-page { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 .main { display: flex; flex: 1; overflow: hidden; }
 .map-area { flex: 1; position: relative; overflow: hidden; }
@@ -154,6 +192,14 @@ body {
 }
 .filter-panel-close:hover { color: var(--text-primary); background: var(--surface2); }
 
+/*
+  SIDEBAR COLLAPSE ANIMATION
+  The sidebar collapses by animating width: 430px → 28px over 0.28 seconds.
+  transition: width 0.28s ease — CSS automatically interpolates between the two
+  width values whenever the .sidebar--collapsed class is added/removed via Vue.
+  flex-shrink: 0 prevents the sidebar from getting squished by the map; the map
+  area (flex: 1) absorbs all the space changes instead.
+*/
 .sidebar {
   width: 430px; background: var(--surface);
   border-left: 1px solid var(--border);
@@ -391,6 +437,15 @@ body {
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .share-btn:hover { filter: brightness(0.88); }
+/*
+  TOAST SLIDE-UP ANIMATION
+  The toast starts off-screen (translateY(80px) = 80px below its natural position)
+  and slides into view when the .show class is added (translateY(0) = natural position).
+  position: fixed + left: 50% places it at the horizontal midpoint of the VIEWPORT,
+  then translateX(-50%) pulls it left by half its own width to truly centre it.
+  z-index: 9999 ensures it floats above everything including MapLibre UI controls.
+  white-space: nowrap prevents long messages from wrapping to two lines.
+*/
 .toast {
   position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(80px);
@@ -419,7 +474,15 @@ body {
 .chevron-icon.chevron-up { transform: rotate(180deg); }
 
 
-/* Slide-up transition */
+/*
+  VUE TRANSITION CLASSES — how <Transition name="compare-slide"> works:
+  Vue automatically adds/removes these classes when an element enters or leaves the DOM.
+    compare-slide-enter-active / compare-slide-leave-active — applied WHILE animating
+    compare-slide-enter-from / compare-slide-leave-to — the START state for enter, END state for leave
+  translateY(100%) means "move 100% of the element's own height downward" (off screen below).
+  So: elements slide UP when they appear and slide DOWN when they disappear.
+  The same pattern is used for sunpath-slide and onboarding-fade (opacity instead of transform).
+*/
 .compare-slide-enter-active, .compare-slide-leave-active { transition: transform 0.3s ease, opacity 0.3s ease; }
 .compare-slide-enter-from, .compare-slide-leave-to { transform: translateY(100%); opacity: 0; }
 
@@ -479,7 +542,14 @@ body {
 
 /* ── Accessibility utilities ─────────────────────────────── */
 
-/* Visually hidden but accessible to screen readers */
+/*
+  SCREEN READER ONLY CLASS
+  .visually-hidden makes text invisible on screen but still readable by screen readers.
+  Regular display:none hides it from BOTH screen readers AND sighted users — too aggressive.
+  This technique keeps it in the accessibility tree (so "Tab" and screen readers can reach it)
+  while making it 1px in size and clipped so it doesn't affect the visual layout.
+  Used on elements like <span class="visually-hidden">Current page:</span> in the navbar.
+*/
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -492,6 +562,14 @@ body {
   border: 0;
 }
 
+/*
+  FOCUS-VISIBLE RING
+  :focus shows a ring whenever an element is focused — including mouse clicks.
+  :focus-visible only shows the ring for KEYBOARD navigation (Tab key).
+  This distinction is important: mouse users don't need focus rings (they can see
+  where they clicked), but keyboard users NEED them to know where they are on the page.
+  outline-offset pushes the ring slightly outside the element's border.
+*/
 /* Focus-visible styles — keyboard-only visible focus indicators */
 .sidebar-strip-btn:focus-visible,
 .sidebar-export-btn:focus-visible,
@@ -984,5 +1062,90 @@ body {
 
 @media (max-width: 760px) {
   .planning-actions { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE — ≤ 768px (phones & small tablets)
+   These rules override the desktop layout so everything stacks vertically
+   and fits within a 375px-wide viewport without horizontal scrolling.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Map page: stack the map and sidebar vertically instead of side-by-side ── */
+  .main { flex-direction: column; }
+
+  /* Map occupies the top portion of the screen at a fixed height */
+  .map-area {
+    flex: 0 0 48vh;
+    min-height: 200px;
+  }
+
+  /* Sidebar expands to fill the bottom portion, full width */
+  .sidebar {
+    width: 100% !important;   /* override the fixed 430px desktop width */
+    flex: 1 1 auto;
+    border-left: none;
+    border-top: 2px solid var(--border);
+    overflow-y: auto;
+    transition: none;         /* disable the width-based transition on mobile */
+  }
+
+  /* On mobile the sidebar is always fully expanded — no collapsed strip */
+  .sidebar--collapsed { width: 100% !important; }
+
+  /* Hide the thin vertical collapse strip (it collapses by width on desktop) */
+  .sidebar-strip-btn { display: none; }
+
+  /* Allow the body area to shrink below its 312px desktop minimum */
+  .sidebar-body { min-width: 0; }
+
+  /* ── Sun path panel: stack columns top-to-bottom, remove horizontal scroll ── */
+  .sunpath-panel-body {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 240px;
+  }
+
+  .sunpath-panel-col {
+    flex: unset;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sunpath-panel-col:last-child { border-bottom: none; }
+
+  /* ── Onboarding overlay: steps stack vertically on small screens ── */
+  .onboarding-card { padding: 28px 18px 24px; margin: 12px; }
+  .onboarding-steps { flex-direction: column; gap: 20px; }
+  .onboarding-arrow {
+    transform: rotate(90deg);
+    margin-top: 0;
+    align-self: center;
+    padding: 0;
+  }
+
+  /* ── Toast: replace the translateX(-50%) centering with fixed inset ──
+     left:50% + translateX(-50%) can cause overflow on narrow screens */
+  .toast {
+    left: 16px;
+    right: 16px;
+    transform: translateY(80px);
+    white-space: normal;
+    text-align: center;
+  }
+  .toast.show { transform: translateY(0); }
+}
+
+/* ≤ 480px: further refinements for narrow phone screens */
+@media (max-width: 480px) {
+  /* Single-column metric grids so cards don't get too narrow */
+  .metrics-grid { grid-template-columns: 1fr; }
+  .fin-metrics-grid { grid-template-columns: 1fr; }
+
+  /* Tighter sidebar padding to maximise content space */
+  .sidebar-content { padding: 10px 14px; }
+  .sidebar-header { padding: 12px 0 10px; }
 }
 

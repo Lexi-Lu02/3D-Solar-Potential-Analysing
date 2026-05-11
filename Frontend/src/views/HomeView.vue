@@ -244,10 +244,25 @@
 </template>
 
 <script setup>
-// Landing page — marketing/overview content with a hero, feature sections, and links into the app.
+// ─────────────────────────────────────────────────────────────────────────────
+// HomeView.vue — The public landing page / marketing overview.
+//
+// This page is purely presentational: it has no interactive map and no API data
+// beyond the four summary statistics shown in the hero section.
+// Its job is to explain what the platform does and guide visitors into the app.
+//
+// All the content (feature lists, step descriptions, panel definitions) is stored
+// as plain JavaScript arrays below. The template renders them using v-for loops
+// so adding or reordering items requires changing only the data, not the HTML.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'   // useRouter lets us navigate programmatically
 import MainNavbar from '../components/MainNavbar.vue'
+
+// All images are imported as module URLs. Vite processes these
+// during the build, hashes the filenames, and places them in the /assets folder.
+// Importing them like this ensures the correct URL is used in both dev and production.
 import logoUrl          from '../pictures/Project logo.png'
 import icon3DBuilding   from '../pictures/3D Building Extrusion.png'
 import iconSolarScore   from '../pictures/Solar Score Ranking.png'
@@ -262,10 +277,16 @@ import img3dExplore     from '../pictures/3D Explore map.png'
 import imgPrecinct      from '../pictures/Precincts Map.png'
 
 const router = useRouter()
+
+// API_BASE reads the backend URL from the .env file.
+// In development it points to localhost; in production it points to the live server.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
-// Hard-coded fallback values shown while the API call is in flight (or if it fails).
-// They are replaced with real numbers from /api/v1/buildings/stats in onMounted below.
+// ── Hero statistics ───────────────────────────────────────────────────────────
+// ref() makes this array reactive — when onMounted replaces the values with live data,
+// Vue automatically re-renders the stat cards in the hero section.
+// These hard-coded numbers are placeholder fallbacks shown while the fetch is in progress
+// (or permanently if the API request fails — graceful degradation, no error shown to users).
 const stats = ref([
   { value: '500+',     label: 'Buildings analysed' },
   { value: '169K m²',  label: 'Usable rooftop area' },
@@ -273,6 +294,11 @@ const stats = ref([
   { value: '237',      label: 'High-potential sites' },
 ])
 
+// ── Feature bullet lists ──────────────────────────────────────────────────────
+// These plain arrays feed v-for loops in the template.
+// Because they never change, they don't need to be ref() — they're static strings.
+
+// Bullet points listed under the "3D Explore" section.
 const exploreFeatures = [
   '3D colour-coded map of 40,000+ Melbourne CBD buildings',
   'Search any building instantly by street address',
@@ -282,6 +308,8 @@ const exploreFeatures = [
   'Sun path & shadow simulation for any date and time',
 ]
 
+// Defines the three analysis panel cards shown below the Explore section description.
+// Each object has: icon (image URL), title, one-line desc, and a bullet array.
 const analysisPanels = [
   {
     icon: iconSolarCell,
@@ -303,6 +331,7 @@ const analysisPanels = [
   },
 ]
 
+// Bullet points for the Precincts feature section.
 const precinctFeatures = [
   'Interactive map showing precinct boundaries coloured by solar tier',
   'Ranked list sortable by annual yield, usable area, buildings, or adoption gap',
@@ -311,6 +340,7 @@ const precinctFeatures = [
   'Export full precinct data as CSV for planning teams',
 ]
 
+// The three steps shown in the "How it works" timeline.
 const steps = [
   {
     title: 'Search',
@@ -326,6 +356,7 @@ const steps = [
   },
 ]
 
+// The six "bento" feature cards in the "What's inside" section.
 const features = [
   {
     icon: icon3DBuilding,
@@ -359,30 +390,40 @@ const features = [
   },
 ]
 
+// Programmatic navigation to the Explore page.
+// router.push() updates the URL without a full page reload (Vue Router's client-side routing).
 function goToExplore() {
   router.push('/explore')
 }
 
-// Fetch live stats from the API to replace the placeholder values above.
-// If the request fails for any reason, the hard-coded fallbacks stay in place — no error is shown.
+// onMounted: runs once after the page has been drawn on screen.
+// Fetches real aggregate stats from the backend to replace the placeholder numbers.
+// If the fetch fails for any reason (network error, 500 error), the catch block silently
+// keeps the hard-coded fallback values — the user never sees an error.
 onMounted(async () => {
   try {
     const res = await fetch(`${API_BASE}/buildings/stats`)
-    if (!res.ok) return
+    if (!res.ok) return  // server returned an error status — keep fallbacks
     const d = await res.json()
+
+    // Format the usable area: express in K m² if it's >= 1000, otherwise plain m²
     const area = d.usable_area_m2
     const areaFmt = Number.isFinite(area)
       ? (area >= 1000 ? `${Math.round(area / 1000)}K m²` : `${Math.round(area).toLocaleString()} m²`)
       : '—'
+
+    // Express annual kWh as GWh (divide by 1,000,000) with one decimal place
     const kwh = d.kwh_annual
     const yieldFmt = Number.isFinite(kwh) ? `${(kwh / 1_000_000).toFixed(1)} GWh` : '—'
+
+    // Replace all four stat cards with live data
     stats.value = [
       { value: Number.isFinite(d.total_buildings)      ? d.total_buildings.toLocaleString()      : '—', label: 'Buildings analysed' },
       { value: areaFmt,                                                                                   label: 'Usable rooftop area' },
       { value: yieldFmt,                                                                                  label: 'Est. annual yield' },
       { value: Number.isFinite(d.high_potential_count) ? d.high_potential_count.toLocaleString() : '—', label: 'High-potential sites' },
     ]
-  } catch { /* keep fallback values */ }
+  } catch { /* keep fallback values — no error displayed */ }
 })
 </script>
 
@@ -996,5 +1037,25 @@ onMounted(async () => {
   .bento-grid { grid-template-columns: 1fr; }
   .footer-inner { flex-direction: column; gap: 28px; }
   .footer-links { flex-direction: column; gap: 20px; }
+}
+
+/* ≤ 480px: 375px phone — tighten spacing and stack any remaining horizontal flows */
+@media (max-width: 480px) {
+  .hero { padding: 40px 16px 48px; }
+  .hero-text { padding: 22px 18px; }
+  .hero-title { font-size: 24px; }
+  .hero-desc { font-size: 14px; margin-bottom: 24px; }
+  .stat-val { font-size: 24px; }
+  .seg-inner { padding: 44px 16px; }
+  .seg-title { font-size: 26px; }
+
+  /* CTA journey: stack vertically and centre everything horizontally */
+  .cta-journey { flex-direction: column; gap: 16px; align-items: center; }
+  .cta-journey-step { min-width: unset; width: 100%; max-width: 280px; text-align: center; }
+  .cta-journey-arrow { transform: rotate(90deg); align-self: center; }
+
+  /* Benefits strip: stack vertically and hide dividers */
+  .cta-benefits { flex-direction: column; gap: 10px; align-items: center; }
+  .cta-benefit-divider { display: none; }
 }
 </style>
