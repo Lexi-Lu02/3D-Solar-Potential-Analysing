@@ -21,13 +21,6 @@ GEOMETRY_FEATURES: list[str] = [
     "roof_aspect_deg",
     "roof_elongation",
 ]
-# NASA POWER irradiance — near-constant within CBD; VarianceThreshold drops these
-IRRADIANCE_FEATURES: list[str] = [
-    "annual_solar_kwh_m2",
-    "winter_solar_kwh_m2_day",
-    "summer_solar_kwh_m2_day",
-    "solar_seasonality",
-]
 # neighbour shading proxy at 50m / 100m
 NEIGHBOUR_FEATURES: list[str] = [
     "nbr_count_50m",
@@ -41,9 +34,7 @@ NEIGHBOUR_FEATURES: list[str] = [
     "nbr_taller_count_100m",
     "nbr_shading_index_100m",
 ]
-NUMERIC_FEATURES: list[str] = (
-    GEOMETRY_FEATURES + IRRADIANCE_FEATURES + NEIGHBOUR_FEATURES
-)
+NUMERIC_FEATURES: list[str] = GEOMETRY_FEATURES + NEIGHBOUR_FEATURES
 # 2015 footprint.suburb at train; precincts.name lookup at infer (same 14 strings)
 CATEGORICAL_FEATURES: list[str] = ["suburb"]
 TARGET: str = "solar_score_avg"

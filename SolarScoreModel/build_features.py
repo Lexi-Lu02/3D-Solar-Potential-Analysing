@@ -2,8 +2,8 @@
 
 A: load footprint CSV → GeoDataFrame
 B: spatial-join green_roof_solar patches → labels per struct_id
-C/D/E: geometric / irradiance / neighbour features (shared with build_features_2023.py)
-F: write dataset_2015.parquet (labelled) + dataset_2015_full.parquet
+C/D: geometric / neighbour features (shared with build_features_2023.py)
+E: write dataset_2015.parquet (labelled) + dataset_2015_full.parquet
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ from shapely.geometry.base import BaseGeometry
 from _features import (
     compute_geometric_features,
     compute_neighbour_features,
-    sample_irradiance,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,7 +27,6 @@ HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
 RAW_2015 = DATA_DIR / "raw_2015"
 FOOTPRINT_CSV = RAW_2015 / "footprints" / "building-outlines-2015.csv"
-NASA_DIR = RAW_2015 / "nasa_power"
 
 SOLAR_SHP = (
     HERE.parent
@@ -151,18 +149,13 @@ def main() -> None:
     print(f"    {len(geom_feat)} rows; "
           f"missing height: {geom_feat['building_height_m'].isna().sum()}")
 
-    print("[D] sampling NASA POWER irradiance ...")
-    irr_feat = sample_irradiance(geom_feat, id_col=ID_COL, nasa_dir=NASA_DIR)
-    print(f"    {len(irr_feat)} buildings sampled")
-
-    print("[E] computing neighbour shading proxy ...")
+    print("[D] computing neighbour shading proxy ...")
     nbr_feat = compute_neighbour_features(geom_feat, id_col=ID_COL)
     print(f"    {len(nbr_feat)} rows; "
           f"avg neighbours within 100m: {nbr_feat['nbr_count_100m'].mean():.1f}")
 
     full = (
         geom_feat
-        .merge(irr_feat, on=ID_COL, how="left")
         .merge(nbr_feat, on=ID_COL, how="left")
         .merge(labels, on=ID_COL, how="left")
     )

@@ -20,13 +20,11 @@ from _db import get_connection
 from _features import (
     compute_geometric_features,
     compute_neighbour_features,
-    sample_irradiance,
 )
 
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
-NASA_DIR = DATA_DIR / "raw_2015" / "nasa_power"
 DATASET_2023 = DATA_DIR / "dataset_2023.parquet"
 
 CRS_LATLNG = "EPSG:4326"
@@ -115,19 +113,18 @@ def main() -> None:
     print(f"    {len(geom_feat)} rows; "
           f"missing height: {geom_feat['building_height_m'].isna().sum()}")
 
-    print("[C] sampling NASA POWER irradiance ...")
-    irr_feat = sample_irradiance(geom_feat, id_col=ID_COL, nasa_dir=NASA_DIR)
-    print(f"    {len(irr_feat)} buildings sampled")
-
-    print("[D] computing neighbour shading proxy ...")
+    print("[C] computing neighbour shading proxy ...")
     nbr_feat = compute_neighbour_features(geom_feat, id_col=ID_COL)
     print(f"    {len(nbr_feat)} rows; "
           f"avg neighbours within 100m: {nbr_feat['nbr_count_100m'].mean():.1f}")
 
+    # keep precinct_id + precinct_name for infer.py → solar_score table
+    precinct_meta = fp[["structure_id", "precinct_id", "precinct_name"]].copy()
+
     full = (
         geom_feat
-        .merge(irr_feat, on=ID_COL, how="left")
         .merge(nbr_feat, on=ID_COL, how="left")
+        .merge(precinct_meta, on=ID_COL, how="left")
     )
 
     DATASET_2023.parent.mkdir(parents=True, exist_ok=True)

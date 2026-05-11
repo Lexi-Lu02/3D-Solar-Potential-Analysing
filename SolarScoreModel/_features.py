@@ -7,7 +7,6 @@ lat, lng, building_height_m, roof_top_elevation_m, suburb.
 from __future__ import annotations
 
 import math
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -75,49 +74,6 @@ def compute_geometric_features(
     ]
     return df[keep].copy()
 
-
-def sample_irradiance(
-    geom_df: pd.DataFrame, id_col: str, nasa_dir: Path
-) -> pd.DataFrame:
-    """Nearest-grid-point NASA POWER lookup → annual / winter / summer / seasonality.
-
-    Requires nasa_dir/index.csv + per-point CSVs (populated by fetch_data.py).
-    """
-    nasa_index = nasa_dir / "index.csv"
-    if not nasa_index.exists():
-        raise FileNotFoundError(
-            f"missing {nasa_index}; run fetch_data.py to populate NASA POWER cache"
-        )
-    idx = pd.read_csv(nasa_index)
-    annual: list[float] = []
-    winter: list[float] = []
-    summer: list[float] = []
-    for _, row in idx.iterrows():
-        daily = pd.read_csv(nasa_dir / row["csv"])
-        daily["date"] = pd.to_datetime(daily["date"], format="%Y%m%d")
-        v = daily["kwh_m2_day"].to_numpy()
-        m = daily["date"].dt.month.to_numpy()
-        annual.append(float(v.sum()))
-        # southern hemisphere: winter Jun/Jul/Aug, summer Dec/Jan/Feb
-        winter.append(float(v[np.isin(m, [6, 7, 8])].mean()))
-        summer.append(float(v[np.isin(m, [12, 1, 2])].mean()))
-    grid = idx.copy()
-    grid["annual_solar_kwh_m2"] = annual
-    grid["winter_solar_kwh_m2_day"] = winter
-    grid["summer_solar_kwh_m2_day"] = summer
-    grid["solar_seasonality"] = grid["summer_solar_kwh_m2_day"] / grid[
-        "winter_solar_kwh_m2_day"
-    ].replace(0, np.nan)
-
-    tree = cKDTree(grid[["lat", "lng"]].to_numpy())
-    _, nn = tree.query(geom_df[["lat", "lng"]].to_numpy(), k=1)
-
-    out = geom_df[[id_col]].copy()
-    out["annual_solar_kwh_m2"] = grid["annual_solar_kwh_m2"].to_numpy()[nn]
-    out["winter_solar_kwh_m2_day"] = grid["winter_solar_kwh_m2_day"].to_numpy()[nn]
-    out["summer_solar_kwh_m2_day"] = grid["summer_solar_kwh_m2_day"].to_numpy()[nn]
-    out["solar_seasonality"] = grid["solar_seasonality"].to_numpy()[nn]
-    return out
 
 
 def compute_neighbour_features(

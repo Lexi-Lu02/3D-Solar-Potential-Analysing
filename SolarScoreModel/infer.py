@@ -67,7 +67,8 @@ def predict() -> pd.DataFrame:
         "structure_id": df["structure_id"].astype(int).to_numpy(),
         "lat": df["lat"].to_numpy(),
         "lng": df["lng"].to_numpy(),
-        "suburb": df["suburb"].to_numpy(),
+        "precinct_id": df["precinct_id"].to_numpy() if "precinct_id" in df.columns else None,
+        "precinct_name": df["precinct_name"].to_numpy() if "precinct_name" in df.columns else df["suburb"].to_numpy(),
         "predicted_score_1_5": np.round(raw_pred, 3),
         "predicted_score_0_100": score_0_100,
         "model_version": MODEL_NAME,
@@ -87,13 +88,17 @@ def predict() -> pd.DataFrame:
 
 
 def write_db(predictions: pd.DataFrame, model_version: str) -> None:
-    print(f"\n[db] writing solar_score_v2 ...")
+    print(f"\n[db] writing solar_score ...")
     conn = get_connection()
     cur = conn.cursor()
 
+    # drop old table (any schema) and recreate clean
+    cur.execute("DROP TABLE IF EXISTS solar_score")
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS solar_score_v2 (
+        CREATE TABLE solar_score (
             structure_id           INTEGER PRIMARY KEY,
+            precinct_id            INTEGER REFERENCES precincts(precinct_id),
+            precinct_name          CHARACTER VARYING(100),
             predicted_score_1_5    NUMERIC(4, 3),
             predicted_score_0_100  INTEGER CHECK (predicted_score_0_100 BETWEEN 0 AND 100),
             model_version          TEXT NOT NULL,
@@ -102,30 +107,12 @@ def write_db(predictions: pd.DataFrame, model_version: str) -> None:
     """)
     conn.commit()
 
-    # legacy schema (had structure_id_2023 / struct_id_2015 / had_label) → recreate
-    cur.execute("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name='solar_score_v2'
-    """)
-    cols = {r[0] for r in cur.fetchall()}
-    if "structure_id_2023" in cols:
-        print("  [migrate] dropping old solar_score_v2 schema (had crosswalk fields)")
-        cur.execute("DROP TABLE solar_score_v2")
-        cur.execute("""
-            CREATE TABLE solar_score_v2 (
-                structure_id           INTEGER PRIMARY KEY,
-                predicted_score_1_5    NUMERIC(4, 3),
-                predicted_score_0_100  INTEGER CHECK (predicted_score_0_100 BETWEEN 0 AND 100),
-                model_version          TEXT NOT NULL,
-                computed_at            TIMESTAMP DEFAULT NOW()
-            )
-        """)
-        conn.commit()
-
     import psycopg2.extras
     rows = [
         (
             int(r.structure_id),
+            int(r.precinct_id) if r.precinct_id is not None and not (isinstance(r.precinct_id, float) and np.isnan(r.precinct_id)) else None,
+            str(r.precinct_name) if r.precinct_name is not None else None,
             float(r.predicted_score_1_5),
             int(r.predicted_score_0_100),
             model_version,
@@ -135,10 +122,13 @@ def write_db(predictions: pd.DataFrame, model_version: str) -> None:
     psycopg2.extras.execute_batch(
         cur,
         """
-        INSERT INTO solar_score_v2
-            (structure_id, predicted_score_1_5, predicted_score_0_100, model_version)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO solar_score
+            (structure_id, precinct_id, precinct_name,
+             predicted_score_1_5, predicted_score_0_100, model_version)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (structure_id) DO UPDATE SET
+            precinct_id           = EXCLUDED.precinct_id,
+            precinct_name         = EXCLUDED.precinct_name,
             predicted_score_1_5   = EXCLUDED.predicted_score_1_5,
             predicted_score_0_100 = EXCLUDED.predicted_score_0_100,
             model_version         = EXCLUDED.model_version,
@@ -150,7 +140,7 @@ def write_db(predictions: pd.DataFrame, model_version: str) -> None:
     conn.commit()
     cur.close()
     conn.close()
-    print(f"  wrote {len(rows)} rows to solar_score_v2")
+    print(f"  wrote {len(rows)} rows to solar_score")
 
 
 def main() -> None:
@@ -167,7 +157,7 @@ def main() -> None:
     if args.write_db:
         write_db(preds, MODEL_NAME)
     else:
-        print("\n[hint] DB write skipped; pass --write-db to upsert solar_score_v2")
+        print("\n[hint] DB write skipped; pass --write-db to upsert solar_score")
 
     print("\ndone.")
 
