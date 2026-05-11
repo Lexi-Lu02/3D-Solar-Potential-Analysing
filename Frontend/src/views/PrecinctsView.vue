@@ -198,21 +198,55 @@
 </template>
 
 <script>
+// This extra <script> block (not <script setup>) is needed to set the component name.
+// The name 'PrecinctsView' matches the string in KeepAlive in App.vue, which is what
+// keeps this map page alive in memory when you navigate away.
 export default { name: 'PrecinctsView' }
 </script>
 
 <script setup>
-// Precincts page — shows Melbourne CBD divided into named precincts, each colour-coded
-// by solar tier. The sidebar ranks precincts and shows DB-sourced capacity metrics.
+// ─────────────────────────────────────────────────────────────────────────────
+// PrecinctsView.vue — The Precincts page.
+//
+// This page shows Melbourne CBD split into named precincts (neighbourhoods).
+// Each precinct is coloured on the map by its solar ranking (green = best, red = worst).
+//
+// How it works:
+//   1. Load the GeoJSON file of precinct boundaries (polygon shapes on the map).
+//   2. Load the GeoJSON file of all buildings (40,000+ points).
+//   3. For each building, use a point-in-polygon algorithm to figure out which
+//      precinct it belongs to, then sum up the kWh and roof area per precinct.
+//   4. Fetch additional data from the API (installed capacity, adoption gap).
+//   5. Rank precincts and colour the map accordingly.
+//
+// The sidebar on the right shows a ranked table that the user can sort by:
+//   Annual kWh / Roof Area / Number of Buildings / Adoption Gap
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Vue's reactivity and lifecycle functions.
+// computed   → creates a value that auto-updates when its inputs change
+// onMounted  → runs once after the page is displayed on screen
+// onUnmounted → runs before the page is hidden (used to clean up the map)
+// ref        → creates a reactive variable
+// watch      → runs a function whenever a reactive value changes
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+
+// MapLibre GL JS — the library that renders the interactive map.
 import maplibregl from 'maplibre-gl'
+
+// Shared top navigation bar.
 import MainNavbar from '../components/MainNavbar.vue'
 
+// ── URL configuration ─────────────────────────────────────────────────────────
+// These come from the .env file so they can point to different servers in
+// development vs production. The || fallback is used when the env var isn't set.
 const BUILDINGS_PATH  = import.meta.env.VITE_GEOJSON_URL   || '/combined-buildings.geojson'
 const PRECINCTS_PATH  = import.meta.env.VITE_PRECINCTS_URL || '/melbourne_cbd_precincts.geojson'
 const API_BASE        = import.meta.env.VITE_API_BASE_URL  || '/api/v1'
 
-// Fetches a GeoJSON file and validates the response is actually JSON (not an HTML error page).
+// ── GeoJSON fetch helper ──────────────────────────────────────────────────────
+// Fetches a GeoJSON file and validates the response is actually JSON (not an HTML
+// error page that the server returned with a 200 status by mistake).
 async function fetchGeoJson(url) {
   const isJson = (res) => (res.headers.get('content-type') || '').includes('json')
   const acceptsGeoJsonFile = (url, res) => url.endsWith('.geojson') && res.ok
@@ -225,19 +259,21 @@ async function fetchGeoJson(url) {
   return res
 }
 
-// Module-level caches that survive component unmount/remount within the same browser tab.
-// The GeoJSON files are large (several MB) and the point-in-polygon aggregation is slow —
-// caching means navigating away and back doesn't redo all that work.
-let _cachedPrecinctGeoJSON = null
-let _cachedBuildingData    = null
-let _cachedAggregation     = null
-let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from /api/v1/precincts
+// ── Module-level data caches ──────────────────────────────────────────────────
+// These variables are stored OUTSIDE the component (at module level), which means
+// they survive when the user navigates away and comes back.
+//
+// Without caching: every time you visit /precincts, it would re-download the
+// multi-MB GeoJSON files and redo the point-in-polygon calculation (~10 seconds).
+// With caching: the second visit is nearly instant.
+let _cachedPrecinctGeoJSON = null   // the GeoJSON of precinct boundary polygons
+let _cachedBuildingData    = null   // the GeoJSON of all buildings
+let _cachedAggregation     = null   // the calculated per-precinct totals
+let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from the API
 
-// MapLibre GL paint specs only accept hex literals — CSS variables are not supported.
-// Every value here has a matching token in style.css :root (solar* → --solar-*,
-// buildingBase → --map-building-base, top5Outline → --city-light,
-// selectedOutline → --map-outline-selected, defaultOutline → --map-outline-default,
-// lineStroke → --map-line-stroke).
+// ── Map colour constants ──────────────────────────────────────────────────────
+// MapLibre GL paint specs only accept hex literals — they cannot read CSS variables.
+// Every value here has a matching CSS variable in style.css :root for reference.
 const MAP_COLORS = {
   solarExcellent: '#0A2E1F',
   solarGood:      '#5A9060',
@@ -251,7 +287,9 @@ const MAP_COLORS = {
   lineStroke:     '#1C1710',
 }
 
-// 14 colours interpolated across the 5 anchor points (rank 1 = best = index 0)
+// ── 14-step colour gradient for precinct ranking ──────────────────────────────
+// Rank 1 (best precinct) gets the darkest green; rank 14 (worst) gets the deepest red.
+// Each precinct's rank maps to one of these 14 colours via quintileTier() below.
 const TIER_COLORS = [
   '#1A5C48',  // rank 1
   '#2E6C4F',  // rank 2
@@ -273,25 +311,46 @@ const TIER_LABELS = [
   'Rank 8','Rank 9','Rank 10','Rank 11','Rank 12','Rank 13','Rank 14',
 ]
 
-// Maps rank directly to one of 14 colour indices.
+// ── Helper functions ──────────────────────────────────────────────────────────
+
+// Converts a rank (1 = best) into one of the 14 colour indices.
+// Example: if there are 14 precincts, rank 1 → index 0, rank 14 → index 13.
 function quintileTier(rank, total) {
-  if (total <= 0) return 6
+  if (total <= 0) return 6  // default to middle colour if no data
   return Math.min(13, Math.floor((rank - 1) / total * 14))
 }
+
+// Returns the hex colour for a given tier index (0–13).
 function tierColor(tier) { return TIER_COLORS[tier] ?? MAP_COLORS.solarModerate }
+
+// Returns the human-readable label for a tier index ("Rank 1", "Rank 2", …).
 function tierLabel(tier) { return TIER_LABELS[tier] ?? `Rank ${tier + 1}` }
 
-const isLoading     = ref(true)
-const loadingText   = ref('Loading building data…')
-const sidebarOpen   = ref(true)
-const sortBy        = ref('kwh')
-const precincts     = ref([])   // enriched precinct objects
-const selectedPrecinct = ref(null)
-const toastMessage  = ref('')
-const toastVisible  = ref(false)
-let toastTimer      = null
-let map             = null
+// ── Reactive state (variables that update the UI when they change) ────────────
 
+// true while data is being loaded or calculated — shows the loading spinner overlay.
+const isLoading     = ref(true)
+// Message shown under the loading spinner (e.g. "Aggregating buildings… 42%").
+const loadingText   = ref('Loading building data…')
+// true = the right sidebar is visible, false = collapsed to a narrow strip.
+const sidebarOpen   = ref(true)
+// Which column the precinct table is currently sorted by.
+const sortBy        = ref('kwh')
+// Array of enriched precinct objects — filled after aggregation completes.
+const precincts     = ref([])
+// The precinct the user clicked on — triggers the detail view in the sidebar.
+const selectedPrecinct = ref(null)
+// Short status message shown in a toast popup (e.g. "CSV exported").
+const toastMessage  = ref('')
+// true when the toast is visible (auto-hides after 1.8 seconds).
+const toastVisible  = ref(false)
+let toastTimer      = null   // stores the setTimeout handle so we can cancel it
+let map             = null   // the MapLibre GL map instance
+
+// ── Sort options for the sidebar tabs ─────────────────────────────────────────
+// Each option has:
+//   id    → the key used in `sortBy` to identify this sort
+//   label → the text shown on the tab button
 const sortOptions = [
   { id: 'kwh',       label: 'Annual kWh'   },
   { id: 'area',      label: 'Roof Area'    },
@@ -299,7 +358,12 @@ const sortOptions = [
   { id: 'gap',       label: 'Adoption Gap' },
 ]
 
-// ── Sorted / ranked list ──────────────────────────────────────────────────────
+// ── Sorted / ranked list (computed) ──────────────────────────────────────────
+// `sortedPrecincts` is a computed value — Vue recalculates it automatically
+// whenever `sortBy` or `precincts` changes.
+//
+// It takes the raw precincts array, sorts by the selected column (kwh/area/buildings/gap),
+// filters out precincts with no buildings, and assigns each precinct a `rank` and `tier`.
 const sortedPrecincts = computed(() => {
   const isGap = sortBy.value === 'gap'
   const key = sortBy.value === 'kwh' ? 'total_kwh'
@@ -327,10 +391,15 @@ const sortedPrecincts = computed(() => {
   })
 })
 
-// Update map layer paint + top-5 outline whenever sort changes
+// Whenever the sorted list changes (user switches sort tab), re-colour the map.
+// `watch` runs the callback every time `sortedPrecincts` produces a new value.
 watch(sortedPrecincts, () => updateMapLayers(), { deep: false })
 
-// ── Formatting helpers ────────────────────────────────────────────────────────
+// ── Number formatting helpers ─────────────────────────────────────────────────
+// These convert raw numbers into human-readable strings with units.
+// They automatically pick the best unit (kWh, MWh, GWh) based on the size.
+
+// Format a kWh value for the detail view (full precision).
 function formatKwh(val) {
   if (val == null || val === 0) return '—'
   if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + ' GWh'
@@ -377,7 +446,9 @@ function gapPct(p) {
 }
 const currentSortLabel = computed(() => sortOptions.find(s => s.id === sortBy.value)?.label ?? '')
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// ── Toast notification ────────────────────────────────────────────────────────
+// Shows a brief popup message at the bottom of the screen (e.g. after CSV export).
+// The toast auto-hides after 1.8 seconds.
 function showToast(msg) {
   if (toastTimer) clearTimeout(toastTimer)
   toastMessage.value = msg
@@ -385,7 +456,12 @@ function showToast(msg) {
   toastTimer = setTimeout(() => { toastVisible.value = false }, 1800)
 }
 
-// ── Select a precinct (sidebar + map highlight) ───────────────────────────────
+// ── Select a precinct ─────────────────────────────────────────────────────────
+// Called when the user clicks a row in the sidebar or a precinct on the map.
+// It:
+//   1. Sets selectedPrecinct (switches the sidebar to the detail view)
+//   2. Highlights the precinct boundary on the map with a yellow outline
+//   3. Flies the camera to fit the precinct polygon in view
 function selectPrecinct(p) {
   selectedPrecinct.value = p
   if (!map) return
@@ -404,8 +480,16 @@ function selectPrecinct(p) {
   }
 }
 
-// Classic ray-casting algorithm — fires a horizontal ray from the point and counts
-// how many polygon edges it crosses. Odd = inside, even = outside.
+// ── Point-in-polygon (ray casting algorithm) ──────────────────────────────────
+// Determines whether a GPS coordinate (px, py) is inside a polygon shape.
+//
+// How it works (the "ray casting" method):
+//   Imagine firing an infinite horizontal ray from the point to the right.
+//   Count how many times the ray crosses a polygon edge.
+//   If the count is ODD  → the point is INSIDE the polygon.
+//   If the count is EVEN → the point is OUTSIDE the polygon.
+//
+// This is used to assign each building (a point) to the correct precinct (a polygon).
 function pointInPolygon(px, py, ring) {
   let inside = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -425,8 +509,13 @@ function pointInFeature(px, py, feature) {
   return rings.some(ring => pointInPolygon(px, py, ring))
 }
 
-// Pre-computes a bounding box for each precinct polygon so we can skip the expensive
-// ray-cast for buildings that are obviously outside (fast rectangular check first).
+// ── Bounding box pre-computation ──────────────────────────────────────────────
+// Calculates the min/max longitude and latitude for a polygon shape.
+//
+// Why? The point-in-polygon check is slow. We first do a fast "is this point even
+// inside the bounding rectangle?" check. If the building is clearly outside the
+// rectangle, we skip the expensive ray-cast entirely.
+// This makes the aggregation much faster (skip ~90% of checks).
 function getBBox(feature) {
   const geom = feature.geometry
   if (!geom) return null
@@ -441,9 +530,14 @@ function getBBox(feature) {
   return { minX, maxX, minY, maxY }
 }
 
-// Assigns every building to a precinct using point-in-polygon and sums up kWh, area, and count.
-// We process buildings in chunks of 2000 and yield back to the browser between each chunk
-// so the loading spinner and text stay responsive during the ~10-second computation.
+// ── Building aggregation ──────────────────────────────────────────────────────
+// This is the main data processing step — it assigns every building to a precinct
+// and sums up the annual kWh, usable roof area, and building count per precinct.
+//
+// Because we have 40,000+ buildings and 14 precincts, this takes ~10 seconds.
+// To avoid freezing the browser tab, we process buildings in chunks of 2,000
+// and use `await new Promise(r => setTimeout(r, 0))` between chunks to "yield"
+// control back to the browser, allowing the loading spinner to keep animating.
 async function aggregateBuildings(buildingFeatures, precinctFeatures) {
   const bboxes = precinctFeatures.map(getBBox)
   const accum  = precinctFeatures.map(() => ({
@@ -490,7 +584,10 @@ async function aggregateBuildings(buildingFeatures, precinctFeatures) {
   }))
 }
 
-// ── Update map fill colour and top-5 outline after sort changes ───────────────
+// ── Update map colours ────────────────────────────────────────────────────────
+// Called whenever the sort changes or new data arrives.
+// Applies the rank-based colour gradient to each precinct polygon on the map,
+// and draws an orange outline around the top 5 precincts.
 function updateMapLayers() {
   if (!map || sortedPrecincts.value.length === 0) return
 
@@ -520,7 +617,16 @@ function updateMapLayers() {
   }
 }
 
-// ── Map init ──────────────────────────────────────────────────────────────────
+// ── Map initialisation ────────────────────────────────────────────────────────
+// Creates the MapLibre GL map and adds all the layers.
+// Called once when the page first loads (not on every visit — see KeepAlive in App.vue).
+//
+// Layer order (bottom to top):
+//   1. building-extrusion  → grey 3D boxes for context (low opacity)
+//   2. precinct-fill       → coloured polygon fill per precinct
+//   3. precinct-outline    → thin grey border around each precinct
+//   4. precinct-top5-outline → orange border for the top 5 precincts
+//   5. precinct-selected   → yellow border for the clicked precinct
 function initMap(precinctGeoJSON) {
   map = new maplibregl.Map({
     container: 'precinct-map',
@@ -679,6 +785,18 @@ function initMap(precinctGeoJSON) {
 }
 
 // ── CSV Export ────────────────────────────────────────────────────────────────
+// Generates and downloads a CSV file.
+// If a precinct is selected → exports just that precinct's details.
+// If no precinct is selected → exports the full ranked table.
+//
+// How browser-side CSV download works:
+//   1. Build the CSV string in memory.
+//   2. Create a Blob (a file-like object).
+//   3. Generate a temporary URL for the Blob.
+//   4. Programmatically click a hidden <a> link to trigger the browser's download.
+//   5. Clean up the temporary URL.
+
+// Wraps a value in double-quotes and escapes any existing quotes (RFC 4180 CSV format).
 function toCsvSafe(value) {
   const s = value == null ? '' : String(value)
   return `"${s.replace(/"/g, '""')}"`
@@ -733,10 +851,13 @@ function exportPrecinctsCsv() {
   showToast('CSV exported')
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
+// ── Lifecycle hooks ───────────────────────────────────────────────────────────
+// onMounted runs once after the page is first rendered on screen.
+// It loads the data and initialises the map.
 onMounted(async () => {
-  // If we already have aggregated data from a previous visit, show the sidebar
+  // If we already have aggregated data from a previous visit (cached), show the sidebar
   // immediately and suppress the loading overlay — MapLibre initialises in the background.
+  // This makes the second visit feel near-instant.
   if (_cachedAggregation) {
     precincts.value = _cachedAggregation
     isLoading.value = false
@@ -760,6 +881,11 @@ onMounted(async () => {
   setTimeout(() => { if (!map) initMap(precinctGeoJSON) }, 50)
 })
 
+// onUnmounted runs before the component is removed from the DOM.
+// We use it to:
+//   1. Clear any pending toast timers (prevents them from firing after the component is gone)
+//   2. Destroy the MapLibre map to free memory
+//      (Note: with KeepAlive in App.vue, this only runs if the component is actually destroyed)
 onUnmounted(() => {
   if (toastTimer) clearTimeout(toastTimer)
   if (map) { map.remove(); map = null }
