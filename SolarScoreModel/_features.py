@@ -110,7 +110,6 @@ def compute_neighbour_features(
             mean_h[i] = float(np.nanmean(nbr_h))
             excess = np.clip(nbr_h - h[i], 0.0, None)
             taller_cnt[i] = int((excess > 0).sum())
-            # weighted by inverse distance (clip to ≥1m to avoid blowup)
             shading[i] = float(np.sum(excess / np.clip(nbr_d, 1.0, None)))
         out[f"nbr_count_{int(r)}m"] = cnt
         out[f"nbr_max_height_{int(r)}m"] = max_h
