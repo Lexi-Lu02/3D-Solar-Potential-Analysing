@@ -219,10 +219,10 @@ curl -sf "http://localhost:8000/api/v1/buildings/search?q=Collins" | jq .
 | `height.building_height_m` | float | 建筑总高（用于 3D 拉伸） |
 | `height.base_height_m` | float | 底部偏移 |
 | `height.max_elevation_m` / `min_elevation_m` | float | 最高 / 最低点海拔 |
-| `solar.has_data` | bool | 是否匹配到了屋顶光伏调研数据（约 5% 建筑无数据） |
-| `solar.dominant_rating` | string \| null | 主评级：`Excellent` / `Good` / `Moderate` / `Poor` / `Very Poor` |
-| `solar.solar_score` | int (0–100) \| null | 展示用分数，由 `solar_score_avg` 线性映射：`round((avg-1)/4×100)` |
-| `solar.solar_score_avg` | float (1–5) \| null | 屋顶调研分块的平均评分 |
+| `solar.has_data` | bool | 该建筑是否有任意 solar 数据（model 分或 rooftop_solar 调研） |
+| `solar.dominant_rating` | string \| null | 主评级：`Excellent` / `Good` / `Moderate` / `Poor` / `Very Poor`（来自 rooftop_solar） |
+| `solar.solar_score` | int (0–100) \| null | 展示用分数。**优先**取 `solar_score.predicted_score_0_100`（LightGBM 模型，见 `SolarScoreModel/`）；缺失时回退到 `round((solar_score_avg-1)/4×100)`；都没有则 null |
+| `solar.solar_score_avg` | float (1–5) \| null | 屋顶调研分块的平均评分（仅 rooftop_solar 来源） |
 | `solar.usable_ratio` | float (0–1) \| null | 评级在 Good 及以上的面积占比 |
 | `solar.usable_roof_area_m2` | float \| null | Good 及以上评级的总面积 |
 | `solar.total_roof_area_m2` | float \| null | 所有调研分块面积之和 |
