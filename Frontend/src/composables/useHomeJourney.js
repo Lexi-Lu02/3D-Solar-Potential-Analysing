@@ -1,4 +1,6 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+
+const CHAT_STORAGE_KEY = 'homeJourney.chatHistory.v1'
 
 // ── Module-level singleton state ─────────────────────────────────────────────
 // Defined outside any function so it survives component unmount / navigation.
@@ -36,3 +38,48 @@ export const ownerStep3Done = ref(false)   // true after user opens 3D Explore
 
 // Mutable timer handles — plain object, not reactive
 export const homeTimers = { owner: null, planner: null }
+
+function canUseLocalStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+}
+
+export function loadHomeChatHistory() {
+  if (!canUseLocalStorage()) return
+  try {
+    const raw = window.localStorage.getItem(CHAT_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed.ownerMessages)) ownerMessages.value = parsed.ownerMessages
+    if (Array.isArray(parsed.plannerMessages)) plannerMessages.value = parsed.plannerMessages
+  } catch {
+    window.localStorage.removeItem(CHAT_STORAGE_KEY)
+  }
+}
+
+export function clearHomeChatHistory() {
+  ownerMessages.value = []
+  ownerChatInput.value = ''
+  ownerTyping.value = false
+  plannerMessages.value = []
+  plannerChatInput.value = ''
+  plannerTyping.value = false
+
+  if (canUseLocalStorage()) {
+    window.localStorage.removeItem(CHAT_STORAGE_KEY)
+  }
+}
+
+function persistHomeChatHistory() {
+  if (!canUseLocalStorage()) return
+  const payload = {
+    ownerMessages: ownerMessages.value,
+    plannerMessages: plannerMessages.value,
+  }
+  try {
+    window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // Chat history is a convenience cache only; the app can continue without it.
+  }
+}
+
+watch([ownerMessages, plannerMessages], persistHomeChatHistory, { deep: true })

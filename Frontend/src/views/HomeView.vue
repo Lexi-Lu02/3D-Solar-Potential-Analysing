@@ -83,9 +83,9 @@
               </svg>
             </div>
             <div class="identity-name">City Planner</div>
-            <div class="identity-desc-text">Explore precinct-level solar data, compare neighbourhoods, and build the evidence base for urban solar policy</div>
+            <div class="identity-desc-text">Explore suburb-level solar data, compare neighbourhoods, and build the evidence base for urban solar policy</div>
             <div class="identity-tags">
-              <span class="identity-tag">Precinct Rankings</span>
+              <span class="identity-tag">Suburb Rankings</span>
               <span class="identity-tag">Adoption Gaps</span>
               <span class="identity-tag">Policy Data</span>
             </div>
@@ -201,7 +201,7 @@
                       <div class="ai-chat-title">AI Solar Assistant</div>
                       <div class="ai-chat-sub">Ask anything about this building</div>
                     </div>
-                    <div class="ai-coming-soon-pill">Demo</div>
+                    <div class="ai-coming-soon-pill">Live</div>
                   </div>
                   <div class="ai-chat-body" ref="ownerChatBodyRef">
                     <div
@@ -271,7 +271,7 @@
             <div class="step-bar" aria-label="Journey progress">
               <div class="step-bar-item" :class="{ 'step-bar-item--done': !!plannerResult, 'step-bar-item--active': !plannerResult }">
                 <div class="step-bar-dot">{{ plannerResult ? '✓' : '1' }}</div>
-                <div class="step-bar-label">Select Precinct</div>
+                <div class="step-bar-label">Select Suburb</div>
               </div>
               <div class="step-bar-line"></div>
               <div class="step-bar-item" :class="{ 'step-bar-item--active': !!plannerResult }">
@@ -288,11 +288,11 @@
             <!-- Precinct + building search row -->
             <div class="planner-controls">
               <div class="planner-ctrl-group">
-                <label class="planner-ctrl-label" for="precinct-select">Browse by precinct</label>
+                <label class="planner-ctrl-label" for="precinct-select">Browse by suburb</label>
                 <div class="select-wrap">
                   <select id="precinct-select" v-model="selectedPrecinctKey" class="precinct-dropdown" @change="loadPrecinct">
-                    <option value="" disabled v-if="precinctListLoading">Loading precincts…</option>
-                    <option value="" v-else>Choose a precinct…</option>
+                    <option value="" disabled v-if="precinctListLoading">Loading suburbs…</option>
+                    <option value="" v-else>Choose a suburb…</option>
                     <option v-for="p in precinctListData" :key="p.precinct_id" :value="p.precinct_id">{{ p.name }}</option>
                   </select>
                   <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -405,9 +405,9 @@
                     <span class="ai-spark">✦</span>
                     <div class="ai-chat-head-text">
                       <div class="ai-chat-title">AI Planning Assistant</div>
-                      <div class="ai-chat-sub">Ask about this {{ plannerResult.type === 'precinct' ? 'precinct' : 'building' }}'s solar outlook</div>
+                      <div class="ai-chat-sub">Ask about this {{ plannerResult.type === 'precinct' ? 'suburb' : 'building' }}'s solar outlook</div>
                     </div>
-                    <div class="ai-coming-soon-pill">Demo</div>
+                    <div class="ai-coming-soon-pill">Live</div>
                   </div>
                   <div class="ai-chat-body" ref="plannerChatBodyRef">
                     <div
@@ -454,9 +454,9 @@
             <!-- Precincts page CTA -->
             <Transition name="fade">
               <div v-if="plannerResult" class="precinct-explore-cta">
-                <p class="explore-jump-label">Ready for the full picture? View all precincts ranked side-by-side</p>
+                <p class="explore-jump-label">Ready for the full picture? View all suburbs ranked side-by-side</p>
                 <div class="precinct-cta-row">
-                  <RouterLink to="/precincts" class="btn-primary">View Precincts Map →</RouterLink>
+                  <RouterLink to="/precincts" class="btn-primary">View Suburb Map →</RouterLink>
                   <button class="btn-ghost-outline" @click="goToExplore">Explore Individual Buildings</button>
                 </div>
               </div>
@@ -515,19 +515,19 @@
 
         <div class="split split--rev">
           <div class="split-media">
-            <img :src="imgPrecinct" alt="Screenshot of the precinct solar rankings map" class="split-img" />
+            <img :src="imgPrecinct" alt="Screenshot of the suburb solar rankings map" class="split-img" />
           </div>
           <div class="split-text">
-            <p class="eyebrow">Precincts</p>
+            <p class="eyebrow">Suburb</p>
             <h2 class="seg-title">Rank neighbourhoods by solar potential</h2>
             <p class="seg-desc">
-              Zoom out from individual buildings to compare entire precincts.
+              Zoom out from individual buildings to compare entire suburbs.
               Identify which neighbourhoods have the most untapped solar opportunity.
             </p>
-            <ul class="bullet-list" aria-label="Precincts features">
+            <ul class="bullet-list" aria-label="Suburb features">
               <li v-for="f in precinctFeatures" :key="f">{{ f }}</li>
             </ul>
-            <RouterLink class="text-link" to="/precincts" aria-label="View Precinct">View Precinct →</RouterLink>
+            <RouterLink class="text-link" to="/precincts" aria-label="View Suburb">View Suburb →</RouterLink>
           </div>
         </div>
       </div>
@@ -611,7 +611,7 @@
 
         <div class="cta-actions">
           <button class="btn-cta" @click="goToExplore">Explore the Map →</button>
-          <RouterLink class="btn-cta-ghost" to="/precincts">View Precinct</RouterLink>
+          <RouterLink class="btn-cta-ghost" to="/precincts">View Suburb</RouterLink>
         </div>
       </div>
     </section>
@@ -635,7 +635,7 @@
               <div class="footer-col-title">Platform</div>
               <RouterLink class="footer-link footer-link--url" to="/">Home</RouterLink>
               <RouterLink class="footer-link footer-link--url" to="/explore">3D Explore</RouterLink>
-              <RouterLink class="footer-link footer-link--url" to="/precincts">Precincts</RouterLink>
+              <RouterLink class="footer-link footer-link--url" to="/precincts">Suburb</RouterLink>
               <RouterLink class="footer-link footer-link--url" to="/insights">AI Insights</RouterLink>
             </div>
             <div class="footer-col">
@@ -683,6 +683,7 @@ import {
   precinctListData, precinctListLoading,
   ownerStep2Done, ownerStep3Done,
   homeTimers,
+  loadHomeChatHistory,
 } from '../composables/useHomeJourney.js'
 
 import logoUrl          from '../pictures/Project logo.png'
@@ -741,17 +742,17 @@ const analysisPanels = [
 ]
 
 const precinctFeatures = [
-  'Interactive map showing precinct boundaries coloured by solar tier',
+  'Interactive map showing suburb boundaries coloured by solar tier',
   'Ranked list sortable by annual yield, usable area, buildings, or adoption gap',
-  'Installed capacity vs potential capacity for each precinct',
+  'Installed capacity vs potential capacity for each suburb',
   'Detailed stats: kWh/year, usable m², building count',
-  'Export full precinct data as CSV for planning teams',
+  'Export full suburb data as CSV for planning teams',
 ]
 
 const steps = [
   { title: 'Search', desc: 'Type any Melbourne CBD address or click a building directly on the 3D map.' },
   { title: 'Analyse', desc: 'Review solar score, estimated system size, indicative cost, and payback/CO₂ outcome, then compare buildings or export a report.' },
-  { title: 'Plan', desc: 'Compare buildings and precincts side by side to prioritise the highest-return installations.' },
+  { title: 'Plan', desc: 'Compare buildings and suburbs side by side to prioritise the highest-return installations.' },
 ]
 
 const features = [
@@ -835,7 +836,7 @@ const plannerSuggestions = computed(() => {
   if (!plannerResult.value) return []
   if (plannerResult.value.type === 'precinct') return [
     'What is the total untapped solar capacity?',
-    'How does adoption compare to other precincts?',
+    'How does adoption compare to other suburbs?',
     'What building types have the most potential?',
   ]
   return [
@@ -874,6 +875,91 @@ function msg(role, content) { return { id: ++_msgId, role, content } }
 
 function scrollChat(refEl) {
   nextTick(() => { if (refEl.value) refEl.value.scrollTop = refEl.value.scrollHeight })
+}
+
+function toApiMessages(messages, contextText) {
+  const transcript = messages
+    .filter(m => (m.role === 'user' || m.role === 'ai') && String(m.content || '').trim())
+    .slice(-30)
+    .map(m => ({
+      role: m.role === 'ai' ? 'assistant' : 'user',
+      content: String(m.content).trim(),
+    }))
+
+  if (contextText && transcript.length > 0 && transcript[transcript.length - 1].role === 'user') {
+    transcript[transcript.length - 1] = {
+      ...transcript[transcript.length - 1],
+      content: `${contextText}\n\nUser question: ${transcript[transcript.length - 1].content}`,
+    }
+  }
+
+  return transcript
+}
+
+async function askBackendAi(messages, contextText, userType) {
+  const res = await fetch(`${API_BASE}/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'chat',
+      user_type: userType,
+      messages: toApiMessages(messages, contextText),
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `AI request failed with status ${res.status}`)
+  }
+
+  const body = await res.json()
+  return body.reply || 'I could not generate a response for that question.'
+}
+
+
+function ownerContext(b) {
+  
+  if (!b) return ''
+  return [
+    'Context: The user is a property owner asking about a selected Melbourne CBD building.',
+    `Selected building address: ${b.address}.`,
+    `City of Melbourne structure_id: ${b.structureId}.`,
+    b.solarScore !== null ? `Solar score: ${b.solarScore}/5 (${b.solarTier}).` : 'Solar score: not available in the local card.',
+    b.annualKwh ? `Estimated annual generation: ${Math.round(b.annualKwh)} kWh.` : 'Estimated annual generation: not available in the local card.',
+    b.usableArea ? `Usable roof area: ${b.usableArea} m2.` : 'Usable roof area: not available in the local card.',
+    b.installCost ? `Estimated install cost: AUD ${b.installCost}.` : '',
+    b.annualSavings ? `Estimated annual savings: AUD ${b.annualSavings}.` : '',
+    b.paybackYears ? `Estimated payback period: ${b.paybackYears} years.` : '',
+  ].filter(Boolean).join('\n')
+}
+
+function plannerContext(p) {
+  if (!p) return ''
+  if (p.type === 'precinct') {
+    return [
+      'Context: The user is a city planner asking about a selected Melbourne precinct.',
+      `Selected precinct: ${p.name}.`,
+      `Suburb rank: ${p.rank} of ${p.totalPrecincts} (${p.tierStr}).`,
+      `Analysed buildings: ${p.buildings}.`,
+      `Annual solar potential: ${Math.round(p.annualKwh)} kWh.`,
+      `Usable roof area: ${Math.round(p.usableArea)} m2.`,
+      `Installed capacity: ${p.installedKw} kW.`,
+      `Potential capacity: ${p.potentialKw} kW.`,
+      `Adoption rate: ${p.adoptionPct}%.`,
+      `Adoption gap: ${p.adoptionGapKw} kW.`,
+    ].join('\n')
+  }
+
+  return [
+    'Context: The user is a city planner asking about a selected Melbourne CBD building.',
+    `Selected building address: ${p.name}.`,
+    p.solarScore !== null ? `Solar score: ${p.solarScore}/5 (${p.solarTier}).` : 'Solar score: not available in the local card.',
+    p.annualKwh ? `Estimated annual generation: ${Math.round(p.annualKwh)} kWh.` : 'Estimated annual generation: not available in the local card.',
+    p.usableArea ? `Usable roof area: ${p.usableArea} m2.` : 'Usable roof area: not available in the local card.',
+    p.installCost ? `Estimated install cost: AUD ${p.installCost}.` : '',
+    p.annualSavings ? `Estimated annual savings: AUD ${p.annualSavings}.` : '',
+    p.paybackYears ? `Estimated payback period: ${p.paybackYears} years.` : '',
+  ].filter(Boolean).join('\n')
 }
 
 // ── Identity selection ────────────────────────────────────────────────────────
@@ -996,10 +1082,20 @@ async function sendOwnerMessage() {
   ownerMessages.value.push(msg('user', q))
   scrollChat(ownerChatBodyRef)
   ownerTyping.value = true
-  await new Promise(r => setTimeout(r, 900 + Math.random() * 500))
-  ownerTyping.value = false
-  ownerMessages.value.push(msg('ai', getOwnerReply(q.toLowerCase(), ownerBuilding.value)))
-  scrollChat(ownerChatBodyRef)
+  try {
+    const reply = await askBackendAi(
+      ownerMessages.value,
+      ownerContext(ownerBuilding.value),
+      'property_owner'
+    )
+    ownerMessages.value.push(msg('ai', reply))
+  } catch (err) {
+    console.error('Owner AI chat failed:', err)
+    ownerMessages.value.push(msg('ai', 'I could not reach the solar assistant right now. Please try again in a moment.'))
+  } finally {
+    ownerTyping.value = false
+    scrollChat(ownerChatBodyRef)
+  }
 }
 
 function ownerAsk(q) { ownerChatInput.value = q; sendOwnerMessage() }
@@ -1094,7 +1190,7 @@ async function triggerPlannerWelcome() {
   let intro
   if (p.type === 'precinct') {
     const gapMw = ((p.potentialKw - p.installedKw) / 1000).toFixed(1)
-    intro = `I've pulled up the ${p.name} precinct. It has ${p.buildings.toLocaleString()} analysed buildings with an annual generation potential of ${fmtKwh(p.annualKwh)}. Current solar adoption sits at ${p.adoptionPct}% — leaving ${gapMw} MW (${Math.round(100 - p.adoptionPct)}%) of capacity untapped. What would you like to explore?`
+    intro = `I've pulled up the ${p.name} suburb. It has ${p.buildings.toLocaleString()} analysed buildings with an annual generation potential of ${fmtKwh(p.annualKwh)}. Current solar adoption sits at ${p.adoptionPct}% — leaving ${gapMw} MW (${Math.round(100 - p.adoptionPct)}%) of capacity untapped. What would you like to explore?`
   } else {
     const scoreStr = p.solarScore !== null ? ` With a solar score of ${p.solarScore}/5 (${p.solarTier}), this building has notable solar potential.` : ''
     const yieldStr = p.annualKwh ? ` Annual generation estimate: ${fmtKwh(p.annualKwh)}.` : ''
@@ -1159,10 +1255,21 @@ async function sendPlannerMessage() {
   plannerMessages.value.push(msg('user', q))
   scrollChat(plannerChatBodyRef)
   plannerTyping.value = true
-  await new Promise(r => setTimeout(r, 900 + Math.random() * 500))
-  plannerTyping.value = false
-  plannerMessages.value.push(msg('ai', getPlannerReply(q.toLowerCase(), plannerResult.value)))
-  scrollChat(plannerChatBodyRef)
+  try {
+    const reply = await askBackendAi(
+      plannerMessages.value,
+      plannerContext(plannerResult.value),
+      'city_planner'
+    )
+
+    plannerMessages.value.push(msg('ai', reply))
+  } catch (err) {
+    console.error('Planner AI chat failed:', err)
+    plannerMessages.value.push(msg('ai', 'I could not reach the planning assistant right now. Please try again in a moment.'))
+  } finally {
+    plannerTyping.value = false
+    scrollChat(plannerChatBodyRef)
+  }
 }
 
 function plannerAsk(q) { plannerChatInput.value = q; sendPlannerMessage() }
@@ -1175,7 +1282,7 @@ function getPlannerReply(q, p) {
       return `${p.name} has ${(p.potentialKw / 1000).toFixed(1)} MW of total solar potential, with only ${(p.installedKw / 1000).toFixed(1)} MW currently installed — leaving ${untapped} MW untapped. That represents roughly ${unrealised} of unrealised annual generation, a significant opportunity for targeted policy intervention.`
     }
     if (q.includes('adoption') || q.includes('compare') || q.includes('other')) {
-      return `${p.name}'s adoption rate of ${p.adoptionPct}% is ${p.adoptionPct > 8 ? 'above' : 'below'} the Melbourne CBD average of ~8%. View the full Precincts Map for a side-by-side comparison of all 14 precincts — ranked by annual yield, adoption rate, and untapped potential.`
+      return `${p.name}'s adoption rate of ${p.adoptionPct}% is ${p.adoptionPct > 8 ? 'above' : 'below'} the Melbourne CBD average of ~8%. View the full Suburb Map for a side-by-side comparison of all 14 suburbs — ranked by annual yield, adoption rate, and untapped potential.`
     }
     if (q.includes('building type') || q.includes('roof') || q.includes('flat') || q.includes('commercial')) {
       return `In ${p.name}, commercial buildings with flat roofs represent the highest-value solar targets — they offer the largest usable area with minimal shading risk. The 3D Explore map lets you filter by roof type to identify specific high-priority sites for outreach or subsidy targeting.`
@@ -1183,9 +1290,9 @@ function getPlannerReply(q, p) {
     if (q.includes('economic') || q.includes('financial') || q.includes('investment') || q.includes('cost') || q.includes('roi')) {
       const totalInvest = Math.round(p.usableArea * 150)
       const annualReturn = Math.round(p.annualKwh * 0.2 * (1 - p.adoptionPct / 100))
-      return `A full solar rollout across ${p.name}'s untapped rooftop area would require ~$${(totalInvest / 1_000_000).toFixed(0)}M investment (before incentives), with projected returns of $${(annualReturn / 1_000_000).toFixed(1)}M/year in energy savings. Export the full dataset from the Precincts page for use in financial modelling tools.`
+      return `A full solar rollout across ${p.name}'s untapped rooftop area would require ~$${(totalInvest / 1_000_000).toFixed(0)}M investment (before incentives), with projected returns of $${(annualReturn / 1_000_000).toFixed(1)}M/year in energy savings. Export the full dataset from the Suburb page for use in financial modelling tools.`
     }
-    return `For comprehensive planning insights on ${p.name}, the Precincts Map lets you visualise building-level scores, filter by tier and roof type, and export a full CSV dataset — the best starting point for detailed policy and investment analysis.`
+    return `For comprehensive planning insights on ${p.name}, the Suburb Map lets you visualise building-level scores, filter by tier and roof type, and export a full CSV dataset — the best starting point for detailed policy and investment analysis.`
   }
   // building in planner context
   if (q.includes('priority') || q.includes('policy') || q.includes('candidate')) {
@@ -1201,12 +1308,19 @@ function getPlannerReply(q, p) {
   }
   const rankDesc = p.solarScore && p.solarScore >= 3.5 ? 'highly' : 'moderately'
   const scoreNote = p.solarScore ? ` (${p.solarScore}/5)` : ''
-  return `From a planning perspective, ${p.name} ranks ${rankDesc} in solar viability${scoreNote}. For neighbourhood-level context, select a precinct from the dropdown above, or head to the Precincts Map to see how this area ranks across all Melbourne CBD precincts.`
+  return `From a planning perspective, ${p.name} ranks ${rankDesc} in solar viability${scoreNote}. For neighbourhood-level context, select a suburb from the dropdown above, or head to the Suburb Map to see how this area ranks across all Melbourne CBD suburbs.`
 }
 
 // ── Stats fetch ───────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  loadHomeChatHistory()
+  _msgId = Math.max(
+    0,
+    ...ownerMessages.value.map(m => Number(m.id) || 0),
+    ...plannerMessages.value.map(m => Number(m.id) || 0),
+  )
+
   try {
     const res = await fetch(`${API_BASE}/buildings/stats`)
     if (!res.ok) return

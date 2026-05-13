@@ -16,7 +16,7 @@
               </div>
             </div>
             <p class="sidebar-sub">
-              Structured reports and plain-language Q&amp;A for any building or precinct.
+              Structured reports and plain-language Q&amp;A for any building or suburb.
             </p>
           </div>
 
@@ -63,7 +63,7 @@
                   :class="{ active: mode === 'precinct' }"
                   type="button"
                   @click="mode = 'precinct'"
-                >Precinct</button>
+                >Suburb</button>
               </div>
 
               <form class="ai-form" @submit.prevent="generateInsight">
@@ -116,7 +116,7 @@
                 </div>
 
                 <label class="ai-field">
-                  <span>{{ mode === 'building' ? 'Building structure ID' : 'Precinct ID or name' }}</span>
+                  <span>{{ mode === 'building' ? 'Building structure ID' : 'Suburb ID or name' }}</span>
                   <input
                     v-model.trim="targetId"
                     type="text"
@@ -163,7 +163,7 @@
                 <textarea
                   v-model="chatQuestion"
                   class="sidebar-chat-input"
-                  placeholder="e.g. Which precinct has the highest solar potential?"
+                  placeholder="e.g. Which suburb has the highest solar potential?"
                   rows="3"
                   :disabled="chatLoading"
                   @keydown.enter.exact.prevent="submitChat"
@@ -234,7 +234,7 @@
           <div v-if="!result && !isLoading" class="empty-state ai-empty">
             <div class="empty-icon">AI</div>
             <div class="empty-text">
-              Enter a building ID or precinct name, choose your focus and audience,
+              Enter a building ID or suburb name, choose your focus and audience,
               then click Generate.
             </div>
           </div>
@@ -310,7 +310,7 @@
               <img :src="iconInsights" alt="" style="width:28px;height:28px;object-fit:contain;filter:brightness(2);opacity:0.7;" />
             </div>
             <div class="empty-text">
-              Ask a question about any Melbourne CBD building or precinct in plain English.
+              Ask a question about any Melbourne CBD building or suburb in plain English.
             </div>
           </div>
 
@@ -376,7 +376,7 @@
               <textarea
                 v-model="chatQuestion"
                 class="chat-input"
-                placeholder="e.g. Which precinct has the highest solar potential?"
+                placeholder="e.g. Which suburb has the highest solar potential?"
                 rows="2"
                 :disabled="chatLoading"
                 @keydown.enter.exact.prevent="submitChat"
@@ -585,10 +585,10 @@ function buildDemoInsight(selectedMode, payload) {
     }
   }
   return {
-    type: 'Precinct policy recommendation',
+    type: 'Suburb policy recommendation',
     title: `${payload.target_id}`,
     priority: 'Critical',
-    summary: 'This precinct should be reviewed for solar adoption gaps, total potential capacity, and buildings with high suitability but low installed capacity.',
+    summary: 'This suburb should be reviewed for solar adoption gaps, total potential capacity, and buildings with high suitability but low installed capacity.',
     metrics: [
       { label: 'Adoption Gap',     value: 'High',                    source: 'adoption_gap_kw' },
       { label: 'Policy Priority',  value: 'Critical',                source: 'precinct_rank' },
@@ -596,10 +596,10 @@ function buildDemoInsight(selectedMode, payload) {
       { label: 'Audience',         value: audienceLabel(payload.audience), source: 'user_input' },
     ],
     recommendation: 'Target incentives toward high-potential buildings with low current adoption, then support owners with plain-language return estimates.',
-    reasoning: 'The policy recommendation references adoption gap, solar score distribution, installed capacity, and potential capacity across the selected precinct.',
+    reasoning: 'The policy recommendation references adoption gap, solar score distribution, installed capacity, and potential capacity across the selected suburb.',
     actions: [
       'Rank buildings by suitability and adoption gap.',
-      'Identify incentive candidates in the selected precinct.',
+      'Identify incentive candidates in the selected suburb.',
       'Export the recommendation for planning documentation.',
     ],
   }
@@ -629,9 +629,9 @@ const MOCK_RESPONSES = [
   {
     keywords: ['highest', 'best', 'top', 'most potential', 'greatest'],
     context:  ['precinct', 'neighbourhood', 'suburb', 'area'],
-    answer: 'The Docklands precinct currently ranks highest in solar potential across Melbourne CBD, with an average solar score of 4.2/5. Its mix of large flat commercial rooftops and relatively low surrounding shade gives it an estimated annual yield of 18,400 MWh — enough to power approximately 2,545 Victorian households.',
+    answer: 'The Docklands suburb currently ranks highest in solar potential across Melbourne CBD, with an average solar score of 4.2/5. Its mix of large flat commercial rooftops and relatively low surrounding shade gives it an estimated annual yield of 18,400 MWh — enough to power approximately 2,545 Victorian households.',
     dataPoints: [
-      { label: 'Precinct',             value: 'Docklands' },
+      { label: 'Suburb',               value: 'Docklands' },
       { label: 'Solar score',          value: '4.2 / 5' },
       { label: 'Est. annual yield',    value: '18,400 MWh' },
       { label: 'Households powered',   value: '~2,545' },
@@ -641,7 +641,7 @@ const MOCK_RESPONSES = [
   {
     keywords: ['collins', 'collins street'],
     context:  [],
-    answer: 'Buildings along Collins Street (CBD precinct) have a median solar score of 3.1/5. The predominantly older high-rise stock limits usable roof area, but the 47 surveyed buildings could collectively generate an estimated 6,200 MWh per year. Top performers on the western end score as high as 4.6/5 due to minimal shade obstruction.',
+    answer: 'Buildings along Collins Street (CBD suburb) have a median solar score of 3.1/5. The predominantly older high-rise stock limits usable roof area, but the 47 surveyed buildings could collectively generate an estimated 6,200 MWh per year. Top performers on the western end score as high as 4.6/5 due to minimal shade obstruction.',
     dataPoints: [
       { label: 'Street',                value: 'Collins Street' },
       { label: 'Median solar score',    value: '3.1 / 5' },
@@ -679,9 +679,9 @@ const MOCK_RESPONSES = [
   {
     keywords: ['gap', 'adoption', 'installed', 'untapped', 'uptake'],
     context:  [],
-    answer: 'The largest adoption gap is in the Hoddle Grid (CBD core) precinct, where only 8% of the technically viable rooftop area currently has solar installed. With 1,240 surveyed buildings and an estimated potential of 42,000 MWh/year, the untapped capacity is 38,640 MWh/year. Southbank and North Melbourne show similar under-utilisation at 11% and 14% adoption respectively.',
+    answer: 'The largest adoption gap is in the Hoddle Grid (CBD core) suburb, where only 8% of the technically viable rooftop area currently has solar installed. With 1,240 surveyed buildings and an estimated potential of 42,000 MWh/year, the untapped capacity is 38,640 MWh/year. Southbank and North Melbourne show similar under-utilisation at 11% and 14% adoption respectively.',
     dataPoints: [
-      { label: 'Precinct',                  value: 'Hoddle Grid (CBD)' },
+      { label: 'Suburb',                    value: 'Hoddle Grid (CBD)' },
       { label: 'Current adoption',          value: '8%' },
       { label: 'Potential yield',           value: '42,000 MWh / yr' },
       { label: 'Untapped yield',            value: '38,640 MWh / yr' },
@@ -705,7 +705,7 @@ const MOCK_RESPONSES = [
 ]
 
 const FALLBACK_RESPONSE = {
-  answer: 'I couldn\'t find a specific match for your question in the current dataset. For best results, try naming a precinct (e.g. "Docklands", "Southbank", "CBD") or a street, or ask about solar score, annual kWh, payback period, or CO₂ savings.',
+  answer: 'I couldn\'t find a specific match for your question in the current dataset. For best results, try naming a suburb (e.g. "Docklands", "Southbank", "CBD") or a street, or ask about solar score, annual kWh, payback period, or CO₂ savings.',
   dataPoints: [],
   isError: false,
 }
@@ -764,16 +764,16 @@ function scrollToBottom() {
 
 // ── Static content ────────────────────────────────────────────────────────────
 const suggestedQuestions = [
-  { emoji: '🏆', text: 'Which precinct has the highest solar potential in Melbourne CBD?' },
+  { emoji: '🏆', text: 'Which suburb has the highest solar potential in Melbourne CBD?' },
   { emoji: '⚡', text: 'How much energy could buildings on Collins Street generate annually?' },
   { emoji: '💰', text: 'What is the estimated payback period for solar in Docklands?' },
   { emoji: '🌿', text: 'How much CO₂ could the CBD avoid if all rooftops had solar?' },
-  { emoji: '📊', text: 'Which precincts have the biggest gap between installed and potential solar?' },
+  { emoji: '📊', text: 'Which suburbs have the biggest gap between installed and potential solar?' },
   { emoji: '🔍', text: 'What are the top 5 buildings by usable roof area for solar installation?' },
 ]
 
 const capabilities = [
-  { label: 'Precinct comparisons', desc: 'Solar potential, kWh output, adoption gap across all CBD precincts' },
+  { label: 'Suburb comparisons', desc: 'Solar potential, kWh output, adoption gap across all CBD suburbs' },
   { label: 'Building analysis',    desc: 'Solar score, usable roof area, financial payback for any address' },
   { label: 'Energy estimates',     desc: 'Annual generation, peak sun hours, panel capacity calculations' },
   { label: 'Environmental impact', desc: 'CO₂ savings, equivalent trees, homes powered' },
@@ -781,7 +781,7 @@ const capabilities = [
 ]
 
 const tips = [
-  'Name a specific precinct or street for grounded answers',
+  'Name a specific suburb or street for grounded answers',
   'Ask about a single metric at a time for clearer responses',
   'Include "compare" when you want side-by-side analysis',
   'Use "top" or "highest" to get ranked results',

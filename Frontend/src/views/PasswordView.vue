@@ -106,6 +106,7 @@ import { ref, onMounted } from 'vue'
 
 // setAuthenticated is from the router — calling it saves the "logged in" flag.
 import { setAuthenticated } from '../router'
+import { clearHomeChatHistory } from '../composables/useHomeJourney.js'
 
 // Import the logo image so we can show it in the template.
 import logoUrl from '../pictures/Project logo.png'
@@ -143,6 +144,7 @@ function submit() {
     // Correct password:
     // 1. Mark the session as authenticated (stores 'true' in sessionStorage).
     setAuthenticated(true)
+    clearHomeChatHistory()
     // 2. Redirect to wherever the user originally wanted to go (from ?redirect=...),
     //    or fall back to the home page if they came directly to /login.
     router.replace(route.query.redirect || '/')
