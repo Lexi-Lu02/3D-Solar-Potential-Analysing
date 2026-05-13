@@ -176,7 +176,7 @@ body {
 #map { flex: 1; height: 100%; position: relative; }
 .control-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); min-width: 210px;
+  border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); width: 260px;
 }
 .filter-panel-header {
   display: flex; align-items: center; gap: 7px;
@@ -306,7 +306,10 @@ body {
 .empty-text { font-size: 14px; line-height: 1.5; max-width: 200px; }
 .building-panel { display: none; }
 .building-panel.visible { display: block; }
-.panel-id { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 6px; }
+.panel-id { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 4px; }
+.panel-address { display: flex; align-items: baseline; gap: 8px; font-size: 13px; margin-bottom: 12px; }
+.panel-address-label { color: var(--text-secondary); flex-shrink: 0; }
+.panel-address-val { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-bar-wrap {
   --score-card-bg: var(--surface2);
   --score-card-border: transparent;
@@ -727,8 +730,9 @@ body {
   display: none;
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
+  left: auto;
+  transform: none;
   width: 200px;
   background: var(--ink);
   color: var(--nav-text);
@@ -1055,6 +1059,144 @@ body {
 
 .onboarding-fade-enter-active, .onboarding-fade-leave-active { transition: opacity 0.35s ease; }
 .onboarding-fade-enter-from, .onboarding-fade-leave-to { opacity: 0; }
+
+/* ── Multi-step guide card ────────────────────────────────── */
+.guide-card {
+  max-width: 520px;
+  padding: 28px 36px 32px;
+}
+
+.guide-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.guide-counter {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--city-light);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.guide-body {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.guide-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.guide-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+
+.guide-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 400px;
+  margin: 0 auto 14px;
+}
+
+.guide-tip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(var(--city-light-rgb), 0.08);
+  border: 1px solid rgba(var(--city-light-rgb), 0.20);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: left;
+  max-width: 380px;
+}
+
+.guide-tip-label {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--city-light);
+  background: rgba(var(--city-light-rgb), 0.15);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-top: 1px;
+}
+
+.guide-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 24px;
+}
+
+.guide-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.guide-dot--active {
+  background: var(--city-light);
+  transform: scale(1.25);
+}
+
+.guide-dot--done {
+  background: rgba(var(--city-light-rgb), 0.40);
+}
+
+.guide-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guide-nav-back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.guide-nav-back:hover:not(:disabled) { background: var(--surface2); color: var(--text-primary); }
+.guide-nav-back:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.guide-nav-next {
+  flex: 1;
+  padding: 11px 24px;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 560px) {
+  .guide-card { padding: 22px 20px 26px; }
+  .guide-title { font-size: 20px; }
+  .guide-tip { font-size: 12px; }
+}
 
 @media (max-width: 1100px) {
   .planning-actions { grid-template-columns: 1fr 1fr; }

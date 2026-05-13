@@ -39,7 +39,7 @@
         v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'" means this
         section only appears when at least one filter is currently selected.
       -->
-      <div v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'" class="applied-filters-section">
+      <div v-if="activeFilter.length > 0 || activeSolarFilter.length > 0" class="applied-filters-section">
         <div class="applied-filters-row">
           <span class="applied-filters-label">Applied filters</span>
           <!-- Clear all filters at once -->
@@ -53,29 +53,24 @@
         <!-- List of active filter chips — each can be removed individually -->
         <div class="applied-chips" role="list" aria-label="Active filters">
 
-          <!-- Solar potential chip (shown when a solar tier is selected) -->
-          <span v-if="activeSolarFilter !== 'all'" class="filter-chip" role="listitem">
-            <!--
-              .find() searches the solarTiers array for the object with matching id.
-              ?.color uses optional chaining — safe if find() returns undefined.
-            -->
-            <span class="filter-chip-dot" :style="{ background: solarTiers.find(t => t.id === activeSolarFilter)?.color }"></span>
-            {{ solarTiers.find(t => t.id === activeSolarFilter)?.label }}
-            <!-- Clicking × emits 'filter-solar' with the current ID, which toggles it off in ExploreView -->
-            <button class="filter-chip-remove" @click="$emit('filter-solar', activeSolarFilter)" :aria-label="`Remove ${solarTiers.find(t => t.id === activeSolarFilter)?.label} filter`">×</button>
+          <!-- One chip per selected solar tier -->
+          <span v-for="tierId in activeSolarFilter" :key="tierId" class="filter-chip" role="listitem">
+            <span class="filter-chip-dot" :style="{ background: solarTiers.find(t => t.id === tierId)?.color }"></span>
+            {{ solarTiers.find(t => t.id === tierId)?.label }}
+            <button class="filter-chip-remove" @click="$emit('filter-solar', tierId)" :aria-label="`Remove ${solarTiers.find(t => t.id === tierId)?.label} filter`">×</button>
           </span>
 
-          <!-- Roof type chip (shown when a roof type is selected) -->
-          <span v-if="activeFilter !== 'all'" class="filter-chip" role="listitem">
-            {{ filters.find(f => f.type === activeFilter)?.label }}
-            <button class="filter-chip-remove" @click="$emit('filter-roof', activeFilter)" :aria-label="`Remove ${filters.find(f => f.type === activeFilter)?.label} filter`">×</button>
+          <!-- One chip per selected roof type -->
+          <span v-for="type in activeFilter" :key="type" class="filter-chip" role="listitem">
+            {{ filters.find(f => f.type === type)?.label }}
+            <button class="filter-chip-remove" @click="$emit('filter-roof', type)" :aria-label="`Remove ${filters.find(f => f.type === type)?.label} filter`">×</button>
           </span>
 
         </div>
       </div>
 
       <!-- ── Solar Potential section ── -->
-      <div class="filter-section-divider" v-if="activeFilter !== 'all' || activeSolarFilter !== 'all'"></div>
+      <div class="filter-section-divider" v-if="activeFilter.length > 0 || activeSolarFilter.length > 0"></div>
       <div class="control-card-toggle-row">
 
         <!--
@@ -141,10 +136,10 @@
           v-for="t in solarTiers"
           :key="t.id"
           class="filter-btn"
-          :class="{ active: activeSolarFilter === t.id }"  <!-- highlight when selected -->
-          :aria-pressed="activeSolarFilter === t.id"
+          :class="{ active: activeSolarFilter.includes(t.id) }"
+          :aria-pressed="activeSolarFilter.includes(t.id)"
           :aria-label="`${t.label} solar potential, score range ${t.range} out of 5`"
-          @click="$emit('filter-solar', t.id)"  <!-- tell parent which tier was clicked -->
+          @click="$emit('filter-solar', t.id)"
         >
           <!-- Visual: colour dot and bar meter showing tier strength -->
           <div class="tier-visual" aria-hidden="true">
@@ -215,8 +210,8 @@
           v-for="f in filters"
           :key="f.type"
           class="filter-btn"
-          :class="{ active: activeFilter === f.type }"
-          :aria-pressed="activeFilter === f.type"
+          :class="{ active: activeFilter.includes(f.type) }"
+          :aria-pressed="activeFilter.includes(f.type)"
           :aria-label="`${f.label} filter`"
           @click="$emit('filter-roof', f.type)"
         >
@@ -251,9 +246,8 @@ import { ref } from 'vue'
 // ── Props — data passed in from ExploreView ────────────────────────────────────
 defineProps({
   // The currently selected solar tier ID (e.g. 'high', 'all' = no filter).
-  activeSolarFilter:    { type: String,  required: true },
-  // The currently selected roof type (e.g. 'Flat', 'all' = no filter).
-  activeFilter:         { type: String,  required: true },
+  activeSolarFilter:    { type: Array,   required: true },
+  activeFilter:         { type: Array,   required: true },
   // Whether the solar potential colour coding on the map is turned on.
   solarPotentialColorOn:{ type: Boolean, required: true },
   // Whether the roof type effect on the map is turned on.

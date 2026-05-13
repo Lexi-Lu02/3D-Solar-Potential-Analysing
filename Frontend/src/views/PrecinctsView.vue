@@ -275,11 +275,11 @@ let _cachedApiData         = null   // { precinct_id → PrecinctSummary } from 
 // MapLibre GL paint specs only accept hex literals — they cannot read CSS variables.
 // Every value here has a matching CSS variable in style.css :root for reference.
 const MAP_COLORS = {
-  solarExcellent: '#0A2E1F',
-  solarGood:      '#5A9060',
-  solarModerate:  '#C8D4A0',
-  solarPoor:      '#F09090',
-  solarVeryPoor:  '#E81040',
+  solarExcellent: '#D55E00',
+  solarGood:      '#E69F00',
+  solarModerate:  '#F0E442',
+  solarPoor:      '#56B4E9',
+  solarVeryPoor:  '#0072B2',
   buildingBase:   '#2A2A26',
   top5Outline:    '#D4743A',
   selectedOutline:'#FFD966',
@@ -291,20 +291,20 @@ const MAP_COLORS = {
 // Rank 1 (best precinct) gets the darkest green; rank 14 (worst) gets the deepest red.
 // Each precinct's rank maps to one of these 14 colours via quintileTier() below.
 const TIER_COLORS = [
-  '#1A5C48',  // rank 1
-  '#2E6C4F',  // rank 2
-  '#417C57',  // rank 3
-  '#558C5E',  // rank 4
-  '#7CA574',  // rank 5
-  '#9EBA87',  // rank 6
-  '#C0CF9B',  // rank 7
-  '#CECA9E',  // rank 8
-  '#DBB599',  // rank 9
-  '#E7A094',  // rank 10
-  '#EF868A',  // rank 11
-  '#ED5F71',  // rank 12
-  '#EB3759',  // rank 13
-  '#E81040',  // rank 14
+  '#D55E00',  // rank 1  — Excellent (orange-red)
+  '#DA7200',  // rank 2
+  '#DF8600',  // rank 3
+  '#E59A00',  // rank 4
+  '#E8AF0F',  // rank 5
+  '#EBC424',  // rank 6
+  '#EED938',  // rank 7
+  '#D8DD5C',  // rank 8
+  '#A9CE8F',  // rank 9
+  '#7ABFC2',  // rank 10
+  '#4FAFE5',  // rank 11
+  '#359BD4',  // rank 12
+  '#1B86C3',  // rank 13
+  '#0072B2',  // rank 14 — Very Poor (dark blue)
 ]
 const TIER_LABELS = [
   'Rank 1','Rank 2','Rank 3','Rank 4','Rank 5','Rank 6','Rank 7',
@@ -369,13 +369,16 @@ const sortedPrecincts = computed(() => {
   const key = sortBy.value === 'kwh' ? 'total_kwh'
             : sortBy.value === 'area' ? 'total_area'
             : sortBy.value === 'buildings' ? 'building_count'
-            : 'adoption_gap_kw'
+            : 'total_kwh'
   const sorted = [...precincts.value]
     .filter(p => p.building_count > 0)
     .sort((a, b) => {
-      const aVal = isGap ? (a.adoption_gap_kw ?? a.adoption_gap ?? 0) : (a[key] ?? 0)
-      const bVal = isGap ? (b.adoption_gap_kw ?? b.adoption_gap ?? 0) : (b[key] ?? 0)
-      return bVal - aVal
+      if (isGap) {
+        const aRatio = (a.installed_capacity_kw ?? 0) / Math.max(1, a.potential_capacity_kw ?? 1)
+        const bRatio = (b.installed_capacity_kw ?? 0) / Math.max(1, b.potential_capacity_kw ?? 1)
+        return bRatio - aRatio  // descending: most installed (least gap) first
+      }
+      return (b[key] ?? 0) - (a[key] ?? 0)
     })
   const total = sorted.length
   const maxVal = sorted[0]?.[key] ?? 1
@@ -440,9 +443,9 @@ function adoptionPct(p) {
   return Math.round((p.total_kwh / p.max_kwh) * 100)
 }
 function gapPct(p) {
-  if (p.potential_capacity_kw > 0) return Math.round(((p.adoption_gap_kw ?? 0) / p.potential_capacity_kw) * 100)
+  if (p.potential_capacity_kw > 0) return Math.round((p.installed_capacity_kw ?? 0) / p.potential_capacity_kw * 1000) / 10
   if (!p.max_kwh) return 0
-  return Math.round((p.adoption_gap / p.max_kwh) * 100)
+  return Math.round((p.total_kwh / p.max_kwh) * 100)
 }
 const currentSortLabel = computed(() => sortOptions.find(s => s.id === sortBy.value)?.label ?? '')
 
@@ -902,7 +905,7 @@ onUnmounted(() => {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Sidebar width ────────────────────────────────────────── */
-.sidebar { width: 640px; }
+.sidebar { width: 720px; }
 .sidebar--collapsed { width: 28px; }
 
 /* Override global sticky sidebar-header — precincts header is not inside sidebar-content */
@@ -950,17 +953,17 @@ onUnmounted(() => {
 .precinct-table-head > div {
   font-size: 13px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.7px; color: var(--text-muted); transition: color 0.15s;
-  justify-content: flex-end;
+  justify-content: flex-end; white-space: nowrap; overflow: hidden;
 }
 .precinct-table-head .col-active { color: var(--city-light); }
 .precinct-table-head .pt-col-name { justify-content: flex-start; }
 
 /* ── Column widths ────────────────────────────────────────── */
 .pt-col-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; justify-content: flex-start; text-align: left; }
-.pt-col-kwh  { width: 94px; flex-shrink: 0; text-align: right; padding-right: 14px; }
-.pt-col-area { width: 86px; flex-shrink: 0; text-align: right; padding-right: 14px; }
-.pt-col-bldg { width: 80px; flex-shrink: 0; text-align: right; padding-right: 14px; }
-.pt-col-stat { width: 110px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.pt-col-kwh  { width: 120px; flex-shrink: 0; text-align: right; padding-right: 16px; }
+.pt-col-area { width: 110px; flex-shrink: 0; text-align: right; padding-right: 16px; }
+.pt-col-bldg { width: 100px; flex-shrink: 0; text-align: right; padding-right: 16px; }
+.pt-col-stat { width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 
 /* ── Rows ─────────────────────────────────────────────────── */
 .precinct-row {
@@ -999,15 +1002,16 @@ onUnmounted(() => {
   font-size: 14px !important; font-weight: 700 !important;
   color: var(--text-primary) !important;
 }
+.p-val-active .mini-pct { font-weight: 700 !important; color: var(--text-primary); }
 
 /* Mini bar */
 .mini-bar-track {
-  flex: 1; height: 6px; background: var(--border);
+  width: 60px; flex-shrink: 0; height: 6px; background: var(--border);
   border-radius: 3px; overflow: hidden;
 }
 .mini-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 .mini-bar--gap { background: var(--danger); }
-.mini-pct { font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.mini-pct { font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; width: 42px; text-align: right; flex-shrink: 0; }
 
 /* ── Precinct detail panel ────────────────────────────────── */
 .precinct-detail-panel { padding: 0 20px 16px; }
