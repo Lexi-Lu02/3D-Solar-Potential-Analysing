@@ -157,6 +157,22 @@ const hoveredMonthIdx = ref(null)
   border-top-color: var(--text-primary);
 }
 
+/* First column (Jan): anchor tooltip to left edge so it doesn't clip */
+.monthly-bar-col:first-child .monthly-tooltip {
+  left: 0; transform: none;
+}
+.monthly-bar-col:first-child .monthly-tooltip::after {
+  left: 8px; transform: none;
+}
+
+/* Last column (Dec): anchor tooltip to right edge so it doesn't clip */
+.monthly-bar-col:last-child .monthly-tooltip {
+  left: auto; right: 0; transform: none;
+}
+.monthly-bar-col:last-child .monthly-tooltip::after {
+  left: auto; right: 8px; transform: none;
+}
+
 /* Wrapper that fills remaining height and aligns the bar to the bottom */
 .monthly-bar-wrap {
   flex: 1; width: 100%; display: flex; align-items: flex-end;

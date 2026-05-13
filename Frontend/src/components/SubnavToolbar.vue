@@ -89,6 +89,20 @@
         </svg>
         Building Info
       </button>
+
+      <!-- Guide button — reopens the user guide from step 1 -->
+      <button
+        class="subnav-btn subnav-btn--guide"
+        @click="$emit('show-guide')"
+        aria-label="Show feature guide"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5.5 5.2a1.5 1.5 0 0 1 2.9.5c0 1-1.4 1.3-1.4 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="7" cy="10.2" r="0.7" fill="currentColor"/>
+        </svg>
+        Guide
+      </button>
     </div>
 
     <!-- ── Address search ── -->
@@ -264,6 +278,7 @@ const emit = defineEmits([
   'update:searchFocusedIdx',  // update which result is keyboard-highlighted
   'clear-search',             // user clicked the × clear button
   'close-dropdown',           // close the results dropdown
+  'show-guide',               // reopen the user guide
 ])
 
 // wrapEl is a reference to the search wrapper <div>.
@@ -445,6 +460,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 .search-dropdown-empty {
   padding: 10px 12px; font-size: 13px; color: var(--text-muted); text-align: center;
 }
+
+/* Guide button — subtle distinction from the panel toggles */
+.subnav-btn--guide {
+  border-color: rgba(255,255,255,0.12);
+  margin-left: 6px;
+}
+.subnav-btn--guide:hover { border-color: var(--city-light); color: var(--city-light); }
 
 /* ── Mobile: two-row layout so everything fits in 375px ──────────── */
 @media (max-width: 640px) {

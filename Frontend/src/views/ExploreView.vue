@@ -27,6 +27,7 @@
       @update:search-focused-idx="searchFocusedIdx = $event"
       @clear-search="searchId = ''; closeSearchDropdown()"
       @close-dropdown="closeSearchDropdown"
+      @show-guide="showGuide"
     />
 
     <main id="main-content" class="main">
@@ -397,6 +398,12 @@
               <!-- Full financial panel -->
               <div v-else class="fin-panel">
 
+                <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
+                <div class="panel-address">
+                  <span class="panel-address-label">Address</span>
+                  <span class="panel-address-val">{{ shortAddress(selectedAddress) || selectedAddress || '—' }}</span>
+                </div>
+
                 <!-- Payback hero -->
                 <div class="fin-hero">
                   <div class="fin-hero-top">
@@ -518,6 +525,12 @@
 
               <!-- Full environmental panel -->
               <div v-else class="fin-panel">
+
+                <div class="panel-id">BUILDING {{ selectedBuilding.structure_id || selectedBuilding.objectid || '—' }}</div>
+                <div class="panel-address">
+                  <span class="panel-address-label">Address</span>
+                  <span class="panel-address-val">{{ shortAddress(selectedAddress) || selectedAddress || '—' }}</span>
+                </div>
 
                 <!-- CO₂ hero -->
                 <div class="fin-hero fin-hero--green">
@@ -654,69 +667,63 @@
 
     <div class="toast" role="status" aria-live="polite" aria-atomic="true" :class="{ show: toastVisible }">{{ toastMessage }}</div>
 
-    <!-- Onboarding overlay — shown on first visit only -->
+    <!-- User guide overlay — shown on every page load and on demand -->
     <Transition name="onboarding-fade">
-      <div v-if="showOnboarding" class="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-        <div class="onboarding-card">
-          <button class="onboarding-skip" @click="dismissOnboarding" aria-label="Skip introduction">✕</button>
+      <div v-if="showOnboarding" class="onboarding-overlay" role="dialog" aria-modal="true" :aria-labelledby="`guide-title-${guideStep}`">
+        <div class="onboarding-card guide-card">
 
-          <div class="onboarding-header">
-            <div class="onboarding-sun" aria-hidden="true">
-              <svg width="40" height="40" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="2.6" stroke="var(--city-light)" stroke-width="1.4"/>
-                <path d="M7 1v1.6M7 11.4V13M1 7h1.6M11.4 7H13M2.8 2.8l1.1 1.1M10.1 10.1l1.1 1.1M10.1 3.9l1.1-1.1M2.8 11.2l1.1-1.1" stroke="var(--city-light)" stroke-width="1.2" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <h2 class="onboarding-title" id="onboarding-title">Welcome to SolarMap</h2>
-            <p class="onboarding-sub">Explore rooftop solar potential across 19,000 Melbourne CBD buildings — free, open, no sign-up.</p>
+          <!-- Header row: step counter + skip -->
+          <div class="guide-header-row">
+            <span class="guide-counter">{{ guideStep + 1 }} / {{ GUIDE_STEPS.length }}</span>
+            <button class="onboarding-skip" @click="dismissOnboarding" aria-label="Close guide">✕ Skip guide</button>
           </div>
 
-          <div class="onboarding-steps" role="list" aria-label="Getting started steps">
-            <div class="onboarding-step" role="listitem">
-              <div class="onboarding-step-num" aria-hidden="true">1</div>
-              <div class="onboarding-step-icon" aria-hidden="true">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 6h18M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-              </div>
-              <div class="onboarding-step-label">Filter</div>
-              <div class="onboarding-step-desc">Use <strong>Filter</strong> to highlight buildings by solar potential tier or roof type</div>
-            </div>
-
-            <div class="onboarding-arrow" aria-hidden="true">→</div>
-
-            <div class="onboarding-step" role="listitem">
-              <div class="onboarding-step-num" aria-hidden="true">2</div>
-              <div class="onboarding-step-icon" aria-hidden="true">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="2"/>
-                </svg>
-              </div>
-              <div class="onboarding-step-label">Click a Building</div>
-              <div class="onboarding-step-desc">Click any 3D building on the map to select it and open its solar profile</div>
-            </div>
-
-            <div class="onboarding-arrow" aria-hidden="true">→</div>
-
-            <div class="onboarding-step" role="listitem">
-              <div class="onboarding-step-num" aria-hidden="true">3</div>
-              <div class="onboarding-step-icon" aria-hidden="true">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="12" width="4" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
-                  <rect x="10" y="7" width="4" height="14" rx="1" stroke="currentColor" stroke-width="2"/>
-                  <rect x="17" y="3" width="4" height="18" rx="1" stroke="currentColor" stroke-width="2"/>
-                </svg>
-              </div>
-              <div class="onboarding-step-label">View Estimates</div>
-              <div class="onboarding-step-desc">See annual energy output, financial payback, CO₂ savings, and shadow analysis</div>
+          <!-- Step content -->
+          <div class="guide-body">
+            <div class="guide-icon" aria-hidden="true" v-html="GUIDE_STEPS[guideStep].icon"></div>
+            <h2 class="guide-title" :id="`guide-title-${guideStep}`">{{ GUIDE_STEPS[guideStep].title }}</h2>
+            <p class="guide-desc">{{ GUIDE_STEPS[guideStep].desc }}</p>
+            <div v-if="GUIDE_STEPS[guideStep].tip" class="guide-tip">
+              <span class="guide-tip-label">Tip</span>
+              {{ GUIDE_STEPS[guideStep].tip }}
             </div>
           </div>
 
-          <div class="onboarding-actions">
-            <button class="onboarding-cta" @click="dismissOnboarding">Start Exploring →</button>
+          <!-- Progress dots -->
+          <div class="guide-dots" role="tablist" aria-label="Guide progress">
+            <button
+              v-for="(_, i) in GUIDE_STEPS"
+              :key="i"
+              class="guide-dot"
+              :class="{ 'guide-dot--active': i === guideStep, 'guide-dot--done': i < guideStep }"
+              @click="guideStep = i"
+              :aria-label="`Go to step ${i + 1}`"
+              role="tab"
+              :aria-selected="i === guideStep"
+            ></button>
           </div>
-          <p class="onboarding-note">Tip: use the search bar above to jump straight to a street address</p>
+
+          <!-- Navigation buttons -->
+          <div class="guide-nav">
+            <button
+              class="guide-nav-back"
+              :disabled="guideStep === 0"
+              @click="guideStep--"
+              aria-label="Previous step"
+            >← Back</button>
+
+            <button
+              v-if="guideStep < GUIDE_STEPS.length - 1"
+              class="onboarding-cta guide-nav-next"
+              @click="guideStep++"
+            >Next →</button>
+            <button
+              v-else
+              class="onboarding-cta guide-nav-next"
+              @click="dismissOnboarding"
+            >Start Exploring →</button>
+          </div>
+
         </div>
       </div>
     </Transition>
@@ -734,7 +741,7 @@ export default { name: 'ExploreView' }
 // ExploreView.vue — The main 3D interactive map page.
 //
 // This is the most complex page in the app. It:
-//   • Renders 40,000+ Melbourne CBD buildings as 3D extrusions on a MapLibre map
+//   • Renders 19,000+ Melbourne CBD buildings as 3D extrusions on a MapLibre map
 //   • Colours each building by its solar score (green = great, red = poor)
 //   • Opens a 3-tab sidebar when a building is clicked:
 //       Tab 1 — Solar Potential: score, area, monthly chart, formula breakdown
@@ -753,7 +760,7 @@ export default { name: 'ExploreView' }
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Vue's reactivity helpers.
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue'
 
 // MapLibre GL JS — the open-source map rendering engine.
 import maplibregl from 'maplibre-gl'
@@ -805,12 +812,12 @@ async function fetchGeoJson(url) {
 // These colours are intentionally kept in sync with the :root palette in style.css.
 // Changing a colour here should also be changed in the matching CSS variable.
 const MAP_COLORS = {
-  solarExcellent:  '#0A2E1F',
-  solarGood:       '#5A9060',
-  solarModerate:   '#C8D4A0',
-  solarPoor:       '#F09090',
-  solarVeryPoor:   '#E81040',
-  selected:        '#4A90D9',
+  solarExcellent:  '#D55E00',
+  solarGood:       '#E69F00',
+  solarModerate:   '#F0E442',
+  solarPoor:       '#56B4E9',
+  solarVeryPoor:   '#0072B2',
+  selected:        '#E83E8C',
   compare:         '#8CA28F',
   lineStroke:      '#1C1710',
 }
@@ -819,8 +826,15 @@ const SELECTED_BUILDING_COLOR = MAP_COLORS.selected
 const SELECTED_BUILDING_OPACITY = 0.98
 const COMPARE_BUILDING_COLOR = MAP_COLORS.compare
 const COMPARE_BUILDING_OPACITY = 0.90
-const SOLAR_EXTRUSION_COLOR = ['step', ['get', 'solar_score'], MAP_COLORS.solarVeryPoor, 20, MAP_COLORS.solarPoor, 40, MAP_COLORS.solarModerate, 60, MAP_COLORS.solarGood, 80, MAP_COLORS.solarExcellent]
 const SOLAR_DISABLED_EXTRUSION_COLOR = '#DED8CA'
+const SOLAR_EXTRUSION_COLOR = [
+  'case',
+  ['==', ['coalesce', ['get', 'solar_score'], 0], 0],
+  SOLAR_DISABLED_EXTRUSION_COLOR,
+  ['step', ['get', 'solar_score'],
+    MAP_COLORS.solarVeryPoor, 20, MAP_COLORS.solarPoor, 40, MAP_COLORS.solarModerate, 60, MAP_COLORS.solarGood, 80, MAP_COLORS.solarExcellent,
+  ],
+]
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
@@ -853,10 +867,9 @@ const loadingText = ref('Loading Melbourne building data...')
 // null = no building selected (sidebar shows the "click a building" placeholder).
 const selectedBuilding = ref(null)
 
-// Currently active filter values.
-// 'all' means no filter is applied (show all buildings).
-const activeFilter       = ref('all')   // roof type filter (e.g. 'Flat', 'Hip')
-const activeSolarFilter  = ref('all')   // solar tier filter (e.g. 'very-high')
+// Currently active filter values — arrays of selected ids (empty = show all).
+const activeFilter       = ref([])   // selected roof types, e.g. ['Flat', 'Hip']
+const activeSolarFilter  = ref([])   // selected solar tier ids, e.g. ['very-high', 'high']
 
 // Whether the solar colour gradient / roof type effect are currently painted on the map.
 const solarPotentialColorOn = ref(true)
@@ -883,13 +896,62 @@ const searchFocusedIdx   = ref(-1)      // which dropdown item is keyboard-highl
 const searchDropdownOpen = ref(false)   // whether the results dropdown is visible
 let searchDebounceTimer  = null         // timer handle to delay API calls while typing
 
-// Onboarding overlay — shown on first visit, then hidden forever (stored in localStorage).
-// localStorage persists across browser sessions (unlike sessionStorage which clears on tab close).
-const hasOnboarded   = localStorage.getItem('SOLARMAP_ONBOARDED')
-const showOnboarding = ref(!hasOnboarded)   // true = show, false = hidden
-// First-time users see the sidebar and filters closed so the onboarding modal is more prominent.
-const sidebarOpen    = ref(!!hasOnboarded)  // !! converts null → false, string → true
-const filtersOpen    = ref(!!hasOnboarded)
+// Guide overlay — shown on every page load and whenever the user clicks "Guide" in the subnav.
+const showOnboarding = ref(true)   // always show on mount
+const guideStep      = ref(0)      // current step index (0-based)
+const sidebarOpen    = ref(false)
+const filtersOpen    = ref(false)
+
+// 8-step guide content. icon is an inline SVG string.
+const GUIDE_STEPS = [
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="var(--city-light)" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M18 6l1.8-1.8M4.2 19.8l1.8-1.8" stroke="var(--city-light)" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    title: 'Welcome to 3D Explore',
+    desc: 'This interactive map visualises the solar potential of 19,000+ Melbourne CBD buildings in real time. This quick guide walks you through every feature so you can get the most out of it.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M5 9c0-3.87 3.13-7 7-7s7 3.13 7 7c0 4.5-5.5 11-7 13C10.5 20 5 13.5 5 9z" stroke="var(--city-light)" stroke-width="1.8"/><circle cx="12" cy="9" r="2.5" stroke="var(--city-light)" stroke-width="1.6"/></svg>`,
+    title: 'Navigate the 3D Map',
+    desc: 'Drag to pan across the city. Scroll or pinch to zoom in and out. Hold Ctrl and drag (or right-click drag) to rotate and tilt the 3D perspective. Double-click to zoom into a specific spot.',
+    tip: 'Hold Shift while scrolling to tilt the map without rotating.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="var(--city-light)" stroke-width="1.8"/><path d="M20 20l-3-3" stroke="var(--city-light)" stroke-width="2" stroke-linecap="round"/></svg>`,
+    title: 'Search by Address',
+    desc: 'Use the search bar at the top of the screen to jump straight to any building by street address. Results appear as you type — click one to fly the camera directly to that building.',
+    tip: 'You only need to type 2 or more characters before results appear.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="var(--city-light)" stroke-width="1.8"/><path d="M8 7V5a4 4 0 0 1 8 0v2" stroke="var(--city-light)" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="13.5" r="1.5" fill="var(--city-light)"/></svg>`,
+    title: 'Select a Building',
+    desc: 'Click any 3D building on the map to select it. The building highlights in blue and its detailed solar profile opens in the right-hand panel. Buildings are coloured green (high potential) to red (low potential).',
+    tip: 'Use the Filter tool to show only high-potential buildings so they are easier to find.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--city-light)" stroke-width="1.8"/><path d="M15 3v18" stroke="var(--city-light)" stroke-width="1.8"/><path d="M7 8h4M7 12h4M7 16h4" stroke="var(--city-light)" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+    title: 'Building Info Panel',
+    desc: 'The right-hand panel has three tabs. Solar Potential shows the score, usable roof area, peak sun hours, and a monthly generation chart. Financial Analysis shows installation cost, annual savings, and payback period. Environmental Impact shows CO₂ saved and homes powered.',
+    tip: 'Click "Building Info" in the toolbar if the panel is closed.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="var(--city-light)" stroke-width="2" stroke-linecap="round"/></svg>`,
+    title: 'Filter Buildings',
+    desc: 'Click Filter in the toolbar to open the filter panel. Filter buildings by solar score tier — High, Medium, or Low — or by roof type. Buildings that don\'t match your filter fade out on the map so the candidates stand out.',
+    tip: 'Combine a High tier filter with the Sun Path tool to find shade-free, high-potential rooftops.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="var(--city-light)" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" stroke="var(--city-light)" stroke-width="1.6" stroke-linecap="round"/><path d="M6 18l8-12" stroke="var(--city-light)" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/></svg>`,
+    title: 'Sun Path & Shadow Simulation',
+    desc: 'Click Sun Path in the toolbar to open the simulation panel. Set any time of day and month to see where the sun is in the sky and how shadows fall across the buildings. This reveals how much shade affects a roof throughout the year.',
+    tip: 'Try midwinter (June) at noon versus midsummer (December) to see the dramatic difference in shadow length.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="9" height="14" rx="2" stroke="var(--city-light)" stroke-width="1.8"/><rect x="13" y="5" width="9" height="14" rx="2" stroke="var(--city-light)" stroke-width="1.8"/></svg>`,
+    title: 'Compare Buildings',
+    desc: 'Click Comparison in the toolbar to open the compare panel at the bottom of the screen. Select a building on the map, then click "Add to Compare". Add a second building the same way. Their scores, energy output, costs, and CO₂ savings appear side-by-side.',
+    tip: 'You can compare up to 2 buildings at once. Click the × on a card to remove it.',
+  },
+]
 
 // Comparison panel state.
 const comparePanelOpen = ref(false)     // whether the comparison panel is visible
@@ -1311,22 +1373,29 @@ function showToast(message) {
   }, 1800)
 }
 
-// Builds a MapLibre filter expression that combines the active roof type and solar tier filters.
+// Builds a MapLibre filter expression for arrays of selected roof types and solar tier ids.
 // Returns null when no filters are active (tells MapLibre to show all buildings).
-function buildCombinedFilter(roofType, solarTierId) {
+function buildCombinedFilter(roofTypes, solarTierIds) {
   const conditions = []
-  if (roofType !== 'all') {
-    conditions.push(['==', ['get', 'roof_type'], roofType])
+
+  if (roofTypes.length > 0) {
+    const roofConds = roofTypes.map(t => ['==', ['get', 'roof_type'], t])
+    conditions.push(roofConds.length === 1 ? roofConds[0] : ['any', ...roofConds])
   }
-  if (solarTierId !== 'all') {
-    const selectedTier = solarTiers.find((item) => item.id === solarTierId)
-    if (selectedTier) {
-      conditions.push(['>=', ['get', 'solar_score'], selectedTier.min])
-      if (selectedTier.max !== null) {
-        conditions.push(['<', ['get', 'solar_score'], selectedTier.max])
-      }
+
+  if (solarTierIds.length > 0) {
+    const tierConds = solarTierIds.flatMap(tierId => {
+      const tier = solarTiers.find(t => t.id === tierId)
+      if (!tier) return []
+      const tc = [['>=', ['get', 'solar_score'], tier.min]]
+      if (tier.max !== null) tc.push(['<', ['get', 'solar_score'], tier.max])
+      return [tc.length === 1 ? tc[0] : ['all', ...tc]]
+    })
+    if (tierConds.length > 0) {
+      conditions.push(tierConds.length === 1 ? tierConds[0] : ['any', ...tierConds])
     }
   }
+
   if (conditions.length === 0) return null
   if (conditions.length === 1) return conditions[0]
   return ['all', ...conditions]
@@ -1405,7 +1474,7 @@ function addRoofTypePatternImages() {
 // The layer is hidden if: (a) the roof type effect toggle is off, or
 // (b) the user has filtered to a different roof type.
 function roofTypeLayerVisible(roofType) {
-  return roofTypeEffectOn.value && (activeFilter.value === 'all' || activeFilter.value === roofType)
+  return roofTypeEffectOn.value && (activeFilter.value.length === 0 || activeFilter.value.includes(roofType))
 }
 
 // Synchronises the map's visual state with the current filter toggles.
@@ -1427,7 +1496,7 @@ function applyRoofTypeEffect() {
   // Update each roof type's pattern and outline layers
   ROOF_TYPES.forEach((roofType) => {
     const visible = roofTypeLayerVisible(roofType)
-    const filter = buildCombinedFilter(roofType, activeSolarFilter.value)
+    const filter = buildCombinedFilter([roofType], activeSolarFilter.value)
 
     if (map.getLayer(`roof-pattern-${roofType}`)) {
       map.setLayoutProperty(`roof-pattern-${roofType}`, 'visibility', visible ? 'visible' : 'none')
@@ -1461,24 +1530,27 @@ function shortAddress(addr) {
 // Toggles a roof type filter on/off (clicking the same type twice clears it).
 // After updating the ref, calls applyFilters() to push the change to the map immediately.
 function filterRoof(type) {
-  activeFilter.value = activeFilter.value === type ? 'all' : type
+  const cur = activeFilter.value
+  activeFilter.value = cur.includes(type) ? cur.filter(t => t !== type) : [...cur, type]
   applyFilters()
 }
 
-// Same as filterRoof but for solar tier filtering.
-// Clicking "Excellent" when it's already active resets to 'all' (show all tiers).
 function filterSolar(tierId) {
-  activeSolarFilter.value = activeSolarFilter.value === tierId ? 'all' : tierId
+  const cur = activeSolarFilter.value
+  activeSolarFilter.value = cur.includes(tierId) ? cur.filter(id => id !== tierId) : [...cur, tierId]
   applyFilters()
 }
 
-// Called when the user clicks "Start Exploring →" in the onboarding modal.
-// Hides the modal, persists that fact to localStorage (so it never shows again),
-// and opens the filter panel so they can start interacting right away.
+// Closes the guide and opens the filter panel so the user can start interacting.
 function dismissOnboarding() {
   showOnboarding.value = false
-  localStorage.setItem('SOLARMAP_ONBOARDED', '1')
   filtersOpen.value = true
+}
+
+// Re-opens the guide from step 1 (triggered by the Guide button in the subnav).
+function showGuide() {
+  guideStep.value = 0
+  showOnboarding.value = true
 }
 
 // Toggles the comparison panel open/closed.
@@ -1511,8 +1583,8 @@ function toggleRoofTypeEffect() {
 
 // Resets both active filters to 'all' and refreshes the map so all buildings are visible again.
 function clearAllFilters() {
-  activeFilter.value = 'all'
-  activeSolarFilter.value = 'all'
+  activeFilter.value = []
+  activeSolarFilter.value = []
   applyFilters()
 }
 
@@ -1685,6 +1757,7 @@ function addToCompare() {
         usableAreaM2: solarApiData.value?.usableAreaM2 ?? null,
         roofAreaM2: solarApiData.value?.roofAreaM2 ?? null,
         sunshineHours: solarApiData.value?.sunshineHours ?? null,
+        scoreAvg: yieldData.value?.solar_score_avg ?? null,   // 0–5 City of Melbourne score
       },
       finance: financialMetrics.value
         ? { ...financialMetrics.value }
@@ -1912,6 +1985,14 @@ async function openBuildingFromUrl() {
   yieldData.value = null
   selectedAddress.value = null
   solarApiLoading.value = true
+  sidebarOpen.value = true  // always open sidebar when deep-linking to a building
+
+  // Map the ?panel= query value to the correct sidebar tab
+  const panelMap = { solar: 'details', financial: 'finance', environment: 'env' }
+  const requestedPanel = route.query.panel
+  if (requestedPanel && panelMap[requestedPanel]) {
+    activeTab.value = panelMap[requestedPanel]
+  }
 
   if (map) {
     updateHighlights()  // immediately highlight the building before API data arrives
@@ -2878,6 +2959,15 @@ onMounted(() => {
   setTimeout(() => {
     if (!map) initMap()  // guard against React StrictMode / hot-reload double-mounting
   }, 50)
+})
+
+// onActivated fires every time the user navigates back to this page while it is
+// kept alive in memory. onMounted only fires once (on first creation), so we need
+// this hook to respond to fresh deep-link parameters set by the Home page CTAs.
+onActivated(() => {
+  if (route.query.buildingId) {
+    openBuildingFromUrl()
+  }
 })
 
 // onUnmounted runs when the user navigates away from this page.

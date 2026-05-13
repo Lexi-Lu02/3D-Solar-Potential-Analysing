@@ -116,40 +116,31 @@
           </button>
         </div>
 
-        <!--
-          Score circle — a circular badge showing the numeric solar score.
-          --score-color sets a CSS custom property so the circle border and
-          glow use the correct colour for that tier.
-        -->
-        <div class="comparison-score-hero">
-          <div class="comparison-score-circle" :style="{ '--score-color': scoreColor(item.building.solar_score) }">
-            <span class="comparison-score-num">{{ item.building.solar_score ?? '—' }}</span>
-            <span class="comparison-score-unit">/100</span>
+        <!-- Score card — mirrors the sidebar's score-bar-wrap layout (0–5 scale) -->
+        <div class="comparison-score-card">
+          <div class="comparison-score-row">
+            <span class="comparison-score-label">Solar Score</span>
+            <span class="comparison-score-num" :style="{ color: scoreColor(item.analysis.solar.scoreAvg) }">
+              {{ item.analysis.solar.scoreAvg != null ? item.analysis.solar.scoreAvg.toFixed(1) : '—' }}<span class="comparison-score-unit">/ 5</span>
+            </span>
           </div>
-          <div class="comparison-score-meta">
-            <!--
-              Tier badge (Excellent / Good / Moderate / Poor / Very Poor).
-              Background colour, text colour, and border are all derived from the score.
-              The hex values have opacity suffixes: #RRGGBBAA format.
-            -->
+          <div class="comparison-score-bar-track">
             <div
-              class="comparison-tier-badge"
+              class="comparison-score-bar-fill"
               :style="{
-                background:   scoreColor(item.building.solar_score) + '22',  /* 22 = 13% opacity */
-                color:        scoreColor(item.building.solar_score),
-                borderColor:  scoreColor(item.building.solar_score) + '55',  /* 55 = 33% opacity */
+                width: item.analysis.solar.scoreAvg != null ? Math.min(100, (item.analysis.solar.scoreAvg / 5) * 100) + '%' : '0%',
+                background: scoreColor(item.analysis.solar.scoreAvg)
               }"
-            >
-              {{ scoreTier(item.building.solar_score) }}
-            </div>
-            <!-- Score bar (0–100%) -->
-            <div class="comparison-score-bar-track">
-              <div
-                class="comparison-score-bar-fill"
-                :style="{ width: Math.min(100, item.building.solar_score || 0) + '%', background: scoreColor(item.building.solar_score) }"
-              ></div>
-            </div>
+            ></div>
           </div>
+          <div
+            class="comparison-tier-badge"
+            :style="{
+              background:  scoreColor(item.analysis.solar.scoreAvg) + '22',
+              color:       scoreColor(item.analysis.solar.scoreAvg),
+              borderColor: scoreColor(item.analysis.solar.scoreAvg) + '55',
+            }"
+          >{{ scoreTier(item.analysis.solar.scoreAvg) }}</div>
         </div>
 
         <!--
@@ -273,24 +264,25 @@ const compareWinners = computed(() => {
 
 // ── Helper functions ──────────────────────────────────────────────────────────
 
-// Returns the CSS colour variable for a given solar score (0–100).
-// Used for the score circle border, tier badge, and bar fill.
+// Returns the CSS colour for a 0–5 solar score (matches sidebar tierColor thresholds).
 function scoreColor(score) {
-  const s = Number(score) || 0
-  if (s >= 80) return 'var(--solar-very-high)'
-  if (s >= 60) return 'var(--solar-high)'
-  if (s >= 40) return 'var(--solar-med)'
-  if (s >= 20) return 'var(--solar-low)'
+  if (score == null) return 'var(--text-secondary)'
+  const s = Number(score)
+  if (s >= 4.5) return 'var(--solar-very-high)'
+  if (s >= 3.5) return 'var(--solar-high)'
+  if (s >= 2.5) return 'var(--solar-med)'
+  if (s >= 1.5) return 'var(--solar-low)'
   return 'var(--solar-very-low)'
 }
 
-// Returns the human-readable tier label for a solar score.
+// Returns the human-readable tier label for a 0–5 solar score.
 function scoreTier(score) {
-  const s = Number(score) || 0
-  if (s >= 80) return 'Excellent'
-  if (s >= 60) return 'Good'
-  if (s >= 40) return 'Moderate'
-  if (s >= 20) return 'Poor'
+  if (score == null) return 'No Data'
+  const s = Number(score)
+  if (s >= 4.5) return 'Excellent'
+  if (s >= 3.5) return 'Good'
+  if (s >= 2.5) return 'Moderate'
+  if (s >= 1.5) return 'Poor'
   return 'Very Poor'
 }
 
@@ -464,32 +456,40 @@ function compareEnvMetrics(item) {
 .comparison-remove-btn:hover { background: rgba(239,68,68,0.15); color: #FCA5A5; border-color: rgba(239,68,68,0.3); }
 .comparison-remove-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-/* Score circle + tier badge area */
-.comparison-score-hero {
-  display: flex; align-items: center; gap: 14px;
-  background: rgba(0,0,0,0.25); border-radius: 10px; padding: 10px 14px;
+/* Score card — mirrors sidebar score-bar-wrap */
+.comparison-score-card {
+  background: rgba(0,0,0,0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.comparison-score-circle {
-  display: flex; flex-direction: column; align-items: center;
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 3px solid var(--score-color, #BE3820);
-  background: rgba(0,0,0,0.3); justify-content: center; flex-shrink: 0;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--score-color, #BE3820) 30%, transparent);
+.comparison-score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.comparison-score-label {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--nav-text-muted);
 }
 .comparison-score-num {
   font-family: 'DM Serif Display', serif;
-  font-size: 18px; line-height: 1; color: var(--nav-text); font-weight: 700;
+  font-size: 22px; font-weight: 700; line-height: 1;
 }
-.comparison-score-unit { font-size: 8px; color: var(--nav-text-muted); margin-top: 1px; }
-.comparison-score-meta { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.comparison-tier-badge {
-  font-size: 13px; font-weight: 700; padding: 3px 10px;
-  border-radius: 20px; border: 1px solid; display: inline-block; align-self: flex-start;
+.comparison-score-unit {
+  font-size: 11px; color: var(--nav-text-muted);
+  font-family: 'DM Sans', sans-serif; font-weight: 400; margin-left: 2px;
 }
 .comparison-score-bar-track {
-  height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;
+  height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
 }
-.comparison-score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.comparison-score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.comparison-tier-badge {
+  font-size: 12px; font-weight: 700; padding: 2px 9px;
+  border-radius: 20px; border: 1px solid; display: inline-block; align-self: flex-start;
+}
 
 /* Metric rows */
 .comparison-metrics { display: flex; flex-direction: column; gap: 0; }
