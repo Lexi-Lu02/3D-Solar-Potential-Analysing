@@ -853,7 +853,7 @@ const SUN_PATH_DATES = {
   equinox: '2025-03-21',
   winter: '2025-06-21',
 }
-const NEARBY_SHADOW_RADIUS_M = 260
+const NEARBY_SHADOW_RADIUS_M = 100
 
 // ── Reactive state ────────────────────────────────────────────────────────────
 // All these ref() variables are reactive — when you change .value,
@@ -2309,11 +2309,61 @@ function buildSunDirectionFeature() {
   }
 }
 
+// 2D convex hull via Andrew's monotone chain. Input: array of [x, y]. Output: closed
+// CCW ring (first point repeated at the end). Operates directly on [lng, lat] — the
+// spatial extent of a single building's shadow is small enough that treating degrees
+// as planar coordinates does not change which vertices end up on the hull.
+function convexHull2D(points) {
+  if (points.length < 3) return points.slice()
+
+  const pts = points
+    .map(([x, y]) => [Number(x), Number(y)])
+    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
+    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+
+  // Cross product of vectors OA and OB. Positive = CCW turn.
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+  const lower = []
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop()
+    lower.push(p)
+  }
+
+  const upper = []
+  for (let i = pts.length - 1; i >= 0; i -= 1) {
+    const p = pts[i]
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop()
+    upper.push(p)
+  }
+
+  lower.pop()
+  upper.pop()
+  const hull = lower.concat(upper)
+  hull.push(hull[0])  // close the ring
+  return hull
+}
+
+// Builds the ground-level shadow polygon swept out by translating `ring` along
+// (dxMeters, dyMeters). The correct shape is the Minkowski sum of the footprint
+// with the translation segment; for the convex / near-convex footprints in this
+// dataset we approximate it as the convex hull of the original + shifted vertices,
+// which avoids the self-intersecting "two footprints joined by a seam" artifact
+// produced by naively concatenating the two rings.
+function buildSweptShadowRing(ring, dxMeters, dyMeters) {
+  if (!ring?.length) return null
+
+  // Rings from GeoJSON are closed (last == first); drop the duplicate before hashing.
+  const open = ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]
+    ? ring.slice(0, -1)
+    : ring.slice()
+
+  const shifted = open.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+  return convexHull2D([...open, ...shifted])
+}
+
 // Creates the GeoJSON polygon for a "shadow volume" cast by a caster building
 // in the direction AWAY from the sun (shadow azimuth = sun azimuth + 180°).
-// The polygon is formed by combining the caster's footprint ring with a shifted copy:
-//   [original ring] + [shifted ring reversed] + [first point to close]
-// This creates a trapezoid-like shape that represents the shadow on the ground.
 // Used for VISUAL display of all nearby buildings' shadows (the dark overlay layer).
 function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
   const ring = getMainOuterRing(casterFeature?.geometry)
@@ -2326,17 +2376,14 @@ function buildSelectedBuildingShadowFeature(casterFeature, casterHeight) {
   const rad = shadowAzimuth * Math.PI / 180
   const dxMeters = Math.sin(rad) * shadowLength
   const dyMeters = Math.cos(rad) * shadowLength
-  const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+  const shadowRing = buildSweptShadowRing(ring, dxMeters, dyMeters)
+  if (!shadowRing) return null
 
   return {
     type: 'Feature',
     geometry: {
       type: 'Polygon',
-      coordinates: [[
-        ...ring,                         // caster footprint at ground level
-        ...shiftedRing.slice().reverse(), // shifted copy in reverse (closes the polygon correctly)
-        ring[0],                         // explicitly close the ring
-      ]],
+      coordinates: [shadowRing],
     },
     properties: {
       kind: 'shadow-volume',
@@ -2360,17 +2407,14 @@ function buildCasterShadowFeature(casterFeature, receiverHeight) {
   const rad = shadowAzimuth * Math.PI / 180
   const dxMeters = Math.sin(rad) * shadowLength
   const dyMeters = Math.cos(rad) * shadowLength
-  const shiftedRing = ring.map(([lng, lat]) => shiftLngLat(lng, lat, dxMeters, dyMeters))
+  const shadowRing = buildSweptShadowRing(ring, dxMeters, dyMeters)
+  if (!shadowRing) return null
 
   return {
     type: 'Feature',
     geometry: {
       type: 'Polygon',
-      coordinates: [[
-        ...ring,
-        ...shiftedRing.slice().reverse(),
-        ring[0],
-      ]],
+      coordinates: [shadowRing],
     },
     properties: {
       kind: 'shadow-volume',
