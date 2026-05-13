@@ -20,15 +20,24 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from .config import get_settings
 from .db import build_pool, lifespan_pool
 from .errors import register_error_handlers
-from .routers import buildings, health, precincts, solar, solar_cache, sun, yield_engine
+from .rate_limit import limiter
+from .routers import (
+    ai,
+    buildings,
+    health,
+    precincts,
+    solar,
+    solar_cache,
+    sun,
+    yield_engine,
+)
 
 
 
@@ -74,17 +83,19 @@ def create_app() -> FastAPI:
     )
 
     # --- Rate limiting (R4: DoS / abuse) ---
-    limiter = Limiter(key_func=get_remote_address, default_limits=[])
+    # The limiter is defined in app.rate_limit so routers can import it and
+    # apply per-route @limiter.limit("N/minute") decorators.
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
     # --- CORS (only in dev / when explicitly configured) ---
+    # POST is needed for the /ai/* endpoints. All other routes stay GET.
     if settings.cors_origins_list:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins_list,
-            allow_methods=["GET"],
+            allow_methods=["GET", "POST"],
             allow_headers=["*"],
             allow_credentials=False,
         )
@@ -108,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(solar_cache.router, prefix=API_PREFIX)
     app.include_router(sun.router, prefix=API_PREFIX)
     app.include_router(precincts.router, prefix=API_PREFIX)
+    app.include_router(ai.router, prefix=API_PREFIX)
 
     return app
 

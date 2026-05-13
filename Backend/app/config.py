@@ -9,7 +9,7 @@ request.
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,29 @@ class Settings(BaseSettings):
 
     # --- Logging ---
     log_level: str = Field("INFO")
+
+    # --- LLM (Qwen via DashScope OpenAI-compatible endpoint) ---
+    dashscope_api_key: SecretStr = Field(
+        SecretStr(""),
+        description="Aliyun DashScope API key. Get from https://dashscope.console.aliyun.com",
+    )
+    qwen_base_url: str = Field(
+        "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        description="OpenAI-compatible endpoint for Qwen",
+    )
+    qwen_model: str = Field(
+        "qwen-flash",
+        description="Single model used for chat / report / safety self-check",
+    )
+    ai_max_tokens_per_request: int = Field(4000, ge=256, le=16000)
+    ai_max_tool_iterations: int = Field(6, ge=1, le=20)
+    ai_rate_limit_per_minute: int = Field(10, ge=1)
+    ai_history_window: int = Field(20, ge=2, description="Max messages kept after truncation")
+    ai_history_max_tokens: int = Field(4000, ge=256, description="Approx token budget for history")
+    ai_enable_self_critique: bool = Field(
+        True,
+        description="Run a second qwen-flash call to verify the output before returning",
+    )
 
     @property
     def cors_origins_list(self) -> list[str]:
