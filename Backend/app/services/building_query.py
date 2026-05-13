@@ -105,17 +105,6 @@ def _row_to_response(row: dict[str, Any]) -> BuildingResponse:
     has_solar = row.get("solar_score_avg") is not None
     solar_score_avg = _safe_float(row.get("solar_score_avg")) if has_solar else None
 
-    # LightGBM model score (solar_score table) preferred when present.
-    # Falls back to (solar_score_avg - 1) / 4 * 100 from rooftop_solar.
-    model_score = row.get("model_solar_score")
-    has_model_score = model_score is not None
-    if has_model_score:
-        display_score: int | None = _safe_int(model_score)
-    elif has_solar:
-        display_score = _score_0_100(solar_score_avg)
-    else:
-        display_score = None
-
     return BuildingResponse(
         id=int(row["id"]),
         structure_id=int(row["structure_id"]),
@@ -135,9 +124,9 @@ def _row_to_response(row: dict[str, Any]) -> BuildingResponse:
             min_elevation_m=_safe_float(row.get("min_elevation")),
         ),
         solar=BuildingSolar(
-            has_data=has_solar or has_model_score,
+            has_data=has_solar,
             dominant_rating=_safe_str(row.get("dominant_rating")) if has_solar else None,
-            solar_score=display_score,
+            solar_score=_score_0_100(solar_score_avg) if has_solar else None,
             solar_score_avg=solar_score_avg,
             usable_ratio=_safe_float(row.get("usable_ratio")) if has_solar else None,
             usable_roof_area_m2=_safe_float(row.get("usable_roof_area")) if has_solar else None,
