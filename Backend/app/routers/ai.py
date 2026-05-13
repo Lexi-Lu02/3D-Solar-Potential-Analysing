@@ -38,6 +38,9 @@ _LIMIT = f"{get_settings().ai_rate_limit_per_minute}/minute"
 # --- Request / response schemas ---------------------------------------------
 
 
+UserType = Literal["property_owner", "city_planner"]
+
+
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"] = Field(
         ..., description="Only user/assistant turns; system prompt is server-side."
@@ -48,6 +51,15 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1, max_length=100)
     mode: Literal["chat", "report"] = Field("chat")
+    user_type: UserType | None = Field(
+        None,
+        description=(
+            "Persona picker from the frontend. 'property_owner' tailors tone "
+            "and focus to one specific building's economics; 'city_planner' "
+            "tilts toward precinct-level aggregates and policy framing. "
+            "Omit (null) to let the assistant ask a clarifying question."
+        ),
+    )
 
 
 class ReportRequest(BaseModel):
@@ -55,6 +67,10 @@ class ReportRequest(BaseModel):
     target_id: int = Field(..., ge=1)
     focus: str | None = Field(None, max_length=200)
     audience: str | None = Field(None, max_length=200)
+    user_type: UserType | None = Field(
+        None,
+        description="Same persona picker as /chat. Defaults to generic.",
+    )
 
 
 class ToolTraceOut(BaseModel):
@@ -97,7 +113,7 @@ def chat(
         )
 
     messages = [m.model_dump() for m in body.messages]
-    result = ai.chat(conn, messages, mode=body.mode)
+    result = ai.chat(conn, messages, mode=body.mode, user_type=body.user_type)
 
     return ChatResponse(
         reply=result.reply,
@@ -142,6 +158,7 @@ def report(
         conn,
         messages=[{"role": "user", "content": user_text}],
         mode="report",
+        user_type=body.user_type,
     )
 
     return ChatResponse(

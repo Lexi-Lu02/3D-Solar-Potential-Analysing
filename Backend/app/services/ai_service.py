@@ -32,8 +32,8 @@ from . import ai_history, ai_safety
 from .ai_prompts import (
     REFUSAL_MESSAGE,
     SELF_CRITIQUE_PROMPT,
-    SYSTEM_PROMPT_CHAT,
-    SYSTEM_PROMPT_REPORT,
+    UserType,
+    get_system_prompt,
 )
 from .ai_tools import OPENAI_TOOLS, dispatch_tool
 
@@ -86,12 +86,17 @@ class AIService:
         conn: Connection,
         messages: list[dict],
         mode: Literal["chat", "report"] = "chat",
+        user_type: UserType | None = None,
     ) -> AIResult:
         """
         Run a chat or report request through the tool loop.
 
         `messages` must be the user/assistant transcript only (no system
         message - this method injects it).
+
+        `user_type` selects a persona overlay that re-frames the same
+        underlying assistant for property owners vs city planners. `None`
+        falls back to a generic overlay that asks a clarifying question.
         """
         if not self.settings.dashscope_api_key.get_secret_value():
             return AIResult(
@@ -107,7 +112,7 @@ class AIService:
         )
         scrubbed = ai_safety.scrub_messages(truncated)
 
-        system_prompt = SYSTEM_PROMPT_REPORT if mode == "report" else SYSTEM_PROMPT_CHAT
+        system_prompt = get_system_prompt(mode, user_type)
         convo: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
         convo.extend(scrubbed)
 

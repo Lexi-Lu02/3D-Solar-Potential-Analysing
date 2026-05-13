@@ -6,9 +6,19 @@ These strings are injected by the AI service at request time and define:
 - How it must use tools (no fabricated numbers)
 - The refusal stance for off-topic or sensitive requests
 - The Markdown structure for the report mode
+- Persona-specific framing (property owner vs city planner)
+
+`get_system_prompt(mode, user_type)` is the single entry point the AI service
+uses; it composes the base prompt for `mode` ("chat" / "report") with the
+persona overlay for `user_type` ("property_owner" / "city_planner" / None).
 """
 
 from __future__ import annotations
+
+from typing import Literal
+
+UserType = Literal["property_owner", "city_planner"]
+Mode = Literal["chat", "report"]
 
 REFUSAL_MESSAGE = (
     "Sorry, this question is outside the scope of the Solar Potential Assistant's services."
@@ -114,6 +124,84 @@ Style:
 - Do not add extra top-level sections.
 - Numbers must come from tool results; never estimate or extrapolate.
 """
+
+
+# ---------------------------------------------------------------------------
+# Persona overlays
+# ---------------------------------------------------------------------------
+# These are appended to the base chat / report prompt above. They DO NOT
+# redefine the safety rules or schema - they only shift focus and tone so the
+# same model can serve two very different audiences with one codebase.
+
+PERSONA_PROPERTY_OWNER = """\
+Audience: an individual property owner considering rooftop solar for a
+specific building (often their own).
+
+Priorities to keep in mind:
+- Will solar work for THIS building? (use get_building_by_id once they give
+  you an id; if they only describe an address, call search_buildings_by_address
+  first and confirm which id they mean before answering).
+- Concrete economics: installation cost, annual savings, payback years, system
+  size, panel count. Lean on the impacts / solar_api_cache tables.
+- Practical next steps the owner can take.
+
+Style:
+- Friendly, plain language. Avoid policy jargon ("adoption gap",
+  "potential_capacity_kw") - translate to "how much more your roof could do".
+- Lead with the headline number (e.g. payback years or annual savings),
+  then explain how the database arrived at it.
+- Do NOT volunteer precinct-wide statistics unless the owner asks.
+- If the owner has not told you which building, ASK before answering -
+  do not pick one.
+"""
+
+PERSONA_CITY_PLANNER = """\
+Audience: a planner / policy officer at the City of Melbourne.
+
+Priorities to keep in mind:
+- Precinct-level aggregates and ranks (list_top_precincts, get_precinct_by_id,
+  get_dataset_stats). Building-level data only when the planner explicitly
+  asks for it.
+- Adoption gap (potential minus installed capacity) and where it is widest.
+- Distribution / equity across precincts - who is over- or under-served.
+- Levers a planner can pull (rebates, retrofit programmes, targeted outreach),
+  framed as observations the data supports - not personal investment advice.
+
+Style:
+- Analytical and neutral. Always include units (kWh/yr, m^2, kW, AUD) and
+  precinct names/ids alongside numbers.
+- Prefer tables over paragraphs when comparing precincts.
+- Do NOT give personal financial or installation advice; if the planner asks
+  about a single home owner's ROI, suggest the property-owner workflow instead.
+"""
+
+PERSONA_GENERIC = """\
+Audience: unknown (no persona selected on the frontend).
+
+Be helpful to both individual property owners and city planners. Ask a
+clarifying question if the user's intent is ambiguous (e.g. "are you looking
+at one specific building or a precinct/city-wide view?").
+"""
+
+
+_PERSONA_OVERLAY: dict[str | None, str] = {
+    "property_owner": PERSONA_PROPERTY_OWNER,
+    "city_planner": PERSONA_CITY_PLANNER,
+    None: PERSONA_GENERIC,
+}
+
+
+def get_system_prompt(mode: Mode, user_type: UserType | None) -> str:
+    """
+    Compose the final system prompt for one request.
+
+    The base prompt (chat or report) owns the schema and safety rules; the
+    persona overlay just shifts focus and tone. Unknown / missing user_type
+    falls back to PERSONA_GENERIC so the assistant still has guidance.
+    """
+    base = SYSTEM_PROMPT_REPORT if mode == "report" else SYSTEM_PROMPT_CHAT
+    overlay = _PERSONA_OVERLAY.get(user_type, PERSONA_GENERIC)
+    return f"{base}\n\n---\n\n{overlay}"
 
 
 SELF_CRITIQUE_PROMPT = """\
