@@ -240,6 +240,12 @@
                       Send
                     </button>
                   </div>
+                  <div class="ai-report-actions">
+                    <button class="ai-report-btn" type="button" @click="openOwnerReportPreview" :disabled="!ownerBuilding">
+                      Generate PDF Report
+                    </button>
+                    <span class="ai-report-hint">Preview a tailored property-owner report before saving.</span>
+                  </div>
                 </div>
 
               </div>
@@ -446,6 +452,12 @@
                       Send
                     </button>
                   </div>
+                  <div class="ai-report-actions">
+                    <button class="ai-report-btn" type="button" @click="openPlannerReportPreview" :disabled="!plannerResult">
+                      Generate PDF Report
+                    </button>
+                    <span class="ai-report-hint">Preview a planning-focused report before saving.</span>
+                  </div>
                 </div>
 
               </div>
@@ -469,6 +481,76 @@
     </section>
 
     <!-- ── 3D Explore ─────────────────────────────────────────── -->
+    <Transition name="fade">
+      <div v-if="reportPreviewOpen && activeReport" class="report-modal-backdrop" role="presentation" @click.self="closeReportPreview">
+        <section class="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-preview-title">
+          <div class="report-modal-toolbar">
+            <div>
+              <p class="report-modal-kicker">PDF report preview</p>
+              <h2 id="report-preview-title">{{ activeReport.title }}</h2>
+            </div>
+            <div class="report-modal-actions">
+              <button class="btn-ghost-outline" type="button" @click="closeReportPreview">Close</button>
+              <button class="btn-primary" type="button" @click="printActiveReport">Save as PDF</button>
+            </div>
+          </div>
+
+          <article class="report-preview">
+            <header class="report-preview-head">
+              <div>
+                <div class="report-brand">SolarMap</div>
+                <h3>{{ activeReport.title }}</h3>
+                <p>{{ activeReport.subtitle }}</p>
+              </div>
+              <div class="report-meta">
+                <span>{{ activeReport.roleLabel }}</span>
+                <span>{{ activeReport.generatedAt }}</span>
+              </div>
+            </header>
+
+            <section class="report-section">
+              <h4>Executive Summary</h4>
+              <p>{{ activeReport.summary }}</p>
+            </section>
+
+            <section class="report-section">
+              <h4>Key Metrics</h4>
+              <div class="report-metric-grid">
+                <div class="report-metric" v-for="metric in activeReport.metrics" :key="metric.label">
+                  <span>{{ metric.label }}</span>
+                  <strong>{{ metric.value }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="report-section">
+              <h4>{{ activeReport.recommendationTitle }}</h4>
+              <ul class="report-list">
+                <li v-for="item in activeReport.recommendations" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+
+            <section class="report-section" v-if="activeReport.chatNotes.length">
+              <h4>AI Chat Notes</h4>
+              <div class="report-chat-notes">
+                <div class="report-chat-note" v-for="note in activeReport.chatNotes" :key="note.question">
+                  <strong>{{ note.question }}</strong>
+                  <p>{{ note.answer }}</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="report-section">
+              <h4>Assumptions</h4>
+              <ul class="report-list">
+                <li v-for="item in activeReport.assumptions" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+          </article>
+        </section>
+      </div>
+    </Transition>
+
     <section class="seg seg--surface" id="features">
       <div class="seg-inner seg-inner--tight-top">
         <span class="deco-num" aria-hidden="true">01</span>
@@ -785,6 +867,8 @@ function goToExplorePanel(panel) {
 
 const ownerChatBodyRef   = ref(null)
 const plannerChatBodyRef = ref(null)
+const reportPreviewOpen = ref(false)
+const activeReport = ref(null)
 
 // ── Computed metrics ──────────────────────────────────────────────────────────
 
@@ -825,6 +909,177 @@ const plannerResultMetrics = computed(() => {
 })
 
 // ── Suggested questions ───────────────────────────────────────────────────────
+
+function generatedDateLabel() {
+  return new Date().toLocaleDateString('en-AU', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function compactChatNotes(messages) {
+  const notes = []
+  for (let i = 0; i < messages.length - 1; i += 1) {
+    const current = messages[i]
+    const next = messages[i + 1]
+    if (current.role === 'user' && next?.role === 'ai') {
+      notes.push({
+        question: current.content,
+        answer: next.content,
+      })
+    }
+  }
+  return notes.slice(-3)
+}
+
+function openOwnerReportPreview() {
+  const b = ownerBuilding.value
+  if (!b) return
+  ownerStep3Done.value = true
+  activeReport.value = {
+    title: 'Property Owner Solar Report',
+    subtitle: b.address,
+    roleLabel: 'Property Owner',
+    generatedAt: generatedDateLabel(),
+    summary: `${b.address} has been assessed using the current SolarMap building data. The report highlights solar suitability, indicative energy generation, estimated financial return, and practical next steps for a property owner considering rooftop solar.`,
+    metrics: ownerBuildingMetrics.value,
+    recommendationTitle: 'Recommended Next Steps',
+    recommendations: [
+      b.solarScore !== null && b.solarScore >= 3.5
+        ? 'Prioritise a detailed solar quote because this building has a strong solar suitability score.'
+        : 'Confirm roof constraints and data availability before committing to a detailed solar quote.',
+      b.annualKwh
+        ? `Use the estimated ${fmtKwh(b.annualKwh)} annual generation as the starting point for system sizing discussions.`
+        : 'Request a detailed generation estimate before financial planning.',
+      b.paybackYears
+        ? `Compare supplier quotes against the current indicative payback period of ${b.paybackYears} years.`
+        : 'Gather installation cost and tariff assumptions to calculate payback.',
+      'Review roof access, shading, structural capacity, and strata or council approvals before installation.',
+    ],
+    chatNotes: compactChatNotes(ownerMessages.value),
+    assumptions: [
+      'Financial estimates are indicative and should be validated with supplier quotes.',
+      'Generation and emissions estimates depend on available rooftop and solar dataset fields.',
+      'This report is generated locally in the browser and is not stored on the server.',
+    ],
+  }
+  reportPreviewOpen.value = true
+}
+
+function openPlannerReportPreview() {
+  const p = plannerResult.value
+  if (!p) return
+  const isPrecinct = p.type === 'precinct'
+  activeReport.value = {
+    title: isPrecinct ? 'City Planner Suburb Solar Report' : 'City Planner Building Priority Report',
+    subtitle: p.name,
+    roleLabel: 'City Planner',
+    generatedAt: generatedDateLabel(),
+    summary: isPrecinct
+      ? `${p.name} has been assessed as a suburb-level planning area. The report summarises solar potential, adoption gap, installed capacity, and policy-oriented opportunities for targeted solar uptake.`
+      : `${p.name} has been assessed as an individual building within the planning workflow. The report focuses on solar suitability, generation potential, and whether this site could be considered for targeted outreach or policy prioritisation.`,
+    metrics: plannerResultMetrics.value,
+    recommendationTitle: isPrecinct ? 'Planning Recommendations' : 'Priority Recommendations',
+    recommendations: isPrecinct
+      ? [
+          p.adoptionPct < 50
+            ? 'Prioritise outreach and incentive design because installed capacity is materially below technical potential.'
+            : 'Maintain monitoring and focus new interventions on remaining high-potential rooftops.',
+          `Use the current untapped potential of ${((p.potentialKw - p.installedKw) / 1000).toFixed(1)} MW to frame programme scale.`,
+          'Compare this suburb with neighbouring areas before finalising grant or retrofit targeting.',
+          'Coordinate owner education, simplified approvals, and procurement support for high-potential buildings.',
+        ]
+      : [
+          p.solarScore !== null && p.solarScore >= 3.5
+            ? 'Consider this building for targeted outreach because its solar score is above the suitability threshold.'
+            : 'Treat this building as a lower-confidence candidate until further roof and constraint checks are complete.',
+          p.annualKwh
+            ? `Use ${fmtKwh(p.annualKwh)} annual generation as the evidence base for programme screening.`
+            : 'Complete generation modelling before assigning this building to a priority group.',
+          'Compare this site with nearby buildings to avoid over-prioritising an isolated candidate.',
+        ],
+    chatNotes: compactChatNotes(plannerMessages.value),
+    assumptions: [
+      'Suburb-level figures aggregate available building and solar potential data.',
+      'Planning recommendations are indicative and should be checked against policy, budget, and community constraints.',
+      'This report is generated locally in the browser and is not stored on the server.',
+    ],
+  }
+  reportPreviewOpen.value = true
+}
+
+function closeReportPreview() {
+  reportPreviewOpen.value = false
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function reportToHtml(report) {
+  const metrics = report.metrics.map(m => `
+    <div class="metric"><span>${escapeHtml(m.label)}</span><strong>${escapeHtml(m.value)}</strong></div>
+  `).join('')
+  const recommendations = report.recommendations.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+  const assumptions = report.assumptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+  const chatNotes = report.chatNotes.length
+    ? `<section><h2>AI Chat Notes</h2>${report.chatNotes.map(note => `
+        <div class="chat-note"><strong>${escapeHtml(note.question)}</strong><p>${escapeHtml(note.answer)}</p></div>
+      `).join('')}</section>`
+    : ''
+
+  return `<!doctype html>
+  <html>
+    <head>
+      <title>${escapeHtml(report.title)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #1f2933; margin: 36px; line-height: 1.55; }
+        header { border-bottom: 2px solid #f59e0b; padding-bottom: 18px; margin-bottom: 24px; }
+        .brand { color: #b45309; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+        h1 { margin: 8px 0 4px; font-size: 30px; }
+        h2 { margin: 24px 0 10px; font-size: 17px; }
+        .meta { color: #64748b; display: flex; gap: 16px; font-size: 13px; }
+        .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .metric { border: 1px solid #d9e2ec; border-radius: 8px; padding: 12px; background: #f8fafc; }
+        .metric span { display: block; color: #64748b; font-size: 12px; }
+        .metric strong { display: block; margin-top: 5px; font-size: 18px; }
+        li { margin: 6px 0; }
+        .chat-note { border-left: 3px solid #f59e0b; padding-left: 12px; margin: 12px 0; }
+        @page { margin: 16mm; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <div class="brand">SolarMap</div>
+        <h1>${escapeHtml(report.title)}</h1>
+        <p>${escapeHtml(report.subtitle)}</p>
+        <div class="meta"><span>${escapeHtml(report.roleLabel)}</span><span>${escapeHtml(report.generatedAt)}</span></div>
+      </header>
+      <section><h2>Executive Summary</h2><p>${escapeHtml(report.summary)}</p></section>
+      <section><h2>Key Metrics</h2><div class="metrics">${metrics}</div></section>
+      <section><h2>${escapeHtml(report.recommendationTitle)}</h2><ul>${recommendations}</ul></section>
+      ${chatNotes}
+      <section><h2>Assumptions</h2><ul>${assumptions}</ul></section>
+    </body>
+  </html>`
+}
+
+function printActiveReport() {
+  if (!activeReport.value) return
+  const printWindow = window.open('', '_blank', 'width=900,height=700')
+  if (!printWindow) return
+  printWindow.document.open()
+  printWindow.document.write(reportToHtml(activeReport.value))
+  printWindow.document.close()
+  printWindow.focus()
+  printWindow.print()
+}
 
 const ownerSuggestions = [
   'Is this building suitable for solar?',
@@ -939,6 +1194,7 @@ function plannerContext(p) {
     return [
       'Context: The user is a city planner asking about a selected Melbourne precinct.',
       `Selected precinct: ${p.name}.`,
+      p.precinctId ? `Selected precinct_id: ${p.precinctId}.` : '',
       `Suburb rank: ${p.rank} of ${p.totalPrecincts} (${p.tierStr}).`,
       `Analysed buildings: ${p.buildings}.`,
       `Annual solar potential: ${Math.round(p.annualKwh)} kWh.`,
@@ -953,6 +1209,7 @@ function plannerContext(p) {
   return [
     'Context: The user is a city planner asking about a selected Melbourne CBD building.',
     `Selected building address: ${p.name}.`,
+    p.structureId ? `City of Melbourne structure_id: ${p.structureId}.` : '',
     p.solarScore !== null ? `Solar score: ${p.solarScore}/5 (${p.solarTier}).` : 'Solar score: not available in the local card.',
     p.annualKwh ? `Estimated annual generation: ${Math.round(p.annualKwh)} kWh.` : 'Estimated annual generation: not available in the local card.',
     p.usableArea ? `Usable roof area: ${p.usableArea} m2.` : 'Usable roof area: not available in the local card.',
@@ -1169,6 +1426,7 @@ async function loadPrecinct() {
   const totalPrecincts = precinctListData.value.length
   plannerResult.value = {
     type: 'precinct',
+    precinctId: precinct.precinct_id,
     name: precinct.name,
     subtitle: [precinct.postcode, 'Melbourne CBD'].filter(Boolean).join(' · '),
     rank, totalPrecincts,
@@ -1239,6 +1497,7 @@ async function selectPlannerBuildingResult(result) {
     const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
     plannerResult.value = {
       type: 'building',
+      structureId: result.structure_id,
       name: result.address,
       subtitle: result.address,
       solarScore, solarTier: scoreToTier(scoreAvg),
@@ -1943,6 +2202,209 @@ onMounted(async () => {
 .ai-send-btn:hover:not(:disabled) { background: var(--city-light-dim); }
 .ai-send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+.ai-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 12px;
+  background: var(--surface-white);
+  flex-wrap: wrap;
+}
+
+.ai-report-btn {
+  border: 1.5px solid var(--city-light);
+  background: rgba(var(--city-light-rgb), 0.08);
+  color: var(--city-light);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ai-report-btn:hover:not(:disabled) {
+  background: var(--city-light);
+  color: #fff;
+}
+
+.ai-report-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ai-report-hint {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.report-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 23, 42, 0.62);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 28px 18px;
+  overflow-y: auto;
+}
+
+.report-modal {
+  width: min(940px, 100%);
+  background: var(--surface-white);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.report-modal-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.report-modal-kicker {
+  margin: 0 0 3px;
+  color: var(--city-light);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-modal-toolbar h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.report-modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.report-preview {
+  padding: 28px;
+  color: var(--text-primary);
+}
+
+.report-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+  border-bottom: 2px solid rgba(var(--city-light-rgb), 0.32);
+}
+
+.report-brand {
+  color: var(--city-light);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-preview-head h3 {
+  margin: 6px 0 4px;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.report-preview-head p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.report-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.report-section {
+  margin-top: 22px;
+}
+
+.report-section h4 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.report-section p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.report-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-metric {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.report-metric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.report-metric strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 17px;
+}
+
+.report-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  line-height: 1.62;
+}
+
+.report-chat-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-chat-note {
+  border-left: 3px solid var(--city-light);
+  background: var(--surface2);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+}
+
+.report-chat-note strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
 /* ── Explore jump CTAs (property owner) ───────────────────── */
 .explore-jump { margin-top: 4px; }
 
@@ -2056,6 +2518,18 @@ onMounted(async () => {
   .identity-row { grid-template-columns: 1fr; max-width: 420px; }
   .results-layout { grid-template-columns: 1fr; }
   .ai-chat-panel { max-height: 360px; }
+  .report-modal-toolbar,
+  .report-preview-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .report-modal-actions,
+  .report-meta {
+    align-items: flex-start;
+  }
+  .report-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .explore-jump-row { grid-template-columns: 1fr 1fr; }
   .planner-controls { flex-direction: column; }
   .planner-or-divider { padding-bottom: 0; text-align: center; }
@@ -2069,6 +2543,9 @@ onMounted(async () => {
   .footer-inner { flex-direction: column; gap: 28px; }
   .footer-links { flex-direction: column; gap: 20px; }
   .explore-jump-row { grid-template-columns: 1fr; }
+  .report-modal-backdrop { padding: 14px 10px; }
+  .report-preview { padding: 20px; }
+  .report-metric-grid { grid-template-columns: 1fr; }
   .bdata-metrics { grid-template-columns: 1fr 1fr; }
   .step-bar-item { min-width: 60px; }
   .step-bar-label { font-size: 11px; }

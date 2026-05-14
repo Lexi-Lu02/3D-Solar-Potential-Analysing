@@ -90,7 +90,6 @@ import logoUrl       from '../pictures/Project logo.png'
 import iconHome      from '../pictures/home.png'
 import iconExplore   from '../pictures/3d explore.png'
 import iconPrecincts from '../pictures/precinct.png'
-import iconInsights  from '../pictures/ai insights.png'
 
 // `route` is a reactive object representing the current URL.
 // We use route.path to check which link is active.
@@ -107,7 +106,6 @@ const navItems = [
   { label: 'Home',        to: '/',          icon: iconHome      },
   { label: '3D Explore',  to: '/explore',   icon: iconExplore   },
   { label: 'Suburb',      to: '/precincts', icon: iconPrecincts },
-  { label: 'AI Insights', to: '/insights',  icon: iconInsights },
 ]
 </script>
 
