@@ -407,9 +407,10 @@ Interactive docs: `/api/v1/docs`
 | Dataset | Source | Licence |
 |---|---|---|
 | Building footprints | [City of Melbourne — 2023 Building Footprints](https://data.melbourne.vic.gov.au/explore/dataset/building-footprints) | CC BY 4.0 |
-| Rooftop solar survey | [City of Melbourne — Green Roof & Solar Potential](https://data.melbourne.vic.gov.au/explore/dataset/green-roofs-and-solar-potential-on-buildings) | CC BY 4.0 |
+| Rooftop solar survey | [City of Melbourne — Rooftops with Environmental Retrofitting Opportunities](https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/) | CC BY 4.0 |
+| Suburb boundaries | [ABS — ASGS Edition 3 Digital Boundary Files](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files) | ABS data licence |
 | Per-building solar data | [Google Solar API](https://developers.google.com/maps/documentation/solar) — pre-fetched and cached | Google Maps Platform ToS |
-| Monthly PSH | NASA POWER API (2001–2020 climatology), calibrated to BOM station 086338 (4.1 PSH/day) | Public domain |
+| Monthly PSH | [NASA POWER Data Access Viewer](https://power.larc.nasa.gov/data-access-viewer/) (2001–2020 climatology), calibrated to BOM station 086338 (4.1 PSH/day) | Public domain |
 | Base map tiles | [CartoDB Light](https://carto.com/basemaps/) via OpenStreetMap | ODbL |
 | Reverse geocoding | [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org/) | ODbL |
 

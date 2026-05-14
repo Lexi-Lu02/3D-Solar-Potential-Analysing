@@ -242,10 +242,10 @@
                     </button>
                   </div>
                   <div class="ai-report-actions">
-                    <button class="ai-report-btn" type="button" @click="openOwnerReportPreview" :disabled="!ownerBuilding">
-                      Generate PDF Report
+                    <button class="ai-report-btn" type="button" @click="openOwnerReportPreview" :disabled="!ownerBuilding || reportGenerating">
+                      {{ reportGenerating ? 'Generating...' : 'Generate PDF Report' }}
                     </button>
-                    <span class="ai-report-hint">Preview a tailored property-owner report before saving.</span>
+                    <span class="ai-report-hint">Generates a real AI report, then opens a PDF preview.</span>
                   </div>
                 </div>
 
@@ -455,10 +455,10 @@
                     </button>
                   </div>
                   <div class="ai-report-actions">
-                    <button class="ai-report-btn" type="button" @click="openPlannerReportPreview" :disabled="!plannerResult">
-                      Generate PDF Report
+                    <button class="ai-report-btn" type="button" @click="openPlannerReportPreview" :disabled="!plannerResult || reportGenerating">
+                      {{ reportGenerating ? 'Generating...' : 'Generate PDF Report' }}
                     </button>
-                    <span class="ai-report-hint">Preview a planning-focused report before saving.</span>
+                    <span class="ai-report-hint">Generates a real AI report, then opens a PDF preview.</span>
                   </div>
                 </div>
 
@@ -493,7 +493,7 @@
             </div>
             <div class="report-modal-actions">
               <button class="btn-ghost-outline" type="button" @click="closeReportPreview">Close</button>
-              <button class="btn-primary" type="button" @click="printActiveReport">Save as PDF</button>
+              <button class="btn-primary" type="button" @click="printActiveReport" :disabled="reportGenerating">Save as PDF</button>
             </div>
           </div>
 
@@ -527,7 +527,8 @@
 
             <section class="report-section">
               <h4>{{ activeReport.recommendationTitle }}</h4>
-              <ul class="report-list">
+              <div v-if="activeReport.markdown" class="report-markdown" v-html="activeReport.markdownHtml"></div>
+              <ul v-else class="report-list">
                 <li v-for="item in activeReport.recommendations" :key="item">{{ item }}</li>
               </ul>
             </section>
@@ -535,9 +536,9 @@
             <section class="report-section" v-if="activeReport.chatNotes.length">
               <h4>AI Chat Notes</h4>
               <div class="report-chat-notes">
-                <div class="report-chat-note" v-for="note in activeReport.chatNotes" :key="note.question">
-                  <strong>{{ note.question }}</strong>
-                  <p>{{ note.answer }}</p>
+                <div class="report-chat-note" v-for="note in activeReport.chatNotes" :key="note.title + note.html">
+                  <strong>{{ note.title }}</strong>
+                  <div class="report-note-html" v-html="note.html"></div>
                 </div>
               </div>
             </section>
@@ -677,9 +678,9 @@
           <div class="footer-col">
             <div class="footer-col-title">Data Sources</div>
             <a class="footer-link footer-link--url" href="https://data.melbourne.vic.gov.au/explore/dataset/2023-building-footprints/" target="_blank" rel="noopener noreferrer">City of Melbourne Building Footprints</a>
-            <a class="footer-link footer-link--url" href="https://www.melbourne.vic.gov.au/mapping-our-roofs" target="_blank" rel="noopener noreferrer">City of Melbourne Rooftop Project</a>
-            <a class="footer-link footer-link--url" href="http://www.bom.gov.au/climate/austmaps/about-solar-maps.shtml" target="_blank" rel="noopener noreferrer">Bureau of Meteorology (BOM)</a>
-            <a class="footer-link footer-link--url" href="https://power.larc.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA POWER Monthly PSH</a>
+            <a class="footer-link footer-link--url" href="https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/" target="_blank" rel="noopener noreferrer">City of Melbourne Rooftop Project</a>
+            <a class="footer-link footer-link--url" href="https://power.larc.nasa.gov/data-access-viewer/" target="_blank" rel="noopener noreferrer">NASA POWER Monthly PSH</a>
+            <a class="footer-link footer-link--url" href="https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files" target="_blank" rel="noopener noreferrer">ABS Suburb Boundary Files</a>
             <a class="footer-link footer-link--url" href="https://pv-map.apvi.org.au/" target="_blank" rel="noopener noreferrer">APVI Solar Map</a>
             <a class="footer-link footer-link--url" href="https://developers.google.com/maps/documentation/solar" target="_blank" rel="noopener noreferrer">Google Solar API</a>
           </div>
@@ -821,6 +822,8 @@ const ownerChatBodyRef   = ref(null)
 const plannerChatBodyRef = ref(null)
 const reportPreviewOpen = ref(false)
 const activeReport = ref(null)
+const reportGenerating = ref(false)
+const REPORT_TIMEOUT_MS = 180000
 
 // ── Computed metrics ──────────────────────────────────────────────────────────
 
@@ -871,25 +874,182 @@ function generatedDateLabel() {
 }
 
 function compactChatNotes(messages) {
-  const notes = []
+  const summaries = []
   for (let i = 0; i < messages.length - 1; i += 1) {
     const current = messages[i]
     const next = messages[i + 1]
     if (current.role === 'user' && next?.role === 'ai') {
-      notes.push({
-        question: current.content,
-        answer: next.content,
-      })
+      const answer = String(next.content || '').trim()
+      if (answer && !isTransientAiMessage(answer)) {
+        summaries.push(summariseNoteAnswer(answer))
+      }
     }
   }
-  return notes.slice(-3)
+  if (!summaries.length) return []
+  const items = summaries
+    .slice(-4)
+    .map(summary => `<li>${escapeHtml(stripMarkdown(summary))}</li>`)
+    .join('')
+  return [
+    {
+      title: 'Conversation summary',
+      html: `<ul>${items}</ul>`,
+    },
+  ]
 }
 
-function openOwnerReportPreview() {
+function isTransientAiMessage(text) {
+  const lower = String(text || '').toLowerCase()
+  return lower.includes('ai is thinking')
+    || lower.includes('still working')
+    || lower.includes('could not reach')
+    || lower.includes('please try again')
+}
+
+function summariseNoteAnswer(answer) {
+  const cleaned = stripMarkdown(answer)
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (cleaned.length <= 180) return cleaned
+  return `${cleaned.slice(0, 180).trim()}...`
+}
+
+function stripMarkdown(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\*/g, '')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/__/g, '')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/_/g, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\|/g, ' ')
+    .replace(/-{3,}/g, ' ')
+}
+
+async function callAiReportApi(payload) {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), REPORT_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${API_BASE}/ai/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      if (res.status === 504) {
+        throw new Error('AI report generation timed out at the gateway. Please try again later.')
+      }
+      const text = await res.text().catch(() => '')
+      throw new Error(text || `AI report failed with status ${res.status}`)
+    }
+
+    const body = await res.json()
+    if (body.blocked) {
+      throw new Error(body.block_reason || 'AI report was blocked by the backend safety policy.')
+    }
+    return body.reply || 'The AI report endpoint returned an empty report.'
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('AI report generation took too long. Please try again in a moment.')
+    }
+    throw err
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
+function markdownToHtml(markdown) {
+  const lines = String(markdown || '').split(/\r?\n/)
+  let html = ''
+  let inList = false
+  let inTable = false
+  let tableRows = []
+  const closeList = () => {
+    if (inList) {
+      html += '</ul>'
+      inList = false
+    }
+  }
+  const closeTable = () => {
+    if (inTable) {
+      html += renderMarkdownTable(tableRows)
+      inTable = false
+      tableRows = []
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) {
+      closeList()
+      closeTable()
+      continue
+    }
+
+    if (line.startsWith('|') && line.endsWith('|')) {
+      closeList()
+      const cells = line.split('|').slice(1, -1).map(c => c.trim())
+      if (cells.every(c => /^:?-{3,}:?$/.test(c))) continue
+      inTable = true
+      tableRows.push(cells)
+      continue
+    }
+
+    closeTable()
+
+    if (line.startsWith('### ')) {
+      closeList()
+      html += `<h5>${escapeInlineMarkdown(line.slice(4))}</h5>`
+    } else if (line.startsWith('## ')) {
+      closeList()
+      html += `<h4>${escapeInlineMarkdown(line.slice(3))}</h4>`
+    } else if (line.startsWith('# ')) {
+      closeList()
+      html += `<h3>${escapeInlineMarkdown(line.slice(2))}</h3>`
+    } else if (/^[-*]\s+/.test(line)) {
+      if (!inList) {
+        html += '<ul>'
+        inList = true
+      }
+      html += `<li>${escapeInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`
+    } else {
+      closeList()
+      html += `<p>${escapeInlineMarkdown(line)}</p>`
+    }
+  }
+  closeList()
+  closeTable()
+  return html
+}
+
+function renderMarkdownTable(rows) {
+  if (!rows.length) return ''
+  const [header, ...body] = rows
+  const head = `<thead><tr>${header.map(c => `<th>${escapeInlineMarkdown(c)}</th>`).join('')}</tr></thead>`
+  const bodyRows = body.map(row => `<tr>${row.map(c => `<td>${escapeInlineMarkdown(c)}</td>`).join('')}</tr>`).join('')
+  return `<table>${head}<tbody>${bodyRows}</tbody></table>`
+}
+
+function escapeInlineMarkdown(value) {
+  return escapeHtml(value)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+}
+
+function buildOwnerTemplateReport() {
   const b = ownerBuilding.value
-  if (!b) return
-  ownerStep3Done.value = true
-  activeReport.value = {
+  return {
     title: 'Property Owner Solar Report',
     subtitle: b.address,
     roleLabel: 'Property Owner',
@@ -916,14 +1076,84 @@ function openOwnerReportPreview() {
       'This report is generated locally in the browser and is not stored on the server.',
     ],
   }
-  reportPreviewOpen.value = true
 }
 
-function openPlannerReportPreview() {
+function buildOwnerAiPendingReport() {
+  const b = ownerBuilding.value
+  return {
+    title: 'Property Owner Solar Report',
+    subtitle: b.address,
+    roleLabel: 'Property Owner',
+    generatedAt: generatedDateLabel(),
+    summary: 'AI report generation is in progress. This can take up to three minutes.',
+    metrics: ownerBuildingMetrics.value,
+    recommendationTitle: 'AI Report',
+    recommendations: [],
+    chatNotes: [],
+    assumptions: [
+      'This report is being generated by the backend AI report endpoint.',
+      'Please keep this preview open while the request is running.',
+    ],
+    markdown: '',
+    markdownHtml: '<p>AI report is being generated. Please keep this preview open.</p>',
+  }
+}
+
+function buildOwnerAiErrorReport(message) {
+  const b = ownerBuilding.value
+  return {
+    title: 'Property Owner Solar Report',
+    subtitle: b.address,
+    roleLabel: 'Property Owner',
+    generatedAt: generatedDateLabel(),
+    summary: 'AI report generation failed. No local template report was generated.',
+    metrics: ownerBuildingMetrics.value,
+    recommendationTitle: 'AI Report Error',
+    recommendations: [],
+    chatNotes: [],
+    assumptions: [
+      'The report button is configured to use the real backend AI report endpoint only.',
+      'Check the browser console and backend logs for the exact failure.',
+    ],
+    markdown: message || 'Unable to generate the AI report. Please try again later.',
+    markdownHtml: `<p>${escapeHtml(message || 'Unable to generate the AI report. Please try again later.')}</p>`,
+  }
+}
+
+async function openOwnerReportPreview() {
+  const b = ownerBuilding.value
+  if (!b || reportGenerating.value) return
+  ownerStep3Done.value = true
+  reportPreviewOpen.value = true
+  reportGenerating.value = true
+  activeReport.value = buildOwnerAiPendingReport()
+
+  try {
+    const reply = await callAiReportApi({
+      target_type: 'building',
+      target_id: Number(b.id),
+      focus: 'solar suitability, financial return, installation readiness, and practical next steps',
+      audience: 'property owner',
+      user_type: 'property_owner',
+    })
+    activeReport.value = {
+      ...buildOwnerTemplateReport(),
+      summary: 'Generated by the backend AI report endpoint using the selected building context.',
+      recommendationTitle: 'AI Generated Report',
+      markdown: reply,
+      markdownHtml: markdownToHtml(reply),
+    }
+  } catch (err) {
+    activeReport.value = buildOwnerAiErrorReport(err.message)
+  } finally {
+    reportGenerating.value = false
+  }
+}
+
+function buildPlannerTemplateReport() {
   const p = plannerResult.value
-  if (!p) return
   const isPrecinct = p.type === 'precinct'
-  activeReport.value = {
+  return {
     title: isPrecinct ? 'City Planner Suburb Solar Report' : 'City Planner Building Priority Report',
     subtitle: p.name,
     roleLabel: 'City Planner',
@@ -958,7 +1188,82 @@ function openPlannerReportPreview() {
       'This report is generated locally in the browser and is not stored on the server.',
     ],
   }
+}
+
+function buildPlannerAiPendingReport() {
+  const p = plannerResult.value
+  const isPrecinct = p.type === 'precinct'
+  return {
+    title: isPrecinct ? 'City Planner Suburb Solar Report' : 'City Planner Building Priority Report',
+    subtitle: p.name,
+    roleLabel: 'City Planner',
+    generatedAt: generatedDateLabel(),
+    summary: 'AI report generation is in progress. This can take up to three minutes.',
+    metrics: plannerResultMetrics.value,
+    recommendationTitle: 'AI Report',
+    recommendations: [],
+    chatNotes: [],
+    assumptions: [
+      'This report is being generated by the backend AI report endpoint.',
+      'Please keep this preview open while the request is running.',
+    ],
+    markdown: '',
+    markdownHtml: '<p>AI report is being generated. Please keep this preview open.</p>',
+  }
+}
+
+function buildPlannerAiErrorReport(message) {
+  const p = plannerResult.value
+  const isPrecinct = p.type === 'precinct'
+  return {
+    title: isPrecinct ? 'City Planner Suburb Solar Report' : 'City Planner Building Priority Report',
+    subtitle: p.name,
+    roleLabel: 'City Planner',
+    generatedAt: generatedDateLabel(),
+    summary: 'AI report generation failed. No local template report was generated.',
+    metrics: plannerResultMetrics.value,
+    recommendationTitle: 'AI Report Error',
+    recommendations: [],
+    chatNotes: [],
+    assumptions: [
+      'The report button is configured to use the real backend AI report endpoint only.',
+      'Check the browser console and backend logs for the exact failure.',
+    ],
+    markdown: message || 'Unable to generate the AI report. Please try again later.',
+    markdownHtml: `<p>${escapeHtml(message || 'Unable to generate the AI report. Please try again later.')}</p>`,
+  }
+}
+
+async function openPlannerReportPreview() {
+  const p = plannerResult.value
+  if (!p || reportGenerating.value) return
+  const isPrecinct = p.type === 'precinct'
   reportPreviewOpen.value = true
+  reportGenerating.value = true
+  activeReport.value = buildPlannerAiPendingReport()
+
+  try {
+    const reply = await callAiReportApi({
+      target_type: isPrecinct ? 'precinct' : 'building',
+      target_id: Number(isPrecinct ? p.precinctId : p.id),
+      focus: isPrecinct
+        ? 'adoption gap, suburb ranking, policy interventions, and programme prioritisation'
+        : 'building-level policy priority, solar suitability, and outreach rationale',
+      audience: 'city planner',
+      user_type: 'city_planner',
+    })
+    activeReport.value = {
+      ...buildPlannerTemplateReport(),
+      summary: 'Generated by the backend AI report endpoint using the selected planning context.',
+      recommendationTitle: 'AI Generated Report',
+      markdown: reply,
+      markdownHtml: markdownToHtml(reply),
+    }
+  } catch (err) {
+    activeReport.value = buildPlannerAiErrorReport(err.message)
+  } finally {
+    reportGenerating.value = false
+  }
 }
 
 function closeReportPreview() {
@@ -978,11 +1283,13 @@ function reportToHtml(report) {
   const metrics = report.metrics.map(m => `
     <div class="metric"><span>${escapeHtml(m.label)}</span><strong>${escapeHtml(m.value)}</strong></div>
   `).join('')
-  const recommendations = report.recommendations.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+  const reportBody = report.markdown
+    ? `<div class="markdown">${markdownToHtml(report.markdown)}</div>`
+    : `<ul>${report.recommendations.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
   const assumptions = report.assumptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')
   const chatNotes = report.chatNotes.length
     ? `<section><h2>AI Chat Notes</h2>${report.chatNotes.map(note => `
-        <div class="chat-note"><strong>${escapeHtml(note.question)}</strong><p>${escapeHtml(note.answer)}</p></div>
+        <div class="chat-note"><strong>${escapeHtml(note.title)}</strong>${note.html}</div>
       `).join('')}</section>`
     : ''
 
@@ -1001,6 +1308,10 @@ function reportToHtml(report) {
         .metric { border: 1px solid #d9e2ec; border-radius: 8px; padding: 12px; background: #f8fafc; }
         .metric span { display: block; color: #64748b; font-size: 12px; }
         .metric strong { display: block; margin-top: 5px; font-size: 18px; }
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+        th { background: #f8fafc; color: #334155; text-align: left; font-weight: 700; }
+        th, td { border: 1px solid #d9e2ec; padding: 8px; vertical-align: top; }
+        code { background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
         li { margin: 6px 0; }
         .chat-note { border-left: 3px solid #f59e0b; padding-left: 12px; margin: 12px 0; }
         @page { margin: 16mm; }
@@ -1015,7 +1326,7 @@ function reportToHtml(report) {
       </header>
       <section><h2>Executive Summary</h2><p>${escapeHtml(report.summary)}</p></section>
       <section><h2>Key Metrics</h2><div class="metrics">${metrics}</div></section>
-      <section><h2>${escapeHtml(report.recommendationTitle)}</h2><ul>${recommendations}</ul></section>
+      <section><h2>${escapeHtml(report.recommendationTitle)}</h2>${reportBody}</section>
       ${chatNotes}
       <section><h2>Assumptions</h2><ul>${assumptions}</ul></section>
     </body>
@@ -1103,44 +1414,77 @@ function scrollChat(refEl) {
   nextTick(() => { if (refEl.value) refEl.value.scrollTop = refEl.value.scrollHeight })
 }
 
-function toApiMessages(messages) {
-  return messages
+function toApiMessages(messages, contextText) {
+  const transcript = messages
     .filter(m => (m.role === 'user' || m.role === 'ai') && String(m.content || '').trim())
     .slice(-30)
     .map(m => ({
       role: m.role === 'ai' ? 'assistant' : 'user',
       content: String(m.content).trim(),
     }))
-}
 
-async function askBackendAi(messages, context, userType) {
-  const res = await fetch(`${API_BASE}/ai/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      user_type: userType,
-      messages: toApiMessages(messages),
-      context,
-    }),
-  })
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || `AI request failed with status ${res.status}`)
+  while (transcript.length > 0 && transcript[transcript.length - 1].role !== 'user') {
+    transcript.pop()
   }
 
-  const body = await res.json()
-  return body.reply || 'I could not generate a response for that question.'
+  if (contextText && transcript.length > 0) {
+    const context = typeof contextText === 'string'
+      ? contextText
+      : JSON.stringify(contextText, null, 2)
+    transcript[transcript.length - 1] = {
+      ...transcript[transcript.length - 1],
+      content: `Context:\n${context}\n\nUser question: ${transcript[transcript.length - 1].content}`,
+    }
+  }
+
+  return transcript
+}
+// 90s timeout to prevent hanging if the AI backend is taking too long to respond
+async function askBackendAi(messages, contextText, userType) {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 90000)
+
+  try {
+    const res = await fetch(`${API_BASE}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        mode: 'chat',
+        user_type: userType,
+        messages: toApiMessages(messages, contextText),
+      }),
+    })
+
+    if (!res.ok) {
+      if (res.status === 504) {
+        throw new Error('AI backend timed out. Please try a shorter question or try again later.')
+      }
+
+      const text = await res.text().catch(() => '')
+      throw new Error(text || `AI request failed with status ${res.status}`)
+    }
+
+    const body = await res.json()
+    return body.reply || 'I could not generate a response for that question.'
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('AI request took too long. Please try again with a shorter question.')
+    }
+    throw err
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 const ASSUMPTIONS = {
-  electricity_tariff_aud_per_kwh: 0.25,
+  electricity_tariff_aud_per_kwh: 0.2575,
   install_cost_per_m2_aud: 150,
   peak_sun_hours_per_day: 4.1,
-  co2_emission_factor_kg_per_kwh: 0.727,
+  co2_emission_factor_kg_per_kwh: 0.86,
   co2_trees_equiv_factor: 45,
-  co2_cars_equiv_factor_tonnes: 4.6,
-  avg_home_annual_kwh: 7227,
+  co2_cars_equiv_factor_tonnes: 2.19,
+  avg_home_annual_kwh: 4615,
   petrol_co2_kg_per_litre: 2.31,
   system_lifetime_years: 25,
 }
@@ -1269,9 +1613,9 @@ async function selectOwnerResult(result) {
     const scoreAvg      = yieldData?.solar_score_avg ?? null
     const solarScore    = (scoreAvg !== null && scoreAvg > 0) ? Math.round(scoreAvg * 10) / 10 : null
     const installCost   = usableArea ? Math.round(usableArea * 150) : null
-    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * 0.25) : null
+    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.electricity_tariff_aud_per_kwh) : null
     const paybackYears  = (installCost && annualSavings > 0) ? Math.round(installCost / annualSavings * 10) / 10 : null
-    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
+    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.co2_emission_factor_kg_per_kwh) / 1000 : null
     ownerBuilding.value = {
       id: result.id,
       address: result.address,
@@ -1328,19 +1672,27 @@ async function sendOwnerMessage() {
   ownerStep2Done.value = true
   ownerChatInput.value = ''
   ownerMessages.value.push(msg('user', q))
+  const requestMessages = [...ownerMessages.value]
   scrollChat(ownerChatBodyRef)
   ownerTyping.value = true
+  const thinkingMsg = msg('ai', 'AI is thinking...')
+  ownerMessages.value.push(thinkingMsg)
+
+  const progressTimer = window.setTimeout(() => {
+    thinkingMsg.content = 'Still working, this can take a minute...'
+  }, 30000)
   try {
     const reply = await askBackendAi(
-      ownerMessages.value,
+      requestMessages,
       buildOwnerContext(ownerBuilding.value),
       'property_owner'
     )
-    ownerMessages.value.push(msg('ai', reply))
+    thinkingMsg.content = reply
   } catch (err) {
     console.error('Owner AI chat failed:', err)
-    ownerMessages.value.push(msg('ai', 'I could not reach the solar assistant right now. Please try again in a moment.'))
+    thinkingMsg.content = 'I could not reach the solar assistant right now. Please try again in a moment.'
   } finally {
+    window.clearTimeout(progressTimer)
     ownerTyping.value = false
     scrollChat(ownerChatBodyRef)
   }
@@ -1362,7 +1714,7 @@ function getOwnerReply(q, b) {
   if (q.includes('co2') || q.includes('carbon') || q.includes('environment') || q.includes('climate')) {
     if (b.co2Tonnes) {
       const trees = Math.round(b.co2Tonnes * 45)
-      const cars  = Math.round(b.co2Tonnes / 4.6)
+      const cars  = Math.round(b.co2Tonnes / ASSUMPTIONS.co2_cars_equiv_factor_tonnes)
       return `Installing solar on this building would offset approximately ${b.co2Tonnes} tonnes of CO₂ per year — equivalent to planting ${trees.toLocaleString()} trees or taking ${cars} cars off Melbourne's roads. See the Environmental Impact panel for more detail.`
     }
     return `Environmental impact data requires yield estimates for this building. See the Environmental Impact panel below for more detail.`
@@ -1483,9 +1835,9 @@ async function selectPlannerBuildingResult(result) {
     const scoreAvg      = yieldData?.solar_score_avg ?? null
     const solarScore    = (scoreAvg !== null && scoreAvg > 0) ? Math.round(scoreAvg * 10) / 10 : null
     const installCost   = usableArea ? Math.round(usableArea * 150) : null
-    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * 0.25) : null
+    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.electricity_tariff_aud_per_kwh) : null
     const paybackYears  = (installCost && annualSavings > 0) ? Math.round(installCost / annualSavings * 10) / 10 : null
-    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
+    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.co2_emission_factor_kg_per_kwh) / 1000 : null
     plannerResult.value = {
       type: 'building',
       id: result.id,
@@ -1504,20 +1856,29 @@ async function sendPlannerMessage() {
   if (!q || plannerTyping.value) return
   plannerChatInput.value = ''
   plannerMessages.value.push(msg('user', q))
+  const requestMessages = [...plannerMessages.value]
   scrollChat(plannerChatBodyRef)
   plannerTyping.value = true
+  const thinkingMsg = msg('ai', 'AI is thinking...')
+  plannerMessages.value.push(thinkingMsg)
+
+  const progressTimer = window.setTimeout(() => {
+    thinkingMsg.content = 'Still working, this can take a minute...'
+  }, 30000)
+
   try {
     const reply = await askBackendAi(
-      plannerMessages.value,
+      requestMessages,
       buildPlannerContext(plannerResult.value),
       'city_planner'
     )
 
-    plannerMessages.value.push(msg('ai', reply))
+    thinkingMsg.content = reply
   } catch (err) {
     console.error('Planner AI chat failed:', err)
-    plannerMessages.value.push(msg('ai', 'I could not reach the planning assistant right now. Please try again in a moment.'))
+    thinkingMsg.content = 'I could not reach the planning assistant right now. Please try again in a moment.'
   } finally {
+    window.clearTimeout(progressTimer)
     plannerTyping.value = false
     scrollChat(plannerChatBodyRef)
   }
@@ -2398,6 +2759,54 @@ onMounted(async () => {
   line-height: 1.62;
 }
 
+.report-markdown {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.report-markdown :deep(h3),
+.report-markdown :deep(h4),
+.report-markdown :deep(h5) {
+  color: var(--text-primary);
+  margin: 16px 0 8px;
+}
+
+.report-markdown :deep(p) {
+  margin: 8px 0;
+}
+
+.report-markdown :deep(ul) {
+  padding-left: 20px;
+}
+
+.report-markdown :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.report-markdown :deep(th) {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-primary);
+  padding: 8px;
+  text-align: left;
+  font-weight: 700;
+}
+
+.report-markdown :deep(td) {
+  border: 1px solid var(--border);
+  padding: 8px;
+  vertical-align: top;
+}
+
+.report-markdown :deep(code) {
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
 .report-chat-notes {
   display: flex;
   flex-direction: column;
@@ -2416,6 +2825,17 @@ onMounted(async () => {
   font-size: 13px;
   color: var(--text-primary);
   margin-bottom: 4px;
+}
+
+.report-note-html ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.report-note-html li + li {
+  margin-top: 8px;
 }
 
 /* ── Explore jump CTAs (property owner) ───────────────────── */
