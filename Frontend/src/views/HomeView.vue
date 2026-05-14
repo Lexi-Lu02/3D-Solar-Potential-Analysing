@@ -579,20 +579,6 @@
           </div>
         </div>
 
-        <!-- Three analysis panels woven into this section -->
-        <div class="panel-trio">
-          <p class="panel-trio-label">Click any building — three analysis panels open instantly</p>
-          <div class="panel-row">
-            <div class="panel-item" v-for="p in analysisPanels" :key="p.title">
-              <img :src="p.icon" :alt="p.title" class="panel-icon" />
-              <div class="panel-title">{{ p.title }}</div>
-              <div class="panel-desc">{{ p.desc }}</div>
-              <ul class="panel-bullets">
-                <li v-for="b in p.bullets" :key="b">{{ b }}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -739,6 +725,8 @@ import iconComparison   from '../pictures/Comparison View.png'
 import iconSolarCell    from '../pictures/solar-cell.png'
 import iconProfits      from '../pictures/profits.png'
 import iconPlanetEarth  from '../pictures/planet-earth.png'
+import iconPrecinct     from '../pictures/precinct.png'
+import iconAiInsights   from '../pictures/ai insights.png'
 import img3dExplore     from '../pictures/3D Explore map.png'
 import imgPrecinct      from '../pictures/Precincts Map.png'
 
@@ -758,9 +746,10 @@ const exploreFeatures = [
   '3D colour-coded map of 19,000+ Melbourne CBD buildings',
   'Search any building instantly by street address',
   'Filter by roof type, solar score, and height',
-  'Click any building to open a full three-panel analysis',
-  'Compare up to 4 buildings side by side',
-  'Sun path & shadow simulation for any date and time',
+  'Solar potential: score, usable roof area & annual generation',
+  'Financial analysis: installation cost, savings & payback period',
+  'Environmental impact: CO₂ reduction & equivalent trees planted',
+  'Compare 2 buildings side by side',
 ]
 
 const analysisPanels = [
@@ -799,12 +788,15 @@ const steps = [
 ]
 
 const features = [
-  { icon: icon3DBuilding,   title: '3D Building Extrusion', desc: 'Visualise every building in Melbourne CBD as a true-to-scale 3D model, colour-coded by solar score.' },
-  { icon: iconSolarScore,   title: 'Solar Score Ranking', desc: 'Each building receives a solar potential score derived from rooftop area, roof type, and peak sun hours.' },
-  { icon: iconRoofType,     title: 'Roof Type Filtering', desc: 'Filter by Flat, Hip, Gable, Pyramid, or Shed roof types to zero in on suitable installation candidates.' },
-  { icon: iconEnergy,       title: 'Energy Estimates', desc: 'Instant kWh generation estimates using BOM-validated 4.1 peak sun hours/day for Melbourne CBD.' },
-  { icon: iconClickInspect, title: 'Click-to-Inspect', desc: 'Click any building to open a full analysis panel with area metrics, height, roof type, and energy output.' },
-  { icon: iconComparison,   title: 'Comparison View', desc: 'Select multiple buildings side-by-side to compare solar potential across different city blocks.' },
+  { icon: icon3DBuilding,  title: '3D Building Extrusion',   desc: 'Visualise every building in Melbourne CBD as a true-to-scale 3D model, colour-coded by solar score.' },
+  { icon: iconSolarScore,  title: 'Building Solar Score',     desc: 'Every rooftop is scored 1–5 based on usable area and solar data, with colour-coded tiers from Very Poor to Excellent visible on the map.' },
+  { icon: iconRoofType,    title: 'Roof Type Filtering',      desc: 'Filter by Flat, Hip, Gable, Pyramid, or Shed roof types to zero in on suitable installation candidates.' },
+  { icon: iconEnergy,      title: 'Energy Estimates',         desc: 'Instant kWh generation estimates using BOM-validated 4.1 peak sun hours/day for Melbourne CBD.' },
+  { icon: iconProfits,     title: 'Financial Analysis',       desc: 'Estimate installation cost, annual bill savings, and payback period for any rooftop in the CBD.' },
+  { icon: iconPlanetEarth, title: 'Environmental Impact',     desc: 'See annual CO₂ reduction, equivalent trees planted, and cars taken off the road for every building.' },
+  { icon: iconPrecinct,    title: 'Suburb Solar Rankings',    desc: 'Explore an interactive map of Melbourne CBD suburbs ranked and colour-coded by solar potential tier.' },
+  { icon: iconComparison,  title: 'Adoption Gap Analysis',    desc: 'Compare installed vs potential solar capacity for each suburb to identify where the biggest untapped opportunities lie.' },
+  { icon: iconAiInsights,  title: 'AI Solar Assistant',       desc: 'Chat with an AI assistant about any building or suburb — get plain-language solar guidance tailored to property owners and city planners.' },
 ]
 
 // Explore panel CTAs used in the owner journey
