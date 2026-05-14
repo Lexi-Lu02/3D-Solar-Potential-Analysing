@@ -882,18 +882,25 @@ function generatedDateLabel() {
 }
 
 function compactChatNotes(messages) {
-  const notes = []
+  const topics = []
   for (let i = 0; i < messages.length - 1; i += 1) {
     const current = messages[i]
     const next = messages[i + 1]
     if (current.role === 'user' && next?.role === 'ai') {
-      notes.push({
-        question: current.content,
-        answer: next.content,
-      })
+      const question = String(current.content || '').trim()
+      const answer = String(next.content || '').trim()
+      if (question && answer) {
+        topics.push(`Asked about "${question}". The assistant noted: ${answer}`)
+      }
     }
   }
-  return notes.slice(-3)
+  if (!topics.length) return []
+  return [
+    {
+      question: 'Conversation notes',
+      answer: topics.slice(-3).join(' '),
+    },
+  ]
 }
 
 async function callAiReportApi(payload) {
@@ -935,6 +942,7 @@ function markdownToHtml(markdown) {
   let html = ''
   let inList = false
   let inTable = false
+  let tableRows = []
   const closeList = () => {
     if (inList) {
       html += '</ul>'
@@ -943,8 +951,9 @@ function markdownToHtml(markdown) {
   }
   const closeTable = () => {
     if (inTable) {
-      html += '</tbody></table>'
+      html += renderMarkdownTable(tableRows)
       inTable = false
+      tableRows = []
     }
   }
 
@@ -960,11 +969,8 @@ function markdownToHtml(markdown) {
       closeList()
       const cells = line.split('|').slice(1, -1).map(c => c.trim())
       if (cells.every(c => /^:?-{3,}:?$/.test(c))) continue
-      if (!inTable) {
-        html += '<table><tbody>'
-        inTable = true
-      }
-      html += `<tr>${cells.map(c => `<td>${escapeInlineMarkdown(c)}</td>`).join('')}</tr>`
+      inTable = true
+      tableRows.push(cells)
       continue
     }
 
@@ -993,6 +999,14 @@ function markdownToHtml(markdown) {
   closeList()
   closeTable()
   return html
+}
+
+function renderMarkdownTable(rows) {
+  if (!rows.length) return ''
+  const [header, ...body] = rows
+  const head = `<thead><tr>${header.map(c => `<th>${escapeInlineMarkdown(c)}</th>`).join('')}</tr></thead>`
+  const bodyRows = body.map(row => `<tr>${row.map(c => `<td>${escapeInlineMarkdown(c)}</td>`).join('')}</tr>`).join('')
+  return `<table>${head}<tbody>${bodyRows}</tbody></table>`
 }
 
 function escapeInlineMarkdown(value) {
@@ -1085,7 +1099,7 @@ async function openOwnerReportPreview() {
   try {
     const reply = await callAiReportApi({
       target_type: 'building',
-      target_id: Number(b.structureId),
+      target_id: Number(b.id),
       focus: 'solar suitability, financial return, installation readiness, and practical next steps',
       audience: 'property owner',
       user_type: 'property_owner',
@@ -1199,7 +1213,7 @@ async function openPlannerReportPreview() {
   try {
     const reply = await callAiReportApi({
       target_type: isPrecinct ? 'precinct' : 'building',
-      target_id: Number(isPrecinct ? p.precinctId : p.structureId),
+      target_id: Number(isPrecinct ? p.precinctId : p.id),
       focus: isPrecinct
         ? 'adoption gap, suburb ranking, policy interventions, and programme prioritisation'
         : 'building-level policy priority, solar suitability, and outreach rationale',
@@ -1262,8 +1276,9 @@ function reportToHtml(report) {
         .metric { border: 1px solid #d9e2ec; border-radius: 8px; padding: 12px; background: #f8fafc; }
         .metric span { display: block; color: #64748b; font-size: 12px; }
         .metric strong { display: block; margin-top: 5px; font-size: 18px; }
-        table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-        td { border: 1px solid #d9e2ec; padding: 8px; vertical-align: top; }
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+        th { background: #f8fafc; color: #334155; text-align: left; font-weight: 700; }
+        th, td { border: 1px solid #d9e2ec; padding: 8px; vertical-align: top; }
         code { background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
         li { margin: 6px 0; }
         .chat-note { border-left: 3px solid #f59e0b; padding-left: 12px; margin: 12px 0; }
@@ -2736,6 +2751,16 @@ onMounted(async () => {
   width: 100%;
   border-collapse: collapse;
   margin: 12px 0;
+  font-size: 13px;
+}
+
+.report-markdown :deep(th) {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-primary);
+  padding: 8px;
+  text-align: left;
+  font-weight: 700;
 }
 
 .report-markdown :deep(td) {
