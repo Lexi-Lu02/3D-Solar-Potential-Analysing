@@ -363,7 +363,7 @@
               <div class="planning-actions">
                 <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
                 <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
-                <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
+                <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export CSV</button>
               </div>
               <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
             </div>
@@ -476,21 +476,50 @@
 
                 </div>
 
-                <!-- Assumptions note -->
+                <!-- Assumptions (editable) -->
                 <div class="fin-assumptions">
-                  <div class="fin-assumptions-title">Assumptions</div>
-                  <div class="fin-assumption-row"><span>Panel capacity</span><span>{{ financialMetrics.panelCapacityW }} W each</span></div>
-                  <div class="fin-assumption-row"><span>Install cost</span><span>$1.20 / W</span></div>
-                  <div class="fin-assumption-row"><span>Electricity tariff</span><span>$0.28 / kWh</span></div>
-                  <div class="fin-assumption-row"><span>Panel efficiency</span><span>20%</span></div>
-                  <div class="fin-assumption-row"><span>Performance ratio</span><span>75%</span></div>
+                  <div class="fin-assumptions-title-row">
+                    <span class="fin-assumptions-title">Assumptions</span>
+                    <button class="fin-assumptions-reset" @click="resetAssumptions" title="Restore default values">Reset</button>
+                  </div>
+                  <div class="fin-assumption-row fin-assumption-row--input">
+                    <span>Panel capacity</span>
+                    <span class="fin-assumption-input-wrap">
+                      <input type="number" v-model.number="assumptionPanelCap" min="100" max="1000" step="10" class="fin-assumption-input" />
+                      <span class="fin-assumption-unit">W each</span>
+                    </span>
+                  </div>
+                  <div class="fin-assumption-row fin-assumption-row--input">
+                    <span>Install cost</span>
+                    <span class="fin-assumption-input-wrap">
+                      <span class="fin-assumption-unit fin-assumption-unit--pre">$</span>
+                      <input type="number" v-model.number="assumptionCostPerWatt" min="0.5" max="5" step="0.05" class="fin-assumption-input" />
+                      <span class="fin-assumption-unit">/ W</span>
+                    </span>
+                  </div>
+                  <div class="fin-assumption-row fin-assumption-row--input">
+                    <span>Electricity tariff</span>
+                    <span class="fin-assumption-input-wrap">
+                      <span class="fin-assumption-unit fin-assumption-unit--pre">$</span>
+                      <input type="number" v-model.number="assumptionTariff" min="0.05" max="1" step="0.01" class="fin-assumption-input" />
+                      <span class="fin-assumption-unit">/ kWh</span>
+                    </span>
+                  </div>
+                  <div class="fin-assumption-row">
+                    <span>Panel efficiency</span>
+                    <span>20%</span>
+                  </div>
+                  <div class="fin-assumption-row">
+                    <span>Performance ratio</span>
+                    <span>75%</span>
+                  </div>
                 </div>
 
                 <div class="section-title">Planning Actions</div>
                 <div class="planning-actions">
                   <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
                   <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
-                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export CSV</button>
                 </div>
                 <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
 
@@ -600,7 +629,7 @@
 
                   <div class="fin-metric-card env-metric-card--full">
                     <div class="fin-metric-header">
-                      <span class="fin-metric-label">Lifetime CO₂ Savings (25 yrs)</span>
+                      <span class="fin-metric-label">Lifetime CO₂ Savings</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Lifetime CO₂ assumptions">i</button>
                         <div class="fin-tooltip-box">Annual CO₂ Reduction × 25 years (standard commercial solar panel lifespan), expressed in tonnes.</div>
@@ -612,22 +641,40 @@
 
                 </div>
 
-                <!-- Conversion assumptions -->
+                <!-- Conversion factors (3 adjustable, 3 static) -->
                 <div class="fin-assumptions">
-                  <div class="fin-assumptions-title">Conversion Factors</div>
-                  <div class="fin-assumption-row"><span>Grid emission factor</span><span>{{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e / kWh</span></div>
+                  <div class="fin-assumptions-title-row">
+                    <span class="fin-assumptions-title">Conversion Factors</span>
+                    <button class="fin-assumptions-reset" @click="resetConversionFactors" title="Restore default values">Reset</button>
+                  </div>
+                  <div class="fin-assumption-row">
+                    <span>Grid emission factor</span>
+                    <span>{{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e / kWh</span>
+                  </div>
                   <div class="fin-assumption-row"><span>Tree CO₂ absorption</span><span>21.77 kg CO₂ / yr</span></div>
                   <div class="fin-assumption-row"><span>Petrol energy equivalent</span><span>8.9 kWh / litre</span></div>
                   <div class="fin-assumption-row"><span>Average car emissions</span><span>2,100 kg CO₂ / yr</span></div>
-                  <div class="fin-assumption-row"><span>Vic. household consumption</span><span>7,227 kWh / yr</span></div>
-                  <div class="fin-assumption-row"><span>System lifespan</span><span>25 years</span></div>
+                  <div class="fin-assumption-row fin-assumption-row--input">
+                    <span>Vic. household consumption</span>
+                    <span class="fin-assumption-input-wrap">
+                      <input type="number" v-model.number="convHomeKwh" min="1000" max="20000" step="100" class="fin-assumption-input" />
+                      <span class="fin-assumption-unit">kWh / yr</span>
+                    </span>
+                  </div>
+                  <div class="fin-assumption-row fin-assumption-row--input">
+                    <span>System lifespan</span>
+                    <span class="fin-assumption-input-wrap">
+                      <input type="number" v-model.number="convSystemLife" min="10" max="40" step="1" class="fin-assumption-input" />
+                      <span class="fin-assumption-unit">years</span>
+                    </span>
+                  </div>
                 </div>
 
                 <div class="section-title">Planning Actions</div>
                 <div class="planning-actions">
                   <button class="planning-action-btn planning-action-btn--primary" @click="shareBuilding">Copy Shareable Link</button>
                   <button class="planning-action-btn planning-action-btn--primary" @click="addToCompare">Comparison</button>
-                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export Report</button>
+                  <button class="planning-action-btn planning-action-btn--primary" @click="exportBuildingCsv">Export CSV</button>
                 </div>
                 <p class="planning-actions-note">Copies a direct link to this building's solar analysis — paste it to share with colleagues or save for later.</p>
 
@@ -983,8 +1030,10 @@ const formulaKwhAnnual = computed(() => {
   const area = solarApiData.value?.usableAreaM2
   if (!area || area <= 0) return 0
   const psh = solarApiData.value?.sunshineHours
-  if (psh) return Math.round(area * 0.20 * 0.75 * psh)
-  return Math.round(area * 0.20 * 0.75 * 4.1 * 365)
+  const eff = assumptionEfficiency.value / 100
+  const pr  = assumptionPerfRatio.value  / 100
+  if (psh) return Math.round(area * eff * pr * psh)
+  return Math.round(area * eff * pr * 4.1 * 365)
 })
 
 // Monthly peak sun hours for Melbourne from NASA POWER, used to split annual kWh into
@@ -1024,33 +1073,62 @@ const monthlyOutput = computed(() => {
   return months.map(m => ({ ...m, pct: Math.round(m.kwh / maxKwh * 100) }))
 })
 
-// Financial constants — Melbourne 2024 commercial averages used for the payback calculation.
-const COST_PER_WATT_AUD = 1.20   // installed cost per watt (AUD)
-const PANEL_CAPACITY_W  = 400    // standard panel wattage used when Google Solar API doesn't specify
-const TARIFF_AUD_KWH    = 0.28   // electricity tariff (avoided cost per kWh)
+// Financial assumption defaults — Melbourne 2024 commercial averages.
+const DEFAULT_COST_PER_WATT  = 1.20
+const DEFAULT_PANEL_CAPACITY = 400
+const DEFAULT_TARIFF         = 0.28
+const DEFAULT_EFFICIENCY     = 20    // percent
+const DEFAULT_PERF_RATIO     = 75    // percent
 
-// Environmental conversion factors — sources noted inline, used for the Impact panel.
-const GRID_EMISSION_KG_PER_KWH = 0.79   // kg CO₂e/kWh, Australian national avg (Clean Energy Regulator 2022)
-const TREE_CO2_KG_PER_YEAR     = 21.77  // kg CO₂ absorbed per mature tree per year (U.S. Forest Service)
-const PETROL_KWH_PER_LITRE     = 8.9    // energy equivalent of 1 litre of petrol
-const CAR_CO2_KG_PER_YEAR      = 2100   // avg Australian car: 180 g/km × 12,000 km/yr
-const VIC_HOME_KWH_PER_YEAR    = 7227   // average Victorian household annual consumption (AER 2023)
-const SOLAR_SYSTEM_LIFE_YEARS  = 25     // typical commercial solar panel lifespan
+// User-adjustable assumption refs (bound to inputs in the Assumptions card).
+const assumptionCostPerWatt  = ref(DEFAULT_COST_PER_WATT)
+const assumptionPanelCap     = ref(DEFAULT_PANEL_CAPACITY)
+const assumptionTariff       = ref(DEFAULT_TARIFF)
+const assumptionEfficiency   = ref(DEFAULT_EFFICIENCY)
+const assumptionPerfRatio    = ref(DEFAULT_PERF_RATIO)
+
+function resetAssumptions() {
+  assumptionCostPerWatt.value = DEFAULT_COST_PER_WATT
+  assumptionPanelCap.value    = DEFAULT_PANEL_CAPACITY
+  assumptionTariff.value      = DEFAULT_TARIFF
+  assumptionEfficiency.value  = DEFAULT_EFFICIENCY
+  assumptionPerfRatio.value   = DEFAULT_PERF_RATIO
+}
+
+// Environmental conversion factors — static scientific constants.
+const TREE_CO2_KG_PER_YEAR  = 21.77  // kg CO₂ absorbed per mature tree per year (U.S. Forest Service)
+const PETROL_KWH_PER_LITRE  = 8.9    // energy equivalent of 1 litre of petrol
+const CAR_CO2_KG_PER_YEAR   = 2100   // avg Australian car: 180 g/km × 12,000 km/yr
+
+// User-adjustable environmental conversion factors.
+const DEFAULT_GRID_EMISSION  = 0.79   // kg CO₂e/kWh, Australian national avg
+const DEFAULT_HOME_KWH       = 7227   // average Victorian household annual consumption (AER 2023)
+const DEFAULT_SYSTEM_LIFE    = 25     // typical commercial solar panel lifespan
+
+const convGridEmission = ref(DEFAULT_GRID_EMISSION)
+const convHomeKwh      = ref(DEFAULT_HOME_KWH)
+const convSystemLife   = ref(DEFAULT_SYSTEM_LIFE)
+
+function resetConversionFactors() {
+  convGridEmission.value = DEFAULT_GRID_EMISSION
+  convHomeKwh.value      = DEFAULT_HOME_KWH
+  convSystemLife.value   = DEFAULT_SYSTEM_LIFE
+}
 
 const envMetrics = computed(() => {
   const annualKwh = formulaKwhAnnual.value
   if (!selectedBuilding.value || annualKwh <= 0) return null
-  // Use building-specific carbon offset factor from Google Solar API (kg/MWh → kg/kWh ÷ 1000)
-  // Falls back to Australian national grid average when not available
+  // Use building-specific carbon offset factor from Google Solar API if available,
+  // otherwise fall back to the user-adjustable grid emission ref.
   const carbonKgPerKwh  = solarApiData.value?.carbonOffsetKgPerMwh != null
     ? solarApiData.value.carbonOffsetKgPerMwh / 1000
-    : GRID_EMISSION_KG_PER_KWH
+    : convGridEmission.value
   const co2Kg          = Math.round(annualKwh * carbonKgPerKwh)
   const treesEquiv     = Math.round(co2Kg / TREE_CO2_KG_PER_YEAR)
   const petrolLitres   = Math.round(annualKwh / PETROL_KWH_PER_LITRE)
   const carsOffRoad    = Math.round((co2Kg / CAR_CO2_KG_PER_YEAR) * 10) / 10
-  const homesPowered   = Math.round((annualKwh / VIC_HOME_KWH_PER_YEAR) * 10) / 10
-  const lifetimeCo2T   = Math.round(co2Kg * SOLAR_SYSTEM_LIFE_YEARS / 100) / 10  // tonnes, 1dp
+  const homesPowered   = Math.round((annualKwh / convHomeKwh.value) * 10) / 10
+  const lifetimeCo2T   = Math.round(co2Kg * convSystemLife.value / 100) / 10
   return { co2Kg, treesEquiv, petrolLitres, carsOffRoad, homesPowered, lifetimeCo2T, annualKwh, carbonKgPerKwh }
 })
 
@@ -1062,12 +1140,12 @@ const financialMetrics = computed(() => {
   if (!annualKwh || annualKwh <= 0) return null
   // Use the Google Solar API panel count if available; otherwise null so the cost shows "—"
   const maxPanels       = solarApiData.value?.maxPanels ?? null
-  // Some buildings have a non-standard panel size from the Solar API — fall back to the 400W constant
-  const panelCapacityW  = solarApiData.value?.panelCapacityWatts ?? PANEL_CAPACITY_W
+  // Some buildings have a non-standard panel size from the Solar API — fall back to user assumption
+  const panelCapacityW  = solarApiData.value?.panelCapacityWatts ?? assumptionPanelCap.value
   // installCost = number of panels × watts per panel × cost per watt
-  const installCost     = maxPanels != null ? Math.round(maxPanels * panelCapacityW * COST_PER_WATT_AUD) : null
+  const installCost     = maxPanels != null ? Math.round(maxPanels * panelCapacityW * assumptionCostPerWatt.value) : null
   // annualSavings = energy we'd have to buy from the grid × electricity tariff
-  const annualSavings = Math.round(annualKwh * TARIFF_AUD_KWH)
+  const annualSavings = Math.round(annualKwh * assumptionTariff.value)
   // paybackYears = how many years of savings it takes to recover the installation cost
   // Rounded to 1 decimal place (e.g., 7.3 years)
   const paybackYears  = installCost && annualSavings > 0 ? Math.round((installCost / annualSavings) * 10) / 10 : null
@@ -1108,11 +1186,12 @@ const ROOF_TYPES = ['Flat', 'Hip', 'Gable', 'Pyramid', 'Shed']
 // `min`/`max` are the solar_score thresholds (0–100 scale used in the GeoJSON).
 // `bars` controls how many signal-strength bars to draw in the UI (1–5).
 const solarTiers = [
-  { id: 'very-high', label: 'Excellent',  range: '4.5-5',   color: MAP_COLORS.solarExcellent, min: 80, max: null, bars: 5 },
-  { id: 'high',      label: 'Good',       range: '3.5-4.4', color: MAP_COLORS.solarGood,      min: 60, max: 80,   bars: 4 },
-  { id: 'medium',    label: 'Moderate',   range: '2.5-3.4', color: MAP_COLORS.solarModerate,  min: 40, max: 60,   bars: 3 },
-  { id: 'low',       label: 'Poor',       range: '1.5-2.4', color: MAP_COLORS.solarPoor,      min: 20, max: 40,   bars: 2 },
-  { id: 'very-low',  label: 'Very Poor',  range: '1-1.4',   color: MAP_COLORS.solarVeryPoor,  min: 0,  max: 20,   bars: 1 },
+  { id: 'very-high', label: 'Excellent',  range: '4.5-5',   color: MAP_COLORS.solarExcellent,        min: 80,   max: null, bars: 5 },
+  { id: 'high',      label: 'Good',       range: '3.5-4.4', color: MAP_COLORS.solarGood,             min: 60,   max: 80,   bars: 4 },
+  { id: 'medium',    label: 'Moderate',   range: '2.5-3.4', color: MAP_COLORS.solarModerate,         min: 40,   max: 60,   bars: 3 },
+  { id: 'low',       label: 'Poor',       range: '1.5-2.4', color: MAP_COLORS.solarPoor,             min: 20,   max: 40,   bars: 2 },
+  { id: 'very-low',  label: 'Very Poor',  range: '1-1.4',   color: MAP_COLORS.solarVeryPoor,         min: 1,    max: 20,   bars: 1 },
+  { id: 'no-data',   label: 'No Data',    range: '—',        color: SOLAR_DISABLED_EXTRUSION_COLOR,  min: null, max: null, bars: 0 },
 ]
 
 // ── Solar score display helpers ───────────────────────────────────────────────
@@ -1385,6 +1464,10 @@ function buildCombinedFilter(roofTypes, solarTierIds) {
 
   if (solarTierIds.length > 0) {
     const tierConds = solarTierIds.flatMap(tierId => {
+      if (tierId === 'no-data') {
+        // Mirrors SOLAR_EXTRUSION_COLOR: score=0 or null both mean "no survey data"
+        return [['==', ['coalesce', ['get', 'solar_score'], 0], 0]]
+      }
       const tier = solarTiers.find(t => t.id === tierId)
       if (!tier) return []
       const tc = [['>=', ['get', 'solar_score'], tier.min]]
@@ -1894,7 +1977,7 @@ function exportBuildingCsv() {
       ['Petrol Fuel Saved', em.petrolLitres.toLocaleString() + ' litres/yr'],
       ['Cars Off the Road', em.carsOffRoad.toLocaleString() + ' cars/yr'],
       ['Homes Powered', em.homesPowered.toLocaleString() + ' homes/yr'],
-      ['Lifetime CO₂ Savings (25 yrs)', em.lifetimeCo2T.toLocaleString() + ' tonnes CO₂'],
+      ['Lifetime CO₂ Savings', em.lifetimeCo2T.toLocaleString() + ' tonnes CO₂'],
       ['Conversion - Grid Emission Factor', '0.79 kg CO₂e / kWh'],
       ['Conversion - Tree CO₂ Absorption', '21.77 kg CO₂ / yr'],
       ['Conversion - Petrol Energy Equiv.', '8.9 kWh / litre'],
