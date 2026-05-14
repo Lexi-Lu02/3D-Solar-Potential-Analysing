@@ -536,9 +536,9 @@
             <section class="report-section" v-if="activeReport.chatNotes.length">
               <h4>AI Chat Notes</h4>
               <div class="report-chat-notes">
-                <div class="report-chat-note" v-for="note in activeReport.chatNotes" :key="note.question">
-                  <strong>{{ note.question }}</strong>
-                  <p>{{ note.answer }}</p>
+                <div class="report-chat-note" v-for="note in activeReport.chatNotes" :key="note.title + note.html">
+                  <strong>{{ note.title }}</strong>
+                  <div class="report-note-html" v-html="note.html"></div>
                 </div>
               </div>
             </section>
@@ -882,25 +882,65 @@ function generatedDateLabel() {
 }
 
 function compactChatNotes(messages) {
-  const topics = []
+  const summaries = []
   for (let i = 0; i < messages.length - 1; i += 1) {
     const current = messages[i]
     const next = messages[i + 1]
     if (current.role === 'user' && next?.role === 'ai') {
-      const question = String(current.content || '').trim()
       const answer = String(next.content || '').trim()
-      if (question && answer) {
-        topics.push(`Asked about "${question}". The assistant noted: ${answer}`)
+      if (answer && !isTransientAiMessage(answer)) {
+        summaries.push(summariseNoteAnswer(answer))
       }
     }
   }
-  if (!topics.length) return []
+  if (!summaries.length) return []
+  const items = summaries
+    .slice(-4)
+    .map(summary => `<li>${escapeHtml(stripMarkdown(summary))}</li>`)
+    .join('')
   return [
     {
-      question: 'Conversation notes',
-      answer: topics.slice(-3).join(' '),
+      title: 'Conversation summary',
+      html: `<ul>${items}</ul>`,
     },
   ]
+}
+
+function isTransientAiMessage(text) {
+  const lower = String(text || '').toLowerCase()
+  return lower.includes('ai is thinking')
+    || lower.includes('still working')
+    || lower.includes('could not reach')
+    || lower.includes('please try again')
+}
+
+function summariseNoteAnswer(answer) {
+  const cleaned = stripMarkdown(answer)
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (cleaned.length <= 180) return cleaned
+  return `${cleaned.slice(0, 180).trim()}...`
+}
+
+function stripMarkdown(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\*/g, '')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/__/g, '')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/_/g, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\|/g, ' ')
+    .replace(/-{3,}/g, ' ')
 }
 
 async function callAiReportApi(payload) {
@@ -1257,7 +1297,7 @@ function reportToHtml(report) {
   const assumptions = report.assumptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')
   const chatNotes = report.chatNotes.length
     ? `<section><h2>AI Chat Notes</h2>${report.chatNotes.map(note => `
-        <div class="chat-note"><strong>${escapeHtml(note.question)}</strong><p>${escapeHtml(note.answer)}</p></div>
+        <div class="chat-note"><strong>${escapeHtml(note.title)}</strong>${note.html}</div>
       `).join('')}</section>`
     : ''
 
@@ -2793,6 +2833,17 @@ onMounted(async () => {
   font-size: 13px;
   color: var(--text-primary);
   margin-bottom: 4px;
+}
+
+.report-note-html ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.report-note-html li + li {
+  margin-top: 8px;
 }
 
 /* ── Explore jump CTAs (property owner) ───────────────────── */
