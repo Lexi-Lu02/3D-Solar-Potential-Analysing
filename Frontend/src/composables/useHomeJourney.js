@@ -36,6 +36,10 @@ export const precinctListLoading  = ref(false)
 export const ownerStep2Done = ref(false)   // true after user engages with AI insights
 export const ownerStep3Done = ref(false)   // true after user opens 3D Explore
 
+// Step progress for planner journey
+export const plannerStep2Done = ref(false) // true after user engages with AI chat or data
+export const plannerStep3Done = ref(false) // true after user navigates to suburb map or explore
+
 // Mutable timer handles — plain object, not reactive
 export const homeTimers = { owner: null, planner: null }
 

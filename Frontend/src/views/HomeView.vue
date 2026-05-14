@@ -38,6 +38,7 @@
     <!-- ── AI-Powered Journey ─────────────────────────────────── -->
     <section class="seg seg--surface" id="start-journey">
       <div class="seg-inner journey-seg">
+        <span class="deco-num" aria-hidden="true">01</span>
 
         <div class="journey-intro">
           <p class="eyebrow eyebrow--center">AI-Powered · Start Here</p>
@@ -87,7 +88,7 @@
             <div class="identity-tags">
               <span class="identity-tag">Suburb Rankings</span>
               <span class="identity-tag">Adoption Gaps</span>
-              <span class="identity-tag">Policy Data</span>
+              <span class="identity-tag">Impact Reports</span>
             </div>
             <div class="identity-cta">Get Started <span aria-hidden="true">→</span></div>
           </button>
@@ -98,7 +99,7 @@
           <div v-if="identity === 'owner'" class="journey-flow" key="owner">
 
             <!-- Step bar -->
-            <div class="step-bar" aria-label="Journey progress">
+            <div class="step-bar" aria-label="Journey progress" ref="ownerStepBarRef">
               <div class="step-bar-item" :class="{ 'step-bar-item--done': !!ownerBuilding, 'step-bar-item--active': !ownerBuilding }">
                 <div class="step-bar-dot">{{ ownerBuilding ? '✓' : '1' }}</div>
                 <div class="step-bar-label">Search Building</div>
@@ -162,7 +163,7 @@
 
             <!-- Results: building card + AI chat -->
             <Transition name="fade">
-              <div v-if="ownerBuilding" class="results-layout">
+              <div v-if="ownerBuilding" class="results-layout" ref="ownerResultsRef">
 
                 <!-- Building data card -->
                 <div class="bdata-card">
@@ -275,19 +276,19 @@
           <div v-if="identity === 'planner'" class="journey-flow" key="planner">
 
             <!-- Step bar -->
-            <div class="step-bar" aria-label="Journey progress">
+            <div class="step-bar" aria-label="Journey progress" ref="plannerStepBarRef">
               <div class="step-bar-item" :class="{ 'step-bar-item--done': !!plannerResult, 'step-bar-item--active': !plannerResult }">
                 <div class="step-bar-dot">{{ plannerResult ? '✓' : '1' }}</div>
                 <div class="step-bar-label">Select Suburb</div>
               </div>
               <div class="step-bar-line"></div>
-              <div class="step-bar-item" :class="{ 'step-bar-item--active': !!plannerResult }">
-                <div class="step-bar-dot">2</div>
+              <div class="step-bar-item" :class="{ 'step-bar-item--done': plannerStep2Done, 'step-bar-item--active': !!plannerResult && !plannerStep2Done }">
+                <div class="step-bar-dot">{{ plannerStep2Done ? '✓' : '2' }}</div>
                 <div class="step-bar-label">Review Data</div>
               </div>
               <div class="step-bar-line"></div>
-              <div class="step-bar-item" :class="{ 'step-bar-item--active': !!plannerResult }">
-                <div class="step-bar-dot">3</div>
+              <div class="step-bar-item" :class="{ 'step-bar-item--done': plannerStep3Done, 'step-bar-item--active': plannerStep2Done && !plannerStep3Done }">
+                <div class="step-bar-dot">{{ plannerStep3Done ? '✓' : '3' }}</div>
                 <div class="step-bar-label">Explore Map</div>
               </div>
             </div>
@@ -347,7 +348,7 @@
 
             <!-- Results: precinct/building card + AI chat -->
             <Transition name="fade">
-              <div v-if="plannerResult" class="results-layout">
+              <div v-if="plannerResult" class="results-layout" ref="plannerResultsRef">
 
                 <!-- Data card -->
                 <div class="bdata-card">
@@ -407,7 +408,7 @@
                 </div>
 
                 <!-- AI Chat -->
-                <div class="ai-chat-panel">
+                <div class="ai-chat-panel" @mouseenter="plannerStep2Done = true">
                   <div class="ai-chat-head">
                     <span class="ai-spark">✦</span>
                     <div class="ai-chat-head-text">
@@ -470,8 +471,8 @@
               <div v-if="plannerResult" class="precinct-explore-cta">
                 <p class="explore-jump-label">Ready for the full picture? View all suburbs ranked side-by-side</p>
                 <div class="precinct-cta-row">
-                  <RouterLink to="/precincts" class="btn-primary">View Suburb Map →</RouterLink>
-                  <button class="btn-ghost-outline" @click="goToExplore">Explore Individual Buildings</button>
+                  <RouterLink to="/precincts" class="btn-primary" @click="plannerStep3Done = true">View Suburb Map →</RouterLink>
+                  <button class="btn-ghost-outline" @click="plannerStep3Done = true; goToExplore()">Explore Individual Buildings</button>
                 </div>
               </div>
             </Transition>
@@ -556,7 +557,7 @@
 
     <section class="seg seg--surface" id="features">
       <div class="seg-inner seg-inner--tight-top">
-        <span class="deco-num" aria-hidden="true">01</span>
+        <span class="deco-num deco-num--right" aria-hidden="true">02</span>
 
         <div class="split">
           <div class="split-text">
@@ -585,7 +586,7 @@
     <!-- ── Precincts ──────────────────────────────────────────── -->
     <section class="seg seg--bg">
       <div class="seg-inner">
-        <span class="deco-num deco-num--right" aria-hidden="true">02</span>
+        <span class="deco-num" aria-hidden="true">03</span>
 
         <div class="split split--rev">
           <div class="split-media">
@@ -681,7 +682,8 @@
             <a class="footer-link footer-link--url" href="https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/" target="_blank" rel="noopener noreferrer">City of Melbourne Rooftop Project</a>
             <a class="footer-link footer-link--url" href="https://power.larc.nasa.gov/data-access-viewer/" target="_blank" rel="noopener noreferrer">NASA POWER Monthly PSH</a>
             <a class="footer-link footer-link--url" href="https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files" target="_blank" rel="noopener noreferrer">ABS Suburb Boundary Files</a>
-            <a class="footer-link footer-link--url" href="https://pv-map.apvi.org.au/" target="_blank" rel="noopener noreferrer">APVI Solar Map</a>
+            <a class="footer-link footer-link--url" href="https://pv-map.apvi.org.au/postcode" target="_blank" rel="noopener noreferrer">APVI Solar Map</a>
+            <a class="footer-link footer-link--url" href="https://www.bom.gov.au/jsp/ncc/cdio/weatherData/av?p_nccObsCode=203&p_display_type=dataFile&p_startYear=&p_c=&p_stn_num=086338" target="_blank" rel="noopener noreferrer">Bureau of Meteorology (BOM) Climate Data</a>
             <a class="footer-link footer-link--url" href="https://developers.google.com/maps/documentation/solar" target="_blank" rel="noopener noreferrer">Google Solar API</a>
           </div>
           <div class="footer-col">
@@ -711,6 +713,7 @@ import {
   plannerBuildingResults, plannerBuildingDropdownOpen,
   precinctListData, precinctListLoading,
   ownerStep2Done, ownerStep3Done,
+  plannerStep2Done, plannerStep3Done,
   homeTimers,
   loadHomeChatHistory,
 } from '../composables/useHomeJourney.js'
@@ -732,6 +735,17 @@ import imgPrecinct      from '../pictures/Precincts Map.png'
 
 const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+
+const ownerResultsRef   = ref(null)
+const plannerResultsRef = ref(null)
+const ownerStepBarRef   = ref(null)
+const plannerStepBarRef = ref(null)
+
+function scrollToResults(stepBarRef) {
+  nextTick(() => {
+    stepBarRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
 
 // ── Hero stats ────────────────────────────────────────────────────────────────
 const stats = ref([
@@ -1565,6 +1579,8 @@ function selectIdentity(id) {
   plannerBuildingResults.value = []
   plannerBuildingDropdownOpen.value = false
   plannerMessages.value = []
+  plannerStep2Done.value = false
+  plannerStep3Done.value = false
   if (id === 'planner') loadPrecinctList()
   nextTick(() => {
     document.getElementById('start-journey')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1624,6 +1640,7 @@ async function selectOwnerResult(result) {
       annualKwh: kwhAnnual, usableArea, installCost, annualSavings, paybackYears, co2Tonnes,
     }
     await triggerOwnerWelcome()
+    scrollToResults(ownerStepBarRef)
   } catch { ownerSearchError.value = 'Unable to load data for this building. Please try another.' }
   finally  { ownerSearchLoading.value = false }
 }
@@ -1760,6 +1777,8 @@ async function loadPrecinct() {
   if (!selectedPrecinctKey.value) { plannerResult.value = null; plannerMessages.value = []; return }
   plannerBuildingQuery.value = ''
   plannerMessages.value = []
+  plannerStep2Done.value = false
+  plannerStep3Done.value = false
   const precinct = precinctListData.value.find(p => String(p.precinct_id) === String(selectedPrecinctKey.value))
   if (!precinct) return
   const installedKw = precinct.installed_capacity_kw ?? 0
@@ -1781,6 +1800,7 @@ async function loadPrecinct() {
     adoptionGapKw: precinct.adoption_gap_kw ?? 0,
   }
   await triggerPlannerWelcome()
+  scrollToResults(plannerStepBarRef)
 }
 
 async function triggerPlannerWelcome() {
@@ -1824,6 +1844,8 @@ async function selectPlannerBuildingResult(result) {
   plannerBuildingQuery.value = result.address
   selectedPrecinctKey.value = ''
   plannerMessages.value = []
+  plannerStep2Done.value = false
+  plannerStep3Done.value = false
   plannerResult.value = null
   try {
     const [yieldData, solarData] = await Promise.all([
@@ -1848,6 +1870,7 @@ async function selectPlannerBuildingResult(result) {
       annualKwh: kwhAnnual, usableArea, installCost, annualSavings, paybackYears, co2Tonnes,
     }
     await triggerPlannerWelcome()
+    scrollToResults(plannerStepBarRef)
   } catch { /* ignore — result card remains null */ }
 }
 

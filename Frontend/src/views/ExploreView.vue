@@ -254,15 +254,6 @@
             <div class="sidebar-header">
               <div class="sidebar-title-row">
                 <div class="sidebar-title" id="sidebar-title">Solar Potential</div>
-                <button
-                  class="sidebar-export-btn"
-                  @click="exportBuildingCsv"
-                  :disabled="!selectedBuilding"
-                  :aria-disabled="!selectedBuilding"
-                  aria-label="Export selected building details as CSV"
-                >
-                  Export CSV
-                </button>
               </div>
               <div class="sidebar-sub" aria-live="polite">
                 {{ selectedBuilding ? '' : 'Click any building on the map' }}
@@ -372,13 +363,6 @@
               <div class="sidebar-header">
                 <div class="sidebar-title-row">
                   <div class="sidebar-title">Financial Analysis</div>
-                  <button
-                    class="sidebar-export-btn"
-                    @click="exportBuildingCsv"
-                    :disabled="!selectedBuilding"
-                    :aria-disabled="!selectedBuilding"
-                    aria-label="Export building details as CSV"
-                  >Export CSV</button>
                 </div>
                 <div class="sidebar-sub">Estimated returns from solar installation</div>
               </div>
@@ -529,13 +513,6 @@
               <div class="sidebar-header">
                 <div class="sidebar-title-row">
                   <div class="sidebar-title">Environmental Impact</div>
-                  <button
-                    class="sidebar-export-btn"
-                    @click="exportBuildingCsv"
-                    :disabled="!selectedBuilding"
-                    :aria-disabled="!selectedBuilding"
-                    aria-label="Export building details as CSV"
-                  >Export CSV</button>
                 </div>
                 <div class="sidebar-sub">Estimated sustainability benefits from solar installation</div>
               </div>
