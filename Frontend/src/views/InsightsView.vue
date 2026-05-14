@@ -22,36 +22,7 @@
 
           <div class="sidebar-content">
 
-            <!-- View-mode toggle: Chat vs Report -->
-            <div class="ai-mode-toggle" role="group" aria-label="Interaction mode">
-              <button
-                class="ai-mode-btn"
-                :class="{ active: viewMode === 'chat' }"
-                type="button"
-                @click="viewMode = 'chat'"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M2 2h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 2V3a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.4"/>
-                </svg>
-                Ask a Question
-              </button>
-              <button
-                class="ai-mode-btn"
-                :class="{ active: viewMode === 'report' }"
-                type="button"
-                @click="viewMode = 'report'"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/>
-                  <path d="M3 5h8M3 7.5h5M3 10h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                </svg>
-                Generate Report
-              </button>
-            </div>
-
-            <!-- ── REPORT MODE: form controls ── -->
-            <template v-if="viewMode === 'report'">
-              <div class="ai-tabs" role="group" aria-label="Insight type">
+            <div class="ai-tabs" role="group" aria-label="Insight type">
                 <button
                   class="ai-tab"
                   :class="{ active: mode === 'building' }"
@@ -154,50 +125,6 @@
 
                 <p v-if="errorMessage" class="search-error">{{ errorMessage }}</p>
               </form>
-            </template>
-
-            <!-- ── CHAT MODE: input + suggested question chips ── -->
-            <template v-else>
-              <!-- Sidebar chat input -->
-              <div class="sidebar-chat-input-wrap">
-                <textarea
-                  v-model="chatQuestion"
-                  class="sidebar-chat-input"
-                  placeholder="e.g. Which suburb has the highest solar potential?"
-                  rows="3"
-                  :disabled="chatLoading"
-                  @keydown.enter.exact.prevent="submitChat"
-                  aria-label="Type your solar question"
-                ></textarea>
-                <button
-                  class="sidebar-chat-submit"
-                  @click="submitChat"
-                  :disabled="chatLoading || !chatQuestion.trim()"
-                  aria-label="Submit question"
-                >
-                  <span v-if="chatLoading" class="chat-submit-spinner" aria-hidden="true"></span>
-                  <span v-else>Ask →</span>
-                </button>
-                <div class="sidebar-chat-hint">
-                  <kbd>Enter</kbd> to submit &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> new line
-                </div>
-              </div>
-
-              <div class="ai-suggestions-label">Suggested questions</div>
-              <div class="ai-suggestions-list">
-                <button
-                  v-for="s in suggestedQuestions"
-                  :key="s.text"
-                  class="ai-suggestion-chip"
-                  type="button"
-                  @click="useSuggestion(s.text)"
-                  :aria-label="`Ask: ${s.text}`"
-                >
-                  <span class="ai-suggestion-emoji" aria-hidden="true">{{ s.emoji }}</span>
-                  {{ s.text }}
-                </button>
-              </div>
-            </template>
 
             <!-- Backend status note -->
             <div class="ai-backend-note">
