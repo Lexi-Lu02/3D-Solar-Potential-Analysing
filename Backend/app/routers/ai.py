@@ -15,7 +15,7 @@ real class references, not stringified forward refs.
 """
 
 import logging
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from psycopg import Connection
@@ -58,6 +58,14 @@ class ChatRequest(BaseModel):
             "and focus to one specific building's economics; 'city_planner' "
             "tilts toward precinct-level aggregates and policy framing. "
             "Omit (null) to let the assistant ask a clarifying question."
+        ),
+    )
+    context: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Pre-computed building/precinct data from the frontend (solar, "
+            "financial, environmental metrics). Injected into the system prompt "
+            "as trusted data so the model can answer without tool lookups."
         ),
     )
 
@@ -113,7 +121,7 @@ def chat(
         )
 
     messages = [m.model_dump() for m in body.messages]
-    result = ai.chat(conn, messages, mode=body.mode, user_type=body.user_type)
+    result = ai.chat(conn, messages, mode=body.mode, user_type=body.user_type, context=body.context)
 
     return ChatResponse(
         reply=result.reply,

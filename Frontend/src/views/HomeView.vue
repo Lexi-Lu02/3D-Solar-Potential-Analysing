@@ -210,7 +210,8 @@
                       class="ai-msg"
                       :class="msg.role === 'user' ? 'ai-msg--user' : 'ai-msg--ai'"
                     >
-                      <div class="ai-msg-bubble">{{ msg.content }}</div>
+                      <div class="ai-msg-bubble" v-if="msg.role === 'user'">{{ msg.content }}</div>
+                      <div class="ai-msg-bubble" v-else v-html="renderMarkdown(msg.content)"></div>
                     </div>
                     <div v-if="ownerTyping" class="ai-msg ai-msg--ai">
                       <div class="ai-msg-bubble ai-msg-typing">
@@ -422,7 +423,8 @@
                       class="ai-msg"
                       :class="msg.role === 'user' ? 'ai-msg--user' : 'ai-msg--ai'"
                     >
-                      <div class="ai-msg-bubble">{{ msg.content }}</div>
+                      <div class="ai-msg-bubble" v-if="msg.role === 'user'">{{ msg.content }}</div>
+                      <div class="ai-msg-bubble" v-else v-html="renderMarkdown(msg.content)"></div>
                     </div>
                     <div v-if="plannerTyping" class="ai-msg ai-msg--ai">
                       <div class="ai-msg-bubble ai-msg-typing">
@@ -1128,37 +1130,47 @@ function scoreFillClass(score) {
 let _msgId = 0
 function msg(role, content) { return { id: ++_msgId, role, content } }
 
+function renderMarkdown(text) {
+  if (!text) return ''
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  // inline code
+  html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>')
+  // bullet list groups (lines starting with - or *)
+  html = html.replace(/((?:^[-*]\s+.+$\n?)+)/gm, match => {
+    const items = match.trim().split('\n')
+      .map(line => `<li>${line.replace(/^[-*]\s+/, '')}</li>`).join('')
+    return `<ul class="ai-list">${items}</ul>`
+  })
+  // newlines to <br> (outside list blocks)
+  html = html.replace(/\n/g, '<br>')
+  return html
+}
+
 function scrollChat(refEl) {
   nextTick(() => { if (refEl.value) refEl.value.scrollTop = refEl.value.scrollHeight })
 }
 
-function toApiMessages(messages, contextText) {
-  const transcript = messages
+function toApiMessages(messages) {
+  return messages
     .filter(m => (m.role === 'user' || m.role === 'ai') && String(m.content || '').trim())
     .slice(-30)
     .map(m => ({
       role: m.role === 'ai' ? 'assistant' : 'user',
       content: String(m.content).trim(),
     }))
-
-  if (contextText && transcript.length > 0 && transcript[transcript.length - 1].role === 'user') {
-    transcript[transcript.length - 1] = {
-      ...transcript[transcript.length - 1],
-      content: `${contextText}\n\nUser question: ${transcript[transcript.length - 1].content}`,
-    }
-  }
-
-  return transcript
 }
 
-async function askBackendAi(messages, contextText, userType) {
+async function askBackendAi(messages, context, userType) {
   const res = await fetch(`${API_BASE}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      mode: 'chat',
       user_type: userType,
-      messages: toApiMessages(messages, contextText),
+      messages: toApiMessages(messages),
+      context,
     }),
   })
 
@@ -1171,52 +1183,74 @@ async function askBackendAi(messages, contextText, userType) {
   return body.reply || 'I could not generate a response for that question.'
 }
 
-
-function ownerContext(b) {
-  
-  if (!b) return ''
-  return [
-    'Context: The user is a property owner asking about a selected Melbourne CBD building.',
-    `Selected building address: ${b.address}.`,
-    `City of Melbourne structure_id: ${b.structureId}.`,
-    b.solarScore !== null ? `Solar score: ${b.solarScore}/5 (${b.solarTier}).` : 'Solar score: not available in the local card.',
-    b.annualKwh ? `Estimated annual generation: ${Math.round(b.annualKwh)} kWh.` : 'Estimated annual generation: not available in the local card.',
-    b.usableArea ? `Usable roof area: ${b.usableArea} m2.` : 'Usable roof area: not available in the local card.',
-    b.installCost ? `Estimated install cost: AUD ${b.installCost}.` : '',
-    b.annualSavings ? `Estimated annual savings: AUD ${b.annualSavings}.` : '',
-    b.paybackYears ? `Estimated payback period: ${b.paybackYears} years.` : '',
-  ].filter(Boolean).join('\n')
+const ASSUMPTIONS = {
+  electricity_tariff_aud_per_kwh: 0.25,
+  install_cost_per_m2_aud: 150,
+  peak_sun_hours_per_day: 4.1,
+  co2_emission_factor_kg_per_kwh: 0.727,
+  co2_trees_equiv_factor: 45,
+  co2_cars_equiv_factor_tonnes: 4.6,
+  avg_home_annual_kwh: 7227,
+  petrol_co2_kg_per_litre: 2.31,
+  system_lifetime_years: 25,
 }
 
-function plannerContext(p) {
-  if (!p) return ''
-  if (p.type === 'precinct') {
-    return [
-      'Context: The user is a city planner asking about a selected Melbourne precinct.',
-      `Selected precinct: ${p.name}.`,
-      p.precinctId ? `Selected precinct_id: ${p.precinctId}.` : '',
-      `Suburb rank: ${p.rank} of ${p.totalPrecincts} (${p.tierStr}).`,
-      `Analysed buildings: ${p.buildings}.`,
-      `Annual solar potential: ${Math.round(p.annualKwh)} kWh.`,
-      `Usable roof area: ${Math.round(p.usableArea)} m2.`,
-      `Installed capacity: ${p.installedKw} kW.`,
-      `Potential capacity: ${p.potentialKw} kW.`,
-      `Adoption rate: ${p.adoptionPct}%.`,
-      `Adoption gap: ${p.adoptionGapKw} kW.`,
-    ].join('\n')
+function buildingContextFields(b) {
+  const co2KgYr = b.co2Tonnes ? Math.round(b.co2Tonnes * 1000) : null
+  return {
+    id: b.id ?? null,
+    structure_id: b.structureId ?? null,
+    address: b.address ?? null,
+    solar_score: b.solarScore ?? null,
+    solar_tier: b.solarTier ?? null,
+    annual_kwh: b.annualKwh ?? null,
+    usable_roof_area_m2: b.usableArea ?? null,
+    install_cost_aud: b.installCost ?? null,
+    annual_savings_aud: b.annualSavings ?? null,
+    payback_years: b.paybackYears ?? null,
+    co2_offset_kg_yr: co2KgYr,
+    co2_offset_tonnes_yr: b.co2Tonnes ?? null,
+    trees_equiv_yr: co2KgYr ? Math.round(co2KgYr / 1000 * ASSUMPTIONS.co2_trees_equiv_factor) : null,
+    cars_off_road_yr: co2KgYr ? Math.round(co2KgYr / 1000 / ASSUMPTIONS.co2_cars_equiv_factor_tonnes) : null,
+    petrol_litres_saved_yr: co2KgYr ? Math.round(co2KgYr / ASSUMPTIONS.petrol_co2_kg_per_litre) : null,
+    homes_powered: b.annualKwh ? Math.round(b.annualKwh / ASSUMPTIONS.avg_home_annual_kwh * 10) / 10 : null,
+    lifetime_co2_tonnes_25yr: b.co2Tonnes ? Math.round(b.co2Tonnes * ASSUMPTIONS.system_lifetime_years * 10) / 10 : null,
   }
+}
 
-  return [
-    'Context: The user is a city planner asking about a selected Melbourne CBD building.',
-    `Selected building address: ${p.name}.`,
-    p.structureId ? `City of Melbourne structure_id: ${p.structureId}.` : '',
-    p.solarScore !== null ? `Solar score: ${p.solarScore}/5 (${p.solarTier}).` : 'Solar score: not available in the local card.',
-    p.annualKwh ? `Estimated annual generation: ${Math.round(p.annualKwh)} kWh.` : 'Estimated annual generation: not available in the local card.',
-    p.usableArea ? `Usable roof area: ${p.usableArea} m2.` : 'Usable roof area: not available in the local card.',
-    p.installCost ? `Estimated install cost: AUD ${p.installCost}.` : '',
-    p.annualSavings ? `Estimated annual savings: AUD ${p.annualSavings}.` : '',
-    p.paybackYears ? `Estimated payback period: ${p.paybackYears} years.` : '',
-  ].filter(Boolean).join('\n')
+function buildOwnerContext(b) {
+  if (!b) return null
+  return {
+    selected_building: buildingContextFields(b),
+    assumptions: ASSUMPTIONS,
+  }
+}
+
+function buildPlannerContext(p) {
+  if (!p) return null
+  if (p.type === 'precinct') {
+    return {
+      selected_precinct: {
+        precinct_id: p.precinctId ?? null,
+        name: p.name ?? null,
+        rank: p.rank ?? null,
+        total_precincts: p.totalPrecincts ?? null,
+        tier: p.tierStr ?? null,
+        building_count: p.buildings ?? null,
+        total_kwh_annual: p.annualKwh ?? null,
+        total_usable_area_m2: p.usableArea ?? null,
+        installed_capacity_kw: p.installedKw ?? null,
+        potential_capacity_kw: p.potentialKw ?? null,
+        adoption_pct: p.adoptionPct ?? null,
+        adoption_gap_kw: p.adoptionGapKw ?? null,
+      },
+      assumptions: ASSUMPTIONS,
+    }
+  }
+  return {
+    selected_building: buildingContextFields(p),
+    assumptions: ASSUMPTIONS,
+  }
 }
 
 // ── Identity selection ────────────────────────────────────────────────────────
@@ -1289,6 +1323,7 @@ async function selectOwnerResult(result) {
     const paybackYears  = (installCost && annualSavings > 0) ? Math.round(installCost / annualSavings * 10) / 10 : null
     const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
     ownerBuilding.value = {
+      id: result.id,
       address: result.address,
       structureId: result.structure_id,
       solarScore, solarTier: scoreToTier(scoreAvg),
@@ -1315,12 +1350,18 @@ async function triggerOwnerWelcome() {
   const b = ownerBuilding.value
   let intro
   if (b.solarScore !== null) {
-    const candidacy = b.solarScore >= 3 ? 'a strong candidate for solar' : 'worth evaluating for solar'
-    intro = `I've analysed ${b.address}. With a solar score of ${b.solarScore}/5 (${b.solarTier}), this building is ${candidacy}.`
-    if (b.usableArea)    intro += ` The ${b.usableArea.toLocaleString()} m² of usable roof`
-    if (b.annualKwh)     intro += ` could generate ${fmtKwh(b.annualKwh)} annually`
-    if (b.annualSavings) intro += `, saving ~$${b.annualSavings.toLocaleString()}/year`
-    intro += '. What would you like to explore?'
+    if (b.solarTier === 'Very Poor') {
+      intro = `I've analysed ${b.address}. With a solar score of ${b.solarScore}/5 (${b.solarTier}), this building faces significant constraints for solar — factors like limited roof exposure, heavy shading, or a small usable area make it a challenging installation.`
+      if (b.usableArea) intro += ` Only ${b.usableArea.toLocaleString()} m² of roof area is considered usable.`
+      intro += ' That said, I\'m happy to walk through the details or explore alternatives. What would you like to know?'
+    } else {
+      const candidacy = b.solarScore >= 3 ? 'a strong candidate for solar' : 'worth evaluating for solar'
+      intro = `I've analysed ${b.address}. With a solar score of ${b.solarScore}/5 (${b.solarTier}), this building is ${candidacy}.`
+      if (b.usableArea)    intro += ` The ${b.usableArea.toLocaleString()} m² of usable roof`
+      if (b.annualKwh)     intro += ` could generate ${fmtKwh(b.annualKwh)} annually`
+      if (b.annualSavings) intro += `, saving ~$${b.annualSavings.toLocaleString()}/year`
+      intro += '. What would you like to explore?'
+    }
   } else {
     intro = `I've found ${b.address}. This building doesn't yet have a full solar rating in our dataset`
     if (b.usableArea) intro += `, but its ${b.usableArea.toLocaleString()} m² of usable rooftop area`
@@ -1342,7 +1383,7 @@ async function sendOwnerMessage() {
   try {
     const reply = await askBackendAi(
       ownerMessages.value,
-      ownerContext(ownerBuilding.value),
+      buildOwnerContext(ownerBuilding.value),
       'property_owner'
     )
     ownerMessages.value.push(msg('ai', reply))
@@ -1497,6 +1538,7 @@ async function selectPlannerBuildingResult(result) {
     const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
     plannerResult.value = {
       type: 'building',
+      id: result.id,
       structureId: result.structure_id,
       name: result.address,
       subtitle: result.address,
@@ -1517,7 +1559,7 @@ async function sendPlannerMessage() {
   try {
     const reply = await askBackendAi(
       plannerMessages.value,
-      plannerContext(plannerResult.value),
+      buildPlannerContext(plannerResult.value),
       'city_planner'
     )
 
@@ -2148,6 +2190,10 @@ onMounted(async () => {
 }
 .ai-msg--user .ai-msg-bubble { background: var(--city-light); color: white; border-radius: 12px 12px 2px 12px; }
 .ai-msg--ai   .ai-msg-bubble { background: var(--surface2); color: var(--text-primary); border-radius: 12px 12px 12px 2px; }
+.ai-msg-bubble .ai-list { margin: 4px 0 0 0; padding-left: 18px; }
+.ai-msg-bubble .ai-list li { margin-bottom: 2px; }
+.ai-msg-bubble .ai-inline-code { font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.08); padding: 1px 4px; border-radius: 3px; }
+.ai-msg-bubble strong { font-weight: 600; }
 
 /* Typing indicator */
 .ai-msg-typing { display: flex; align-items: center; gap: 4px; padding: 12px 16px; }

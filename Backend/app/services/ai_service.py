@@ -20,6 +20,7 @@ OpenAI client we use is also sync.
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -87,6 +88,7 @@ class AIService:
         messages: list[dict],
         mode: Literal["chat", "report"] = "chat",
         user_type: UserType | None = None,
+        context: dict[str, Any] | None = None,
     ) -> AIResult:
         """
         Run a chat or report request through the tool loop.
@@ -113,6 +115,12 @@ class AIService:
         scrubbed = ai_safety.scrub_messages(truncated)
 
         system_prompt = get_system_prompt(mode, user_type)
+        if context:
+            context_block = json.dumps(context, ensure_ascii=False, indent=2)
+            system_prompt += (
+                "\n\n## Pre-computed data from the frontend (trusted — answer directly without tool lookups)\n\n"
+                f"```json\n{context_block}\n```"
+            )
         convo: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
         convo.extend(scrubbed)
 
