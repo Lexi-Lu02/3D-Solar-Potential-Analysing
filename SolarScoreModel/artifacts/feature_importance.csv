@@ -1,0 +1,32 @@
+feature,split_importance
+roof_area_m2,596
+nbr_mean_height_100m,528
+roof_top_elevation_m,498
+nbr_max_height_100m,447
+nbr_count_100m,446
+building_height_m,434
+nbr_max_height_50m,380
+roof_perimeter_m,303
+roof_elongation,252
+roof_aspect_deg,249
+nbr_mean_height_50m,248
+nbr_count_50m,228
+roof_compactness,207
+nbr_shading_index_50m,178
+nbr_taller_count_100m,168
+nbr_shading_index_100m,140
+suburb_West Melbourne,127
+suburb_East Melbourne,117
+suburb_North Melbourne,116
+nbr_taller_count_50m,110
+suburb_South Yarra,66
+suburb_Parkville,53
+suburb_Port Melbourne,36
+suburb_Flemington,19
+suburb_Kensington,18
+suburb_Carlton,17
+suburb_Melbourne,15
+suburb_Docklands,4
+suburb_Carlton North,0
+suburb_South Wharf,0
+suburb_Southbank,0

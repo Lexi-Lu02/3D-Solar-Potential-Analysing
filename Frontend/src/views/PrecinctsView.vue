@@ -2,7 +2,7 @@
   <div class="map-page">
     <MainNavbar />
     <main id="main-content" class="main">
-      <div id="precinct-map" role="application" aria-label="Interactive precinct solar map of Melbourne CBD">
+      <div id="precinct-map" role="application" aria-label="Interactive suburb solar map of Melbourne CBD">
         <div v-if="isLoading" class="loading" role="status" aria-live="polite" aria-atomic="true" :aria-label="loadingText">
           <div class="loading-spinner" aria-hidden="true"></div>
           <div class="loading-text">{{ loadingText }}</div>
@@ -10,11 +10,11 @@
 
       </div>
 
-      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Precinct details panel">
+      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Suburb details panel">
         <button
           class="sidebar-strip-btn"
           @click="sidebarOpen = !sidebarOpen"
-          :aria-label="sidebarOpen ? 'Collapse precinct details panel' : 'Expand precinct details panel'"
+          :aria-label="sidebarOpen ? 'Collapse suburb details panel' : 'Expand suburb details panel'"
           :aria-expanded="sidebarOpen"
           aria-controls="sidebar-body"
         >
@@ -35,12 +35,12 @@
             <div class="sidebar-title-row">
               <div>
                 <div class="rankings-label">Rankings</div>
-                <div class="sidebar-title">Precinct Solar Rankings</div>
+                <div class="sidebar-title">Suburb Solar Rankings</div>
               </div>
               <button
                 class="sidebar-export-btn"
                 @click="exportPrecinctsCsv"
-                aria-label="Export precinct data as CSV"
+                aria-label="Export suburb data as CSV"
               >
                 Export CSV
               </button>
@@ -80,9 +80,9 @@
                 </div>
               </div>
 
-              <div class="section-title">Precinct Info</div>
+              <div class="section-title">Suburb Info</div>
               <div class="info-row">
-                <span class="info-key">Precinct ID</span>
+                <span class="info-key">Suburb ID</span>
                 <span class="info-val">{{ selectedPrecinct.precinct_id }}</span>
               </div>
               <div class="info-row">
@@ -134,13 +134,13 @@
             <div v-else>
               <div v-if="sortedPrecincts.length === 0 && !isLoading" class="empty-state">
                 <div class="empty-icon">☀</div>
-                <div class="empty-text">No precinct data available</div>
+                <div class="empty-text">No suburb data available</div>
               </div>
 
               <template v-else>
                 <!-- Column headers — active sort column highlighted -->
                 <div class="precinct-table-head">
-                  <div class="pt-col-name">Precinct Name</div>
+                  <div class="pt-col-name">Suburb Name</div>
                   <div class="pt-col-kwh"       :class="{ 'col-active': sortBy === 'kwh'       }">Annual kWh</div>
                   <div class="pt-col-area"      :class="{ 'col-active': sortBy === 'area'      }">Roof Area</div>
                   <div class="pt-col-bldg"      :class="{ 'col-active': sortBy === 'buildings' }">Buildings</div>
@@ -706,7 +706,7 @@ function initMap(precinctGeoJSON) {
         _cachedBuildingData = buildingData
       } catch (err) {
         console.error('Failed to load buildings:', err)
-        loadingText.value = 'Buildings unavailable — showing precinct outlines only'
+        loadingText.value = 'Buildings unavailable — showing suburb outlines only'
         isLoading.value = false
         updateMapLayers()
         return
@@ -812,7 +812,7 @@ function exportPrecinctsCsv() {
     const p = selectedPrecinct.value
     rows = [
       ['Field', 'Value'],
-      ['Precinct Name', p.name],
+      ['Suburb Name', p.name],
       ['Rank', `#${p.rank}`],
       ['Tier', tierLabel(p.tier)],
       ['Annual Output', formatKwh(p.total_kwh)],
@@ -824,7 +824,7 @@ function exportPrecinctsCsv() {
     ]
     filename = `precinct_${p.name.replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.csv`
   } else {
-    rows = [['Rank', 'Precinct Name', 'Annual Output', 'Usable Roof Area', 'Installed Capacity', 'Potential Capacity', 'Adoption Gap', 'Tier', 'Buildings']]
+    rows = [['Rank', 'Suburb Name', 'Annual Output', 'Usable Roof Area', 'Installed Capacity', 'Potential Capacity', 'Adoption Gap', 'Tier', 'Buildings']]
     sortedPrecincts.value.forEach(p => {
       rows.push([
         p.rank,
@@ -870,13 +870,13 @@ onMounted(async () => {
   if (_cachedPrecinctGeoJSON) {
     precinctGeoJSON = _cachedPrecinctGeoJSON
   } else {
-    loadingText.value = 'Loading precinct boundaries…'
+    loadingText.value = 'Loading suburb boundaries…'
     try {
       const res = await fetchGeoJson(PRECINCTS_PATH)
       precinctGeoJSON = await res.json()
       _cachedPrecinctGeoJSON = precinctGeoJSON
     } catch (err) {
-      loadingText.value = `Failed to load precincts: ${err.message}`
+      loadingText.value = `Failed to load suburbs: ${err.message}`
       return
     }
   }

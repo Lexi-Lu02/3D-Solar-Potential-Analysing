@@ -172,6 +172,36 @@ def _usable_roof_area(row: dict[str, Any], geometry: dict[str, Any] | None) -> f
     return round(footprint, 1) if footprint > 0 else None
 
 
+def _convex_hull(points: list[list[float]]) -> list[list[float]]:
+    """2D convex hull via Andrew's monotone chain. Returns a closed CCW ring
+    (first point repeated at the end). Operates directly on [lng, lat]; the
+    spatial extent of a single building's shadow is small enough that treating
+    degrees as planar coordinates does not change which vertices land on the hull."""
+    pts = sorted({(float(x), float(y)) for x, y in points if math.isfinite(x) and math.isfinite(y)})
+    if len(pts) < 3:
+        return [list(p) for p in pts]
+
+    def cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper: list[tuple[float, float]] = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    hull = lower[:-1] + upper[:-1]
+    ring = [list(p) for p in hull]
+    ring.append(ring[0])
+    return ring
+
+
 def _build_shadow_ring(
     caster_ring: list[list[float]],
     caster_height: float,
@@ -195,9 +225,16 @@ def _build_shadow_ring(
     rad = math.radians(shadow_azimuth)
     dx_m = math.sin(rad) * shadow_length
     dy_m = math.cos(rad) * shadow_length
-    shifted = [_shift_lng_lat(lng, lat, dx_m, dy_m) for lng, lat in caster_ring]
 
-    return [*caster_ring, *reversed(shifted), caster_ring[0]]
+    # Drop the duplicated closing vertex before computing the hull so it doesn't bias dedup.
+    open_ring = caster_ring[:-1] if len(caster_ring) > 1 and caster_ring[0] == caster_ring[-1] else list(caster_ring)
+    shifted = [_shift_lng_lat(lng, lat, dx_m, dy_m) for lng, lat in open_ring]
+
+    # The true ground shadow is the Minkowski sum of the footprint with the translation
+    # segment; for the convex / near-convex footprints in this dataset the convex hull of
+    # original ∪ shifted vertices is an accurate, self-intersection-free approximation.
+    hull = _convex_hull(open_ring + shifted)
+    return hull if len(hull) >= 4 else None
 
 
 def _estimate_shadowed_samples(
