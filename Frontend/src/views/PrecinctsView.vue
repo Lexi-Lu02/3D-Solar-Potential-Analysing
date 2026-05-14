@@ -147,7 +147,7 @@
                   <div class="pt-col-kwh"       :class="{ 'col-active': sortBy === 'kwh'       }">Annual kWh</div>
                   <div class="pt-col-area"      :class="{ 'col-active': sortBy === 'area'      }">Roof Area</div>
                   <div class="pt-col-bldg"      :class="{ 'col-active': sortBy === 'buildings' }">Buildings</div>
-                  <div class="pt-col-stat"      :class="{ 'col-active': sortBy === 'gap'       }">Adoption Gap</div>
+                  <div class="pt-col-stat"      :class="{ 'col-active': sortBy === 'gap'       }">Adoption Rate</div>
                 </div>
 
                 <!-- Rows -->
@@ -447,7 +447,7 @@ const sortOptions = [
   { id: 'kwh',       label: 'Annual kWh'   },
   { id: 'area',      label: 'Roof Area'    },
   { id: 'buildings', label: 'Buildings'    },
-  { id: 'gap',       label: 'Adoption Gap' },
+  { id: 'gap',       label: 'Adoption Rate' },
 ]
 
 // ── Sorted / ranked list (computed) ──────────────────────────────────────────
