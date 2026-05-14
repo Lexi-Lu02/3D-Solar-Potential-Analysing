@@ -374,9 +374,32 @@ def dispatch_tool(conn: Connection, name: str, arguments_json: str) -> str:
 
     try:
         result = spec.handler(conn, args)
-    except Exception:
+    except Exception as exc:
+        # Full traceback always goes to logger for ops to inspect.
         logger.exception("Tool %s failed with unexpected error", name)
-        return json.dumps({"error": "tool_execution_failed", "tool": name})
+
+        # CRITICAL: roll back the connection. Psycopg leaves an aborted
+        # transaction in place after a SQL error, and every subsequent
+        # query on the same connection raises InFailedSqlTransaction. The
+        # AI service dispatches multiple tools per request on ONE borrowed
+        # connection, so one poisoned tool would otherwise cascade-fail
+        # all the rest (seen on EC2: first call hit a missing PostGIS
+        # function, then 9 unrelated calls all failed with the cascade).
+        try:
+            conn.rollback()
+        except Exception:
+            logger.exception("Failed to roll back connection after %s error", name)
+
+        # When AI_DEBUG_LOG=true, also surface the exception type+message in the
+        # tool result so the debug UI shows the real reason without needing
+        # SSH-to-EC2. We never leak this to the model UNLESS debug is on, and
+        # even then only the exception summary (not the full traceback).
+        from ..config import get_settings
+        payload: dict[str, Any] = {"error": "tool_execution_failed", "tool": name}
+        if get_settings().ai_debug_log:
+            payload["exception"] = type(exc).__name__
+            payload["message"] = str(exc)[:500]
+        return json.dumps(payload)
 
     try:
         return json.dumps(result, default=str)
