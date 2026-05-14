@@ -115,6 +115,7 @@
               v-for="t in solarTiers"
               :key="t.id"
               class="solar-mini-pip"
+              :class="{ 'solar-mini-pip--no-data': t.id === 'no-data' }"
               :style="{ background: t.color }"
               :title="`${t.label} (${t.range})`"
             ></span>
@@ -144,7 +145,7 @@
           <!-- Visual: colour dot and bar meter showing tier strength -->
           <div class="tier-visual" aria-hidden="true">
             <div class="legend-dot" :style="{ background: t.color }"></div>
-            <div class="tier-bars">
+            <div v-if="t.bars > 0" class="tier-bars">
               <!--
                 v-for="n in 5" creates 5 bar segments.
                 Segments 1..t.bars are filled with the tier colour.
@@ -158,11 +159,12 @@
                 :style="n <= t.bars ? { background: t.color } : {}"
               ></span>
             </div>
+            <div v-else class="tier-bars-none" aria-label="No signal bars">—</div>
           </div>
           <!-- Text label and score range (e.g. "Good  3.5–4.4 / 5") -->
           <div class="tier-text">
             <span class="tier-name">{{ t.label }}</span>
-            <span class="tier-score">{{ t.range }} / 5</span>
+            <span class="tier-score">{{ t.bars > 0 ? `${t.range} / 5` : 'No survey data' }}</span>
           </div>
         </button>
       </div>
@@ -390,11 +392,13 @@ const roofFilterOpen  = ref(false)  // false = roof type buttons are hidden
 /* Row of coloured dots in the Solar Potential header (decorative legend) */
 .solar-mini-legend { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .solar-mini-pip { display: block; width: 12px; height: 12px; border-radius: 2px; }
+.solar-mini-pip--no-data { border: 1px solid var(--border); }
 
 /* Bar meter inside each solar tier button */
 .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .tier-visual { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
 .tier-bars { display: flex; align-items: flex-end; gap: 2px; }
+.tier-bars-none { font-size: 13px; color: var(--text-muted); line-height: 15px; }
 
 /* Five small vertical bars — filled bars represent the tier strength */
 .tier-bar-seg { width: 3px; border-radius: 1px 1px 0 0; background: var(--border); }

@@ -749,6 +749,19 @@ body {
   display: block;
 }
 
+/* Left-column metric cards: flip tooltip to open rightward so it doesn't clip */
+.fin-metrics-grid .fin-metric-card:nth-child(odd) .fin-tooltip-box {
+  right: auto;
+  left: 0;
+}
+
+/* Full-width card spans both columns — (i) is on the right edge, so open leftward.
+   Specificity raised to (0,4,0) to beat the nth-child(odd) rule above. */
+.fin-metrics-grid .fin-metric-card.env-metric-card--full .fin-tooltip-box {
+  right: 0;
+  left: auto;
+}
+
 /* Assumptions card */
 .fin-assumptions {
   background: var(--surface2);
@@ -757,14 +770,57 @@ body {
   padding: 14px 16px;
 }
 
+.fin-assumptions-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .fin-assumptions-title {
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
-  margin-bottom: 10px;
 }
+
+.fin-assumptions-reset {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--city-light);
+  background: none;
+  border: 1px solid var(--city-light);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.fin-assumptions-reset:hover { background: var(--city-light); color: #fff; }
+
+.fin-assumption-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.fin-assumption-input {
+  width: 62px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--surface1, #fff);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 5px;
+  text-align: right;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.fin-assumption-input:focus { border-color: var(--city-light); }
+
+.fin-assumption-unit { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.fin-assumption-unit--pre { margin-right: 1px; }
 
 .fin-assumption-row {
   display: flex;

@@ -181,12 +181,12 @@ def format_context(ctx: ContextPayload | None) -> str:
 
     return (
         "\n\n---\n\n"
-        "# Pre-computed context (trusted)\n"
-        "The frontend has already prepared the following data for the user,\n"
-        "drawn from the same database / formulas your tools would use. You\n"
-        "MAY cite these numbers directly without re-verifying them via tools.\n"
-        "If the user asks something the context below does NOT cover\n"
-        '(e.g. "compare to other suburbs", "show top buildings", "what are\n'
-        'all the precincts"), THEN use your tools.\n\n'
+        "# Currently selected building (trusted pre-computed data)\n"
+        "The user has already selected this building on the map. THIS IS the\n"
+        "building they are asking about. Do NOT ask the user to identify a\n"
+        "building — the data below is already for their selected building.\n"
+        "Cite these numbers directly without calling tools to re-look them up.\n"
+        "Only use tools if the user asks about something NOT listed here\n"
+        '(e.g. comparing buildings, suburb-wide stats, historical data).\n\n'
         f"{body}"
     )

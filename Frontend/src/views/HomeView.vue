@@ -376,8 +376,8 @@
                       </div>
                     </template>
                   </div>
-                  <div class="bdata-score-bar-track">
-                    <div v-if="plannerResult.type !== 'precinct' && plannerResult.solarScore !== null"
+                  <div v-if="plannerResult.type !== 'precinct'" class="bdata-score-bar-track">
+                    <div v-if="plannerResult.solarScore !== null"
                          class="bdata-score-bar-fill" :class="scoreFillClass(plannerResult.solarScore)"
                          :style="{ width: (plannerResult.solarScore * 20) + '%' }">
                     </div>
@@ -571,7 +571,10 @@
             <RouterLink class="text-link" to="/explore" aria-label="Explore the Map">Explore the Map →</RouterLink>
           </div>
           <div class="split-media">
-            <img :src="img3dExplore" alt="Screenshot of the 3D solar explore map" class="split-img" />
+            <RouterLink to="/explore" aria-label="Go to 3D Explore map" class="split-img-link">
+              <img :src="img3dExplore" alt="Screenshot of the 3D solar explore map" class="split-img" />
+              <div class="split-img-overlay">Open 3D Explore →</div>
+            </RouterLink>
           </div>
         </div>
 
@@ -599,7 +602,10 @@
 
         <div class="split split--rev">
           <div class="split-media">
-            <img :src="imgPrecinct" alt="Screenshot of the suburb solar rankings map" class="split-img" />
+            <RouterLink to="/precincts" aria-label="Go to Suburb Solar Rankings" class="split-img-link">
+              <img :src="imgPrecinct" alt="Screenshot of the suburb solar rankings map" class="split-img" />
+              <div class="split-img-overlay">Open Suburb Map →</div>
+            </RouterLink>
           </div>
           <div class="split-text">
             <p class="eyebrow">Suburb</p>
@@ -651,54 +657,6 @@
       </div>
     </section>
 
-    <!-- ── CTA ────────────────────────────────────────────────── -->
-    <section class="seg seg--dark">
-      <div class="seg-inner seg-inner--narrow seg-inner--center">
-        <p class="eyebrow eyebrow--orange">Get Started — It's Free</p>
-        <h2 class="seg-title seg-title--light">
-          Your path to smarter<br>solar decisions starts here
-        </h2>
-
-        <div class="cta-journey" aria-label="User journey steps">
-          <div class="cta-journey-step">
-            <div class="cta-journey-num" aria-hidden="true">1</div>
-            <div class="cta-journey-label">Search</div>
-            <div class="cta-journey-desc">Find any Melbourne CBD building by street address or click it on the 3D map</div>
-          </div>
-          <div class="cta-journey-arrow" aria-hidden="true">→</div>
-          <div class="cta-journey-step">
-            <div class="cta-journey-num" aria-hidden="true">2</div>
-            <div class="cta-journey-label">Analyse</div>
-            <div class="cta-journey-desc">Instantly see solar score, annual energy output, financial payback, and CO₂ savings</div>
-          </div>
-          <div class="cta-journey-arrow" aria-hidden="true">→</div>
-          <div class="cta-journey-step">
-            <div class="cta-journey-num" aria-hidden="true">3</div>
-            <div class="cta-journey-label">Plan</div>
-            <div class="cta-journey-desc">Compare buildings side-by-side and export data to support solar investment decisions</div>
-          </div>
-        </div>
-
-        <div class="cta-benefits" role="list" aria-label="Key benefits">
-          <div class="cta-benefit" role="listitem">
-            <span class="cta-benefit-check" aria-hidden="true">✓</span> Free &amp; open data
-          </div>
-          <div class="cta-benefit-divider" aria-hidden="true"></div>
-          <div class="cta-benefit" role="listitem">
-            <span class="cta-benefit-check" aria-hidden="true">✓</span> 19,000+ buildings analysed
-          </div>
-          <div class="cta-benefit-divider" aria-hidden="true"></div>
-          <div class="cta-benefit" role="listitem">
-            <span class="cta-benefit-check" aria-hidden="true">✓</span> No sign-up required
-          </div>
-        </div>
-
-        <div class="cta-actions">
-          <button class="btn-cta" @click="goToExplore">Explore the Map →</button>
-          <RouterLink class="btn-cta-ghost" to="/precincts">View Suburb</RouterLink>
-        </div>
-      </div>
-    </section>
 
     </main>
 
@@ -796,7 +754,7 @@ const stats = ref([
 
 // ── Existing marketing content ────────────────────────────────────────────────
 const exploreFeatures = [
-  '3D colour-coded map of 40,000+ Melbourne CBD buildings',
+  '3D colour-coded map of 19,000+ Melbourne CBD buildings',
   'Search any building instantly by street address',
   'Filter by roof type, solar score, and height',
   'Click any building to open a full three-panel analysis',
@@ -1758,7 +1716,23 @@ onMounted(async () => {
 .text-link:focus-visible { outline: 2px solid var(--city-light); outline-offset: 3px; border-radius: 2px; }
 
 .split-media { display: flex; align-items: center; justify-content: center; }
-.split-img { width: 100%; border-radius: 16px; box-shadow: 0 24px 64px rgba(var(--black-rgb),0.14), 0 4px 16px rgba(var(--black-rgb),0.08); object-fit: cover; }
+.split-img { width: 100%; border-radius: 16px; box-shadow: 0 24px 64px rgba(var(--black-rgb),0.14), 0 4px 16px rgba(var(--black-rgb),0.08); object-fit: cover; display: block; }
+.split-img-link {
+  position: relative; display: block; border-radius: 16px; overflow: hidden;
+  cursor: pointer; text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.split-img-link:hover { transform: translateY(-4px); box-shadow: 0 32px 72px rgba(var(--black-rgb),0.2), 0 6px 20px rgba(var(--black-rgb),0.12); }
+.split-img-link:hover .split-img { filter: brightness(0.82); }
+.split-img-overlay {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  background: var(--city-light); color: #fff;
+  padding: 9px 22px; border-radius: 100px;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  opacity: 0; transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.split-img-link:hover .split-img-overlay { opacity: 1; }
 
 .panel-trio { margin-top: 80px; position: relative; z-index: 1; }
 .panel-trio-label { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 24px; text-align: center; }
@@ -2044,14 +2018,15 @@ onMounted(async () => {
 
 /* ── Precinct rank badge ──────────────────────────────────── */
 .rank-badge {
-  flex-shrink: 0; border-radius: 10px; padding: 10px 13px;
-  text-align: center; min-width: 68px;
-  background: rgba(var(--city-light-rgb), 0.10);
-  color: var(--city-light);
+  flex-shrink: 0; border-radius: 12px; padding: 12px 16px;
+  text-align: center; min-width: 76px;
+  background: var(--city-light);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
 }
-.rank-badge-num  { font-family: 'DM Serif Display', serif; font-size: 22px; line-height: 1; }
-.rank-badge-of   { font-size: 11px; opacity: 0.7; }
-.rank-badge-tier { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 4px; }
+.rank-badge-num  { font-family: 'DM Serif Display', serif; font-size: 30px; line-height: 1; font-weight: 700; }
+.rank-badge-of   { font-size: 11px; opacity: 0.8; margin-top: 1px; }
+.rank-badge-tier { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; opacity: 0.9; }
 
 /* ── Results: building card + AI chat ─────────────────────── */
 .results-layout {
@@ -2190,8 +2165,8 @@ onMounted(async () => {
 }
 .ai-msg--user .ai-msg-bubble { background: var(--city-light); color: white; border-radius: 12px 12px 2px 12px; }
 .ai-msg--ai   .ai-msg-bubble { background: var(--surface2); color: var(--text-primary); border-radius: 12px 12px 12px 2px; }
-.ai-msg-bubble .ai-list { margin: 4px 0 0 0; padding-left: 18px; }
-.ai-msg-bubble .ai-list li { margin-bottom: 2px; }
+.ai-msg-bubble .ai-list { margin: 6px 0 4px 0; padding-left: 22px; }
+.ai-msg-bubble .ai-list li { margin-bottom: 4px; padding-left: 2px; }
 .ai-msg-bubble .ai-inline-code { font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.08); padding: 1px 4px; border-radius: 3px; }
 .ai-msg-bubble strong { font-weight: 600; }
 

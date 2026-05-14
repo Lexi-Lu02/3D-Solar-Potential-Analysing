@@ -37,13 +37,19 @@
                 <div class="rankings-label">Rankings</div>
                 <div class="sidebar-title">Suburb Solar Rankings</div>
               </div>
-              <button
-                class="sidebar-export-btn"
-                @click="exportPrecinctsCsv"
-                aria-label="Export suburb data as CSV"
-              >
-                Export CSV
-              </button>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button
+                  class="sidebar-export-btn"
+                  @click="guideStep = 0; showGuide = true"
+                  aria-label="Open page guide"
+                  title="How to use this page"
+                >Guide</button>
+                <button
+                  class="sidebar-export-btn"
+                  @click="exportPrecinctsCsv"
+                  aria-label="Export suburb data as CSV"
+                >Export CSV</button>
+              </div>
             </div>
           </div>
 
@@ -75,9 +81,6 @@
                     :style="{ width: Math.max(4, 100 - ((selectedPrecinct.rank - 1) / Math.max(1, sortedPrecincts.length - 1)) * 100) + '%', background: tierColor(selectedPrecinct.tier) }"
                   ></div>
                 </div>
-                <div class="score-tier" :style="{ color: tierColor(selectedPrecinct.tier) }">
-                  {{ tierLabel(selectedPrecinct.tier) }}
-                </div>
               </div>
 
               <div class="section-title">Suburb Info</div>
@@ -103,27 +106,27 @@
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKwh(selectedPrecinct.total_kwh) }}</div>
                   <div class="metric-label">Total Annual Output</div>
-                  <div class="metric-sub">total_kwh_annual</div>
+                  <div class="metric-sub">Est. electricity generated per year</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatArea(selectedPrecinct.total_area) }}</div>
                   <div class="metric-label">Total Usable Roof Area</div>
-                  <div class="metric-sub">total_usable_area_m2</div>
+                  <div class="metric-sub">Solar-viable rooftop space</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKw(selectedPrecinct.installed_capacity_kw) }}</div>
                   <div class="metric-label">Installed Capacity</div>
-                  <div class="metric-sub">installed_capacity_kw</div>
+                  <div class="metric-sub">Solar already deployed</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-val">{{ formatKw(selectedPrecinct.potential_capacity_kw) }}</div>
                   <div class="metric-label">Potential Capacity</div>
-                  <div class="metric-sub">potential_capacity_kw</div>
+                  <div class="metric-sub">Maximum achievable solar capacity</div>
                 </div>
                 <div class="metric-card metric-card--wide">
                   <div class="metric-val">{{ selectedPrecinct.adoption_gap_kw != null ? formatKw(selectedPrecinct.adoption_gap_kw) : formatKwh(selectedPrecinct.adoption_gap) }}</div>
                   <div class="metric-label">Adoption Gap</div>
-                  <div class="metric-sub">adoption_gap_kw</div>
+                  <div class="metric-sub">Untapped capacity still available</div>
                 </div>
               </div>
 
@@ -194,6 +197,57 @@
     </main>
 
     <div class="toast" role="status" aria-live="polite" aria-atomic="true" :class="{ show: toastVisible }">{{ toastMessage }}</div>
+
+    <!-- User guide overlay -->
+    <Transition name="onboarding-fade">
+      <div v-if="showGuide" class="onboarding-overlay" role="dialog" aria-modal="true" :aria-labelledby="`guide-title-${guideStep}`">
+        <div class="onboarding-card guide-card">
+
+          <div class="guide-header-row">
+            <span class="guide-counter">{{ guideStep + 1 }} / {{ PRECINCT_GUIDE_STEPS.length }}</span>
+            <button class="onboarding-skip" @click="dismissGuide" aria-label="Close guide">✕ Skip guide</button>
+          </div>
+
+          <div class="guide-body">
+            <div class="guide-icon" aria-hidden="true" v-html="PRECINCT_GUIDE_STEPS[guideStep].icon"></div>
+            <h2 class="guide-title" :id="`guide-title-${guideStep}`">{{ PRECINCT_GUIDE_STEPS[guideStep].title }}</h2>
+            <p class="guide-desc">{{ PRECINCT_GUIDE_STEPS[guideStep].desc }}</p>
+            <div v-if="PRECINCT_GUIDE_STEPS[guideStep].tip" class="guide-tip">
+              <span class="guide-tip-label">Tip</span>
+              {{ PRECINCT_GUIDE_STEPS[guideStep].tip }}
+            </div>
+          </div>
+
+          <div class="guide-dots" role="tablist" aria-label="Guide progress">
+            <button
+              v-for="(_, i) in PRECINCT_GUIDE_STEPS"
+              :key="i"
+              class="guide-dot"
+              :class="{ 'guide-dot--active': i === guideStep, 'guide-dot--done': i < guideStep }"
+              @click="guideStep = i"
+              :aria-label="`Go to step ${i + 1}`"
+              role="tab"
+              :aria-selected="i === guideStep"
+            ></button>
+          </div>
+
+          <div class="guide-nav">
+            <button class="guide-nav-back" :disabled="guideStep === 0" @click="guideStep--" aria-label="Previous step">← Back</button>
+            <button
+              v-if="guideStep < PRECINCT_GUIDE_STEPS.length - 1"
+              class="onboarding-cta guide-nav-next"
+              @click="guideStep++"
+            >Next →</button>
+            <button
+              v-else
+              class="onboarding-cta guide-nav-next"
+              @click="dismissGuide"
+            >Explore Suburbs →</button>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -327,6 +381,44 @@ function tierColor(tier) { return TIER_COLORS[tier] ?? MAP_COLORS.solarModerate 
 function tierLabel(tier) { return TIER_LABELS[tier] ?? `Rank ${tier + 1}` }
 
 // ── Reactive state (variables that update the UI when they change) ────────────
+
+// ── Guide state ───────────────────────────────────────────────────────────────
+const showGuide = ref(true)
+const guideStep = ref(0)
+
+const PRECINCT_GUIDE_STEPS = [
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="var(--city-light)" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M18 6l1.8-1.8M4.2 19.8l1.8-1.8" stroke="var(--city-light)" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    title: 'Welcome to Suburb Solar Rankings',
+    desc: 'This page lets you explore the solar potential of every Melbourne CBD suburb at a glance. The map is colour-coded by solar rank, and the sidebar shows a ranked table you can sort and export.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="var(--city-light)" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="6" r="2" fill="var(--city-light)"/><circle cx="16" cy="12" r="2" fill="var(--city-light)"/><circle cx="10" cy="18" r="2" fill="var(--city-light)"/></svg>`,
+    title: 'Sort the Rankings',
+    desc: 'Use the sort tabs at the top of the sidebar to reorder suburbs by Annual Output, Roof Area, Buildings, or Adoption Gap. The map and list update together so you always see the same ranking.',
+    tip: 'Sort by Adoption Gap to find suburbs with the most untapped solar capacity — ideal for targeting policy interventions.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M5 9c0-3.87 3.13-7 7-7s7 3.13 7 7c0 4.5-5.5 11-7 13C10.5 20 5 13.5 5 9z" stroke="var(--city-light)" stroke-width="1.8"/><circle cx="12" cy="9" r="2.5" stroke="var(--city-light)" stroke-width="1.6"/></svg>`,
+    title: 'Explore the Map',
+    desc: 'Each suburb polygon on the map is shaded from orange (highest solar potential) to blue (lowest). Click any suburb to select it, or click a row in the sidebar list. The map zooms in and highlights your selection.',
+    tip: 'Drag and scroll to navigate the map. The colour gradient across all 14 suburbs shows you the spread of solar opportunity at a glance.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--city-light)" stroke-width="1.8"/><path d="M7 8h10M7 12h7M7 16h5" stroke="var(--city-light)" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+    title: 'Suburb Detail Panel',
+    desc: 'Clicking a suburb opens its full detail view in the sidebar. You\'ll see its rank, a solar capacity breakdown (installed vs potential), total annual output, usable roof area, building count, and the adoption gap.',
+    tip: 'The adoption gap bar shows how much potential capacity is still untapped — a small installed segment means a big opportunity.',
+  },
+  {
+    icon: `<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 9v12h6v-6h6v6h6V9L12 3z" stroke="var(--city-light)" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+    title: 'Export Data',
+    desc: 'Click Export CSV in the sidebar header to download the full ranked suburb dataset — or just the selected suburb\'s detail — as a spreadsheet. Use it in planning tools, reports, or presentations.',
+    tip: 'When a suburb is selected the export covers just that suburb\'s stats. Return to the rankings list first to export all suburbs.',
+  },
+]
+
+function dismissGuide() { showGuide.value = false }
 
 // true while data is being loaded or calculated — shows the loading spinner overlay.
 const isLoading     = ref(true)
