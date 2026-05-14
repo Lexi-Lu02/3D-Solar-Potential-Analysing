@@ -453,7 +453,7 @@
                       <span class="fin-metric-label">Annual Savings</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Annual savings assumptions">i</button>
-                        <div class="fin-tooltip-box">Annual Generation × $0.28/kWh Melbourne commercial electricity tariff (avoided grid purchase cost).</div>
+                        <div class="fin-tooltip-box">Annual Generation × $0.2575/kWh Victorian electricity tariff (avoided grid purchase cost).</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">${{ financialMetrics.annualSavings.toLocaleString() }}</div>
@@ -567,7 +567,7 @@
                     <span class="fin-hero-label">Est. Annual CO₂ Reduction</span>
                     <div class="fin-tooltip-wrap">
                       <button class="fin-info-btn" aria-label="CO₂ reduction assumptions">i</button>
-                      <div class="fin-tooltip-box">Annual Generation × {{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e/kWh (sourced from Google Solar API carbon_offset_kg_per_mwh; falls back to 0.79 kg CO₂e/kWh Australian national average).</div>
+                      <div class="fin-tooltip-box">Annual Generation × {{ envMetrics.carbonKgPerKwh.toFixed(3) }} kg CO₂e/kWh Victorian grid emission factor.</div>
                     </div>
                   </div>
                   <div class="fin-hero-val">
@@ -608,7 +608,7 @@
                       <span class="fin-metric-label">Cars Off the Road</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Cars equivalent assumptions">i</button>
-                        <div class="fin-tooltip-box">CO₂ Reduction ÷ 2,100 kg CO₂/yr (average Australian car at 180 g/km × 12,000 km/yr).</div>
+                        <div class="fin-tooltip-box">CO₂ Reduction ÷ 2,190 kg CO₂/yr average car emissions.</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">{{ envMetrics.carsOffRoad.toLocaleString() }}</div>
@@ -620,7 +620,7 @@
                       <span class="fin-metric-label">Homes Powered</span>
                       <div class="fin-tooltip-wrap">
                         <button class="fin-info-btn" aria-label="Homes powered assumptions">i</button>
-                        <div class="fin-tooltip-box">Annual Generation ÷ 7,227 kWh average annual Victorian household consumption (AER 2023).</div>
+                        <div class="fin-tooltip-box">Annual Generation ÷ 4,615 kWh average annual Victorian household consumption.</div>
                       </div>
                     </div>
                     <div class="fin-metric-val">{{ envMetrics.homesPowered.toLocaleString() }}</div>
@@ -653,7 +653,7 @@
                   </div>
                   <div class="fin-assumption-row"><span>Tree CO₂ absorption</span><span>21.77 kg CO₂ / yr</span></div>
                   <div class="fin-assumption-row"><span>Petrol energy equivalent</span><span>8.9 kWh / litre</span></div>
-                  <div class="fin-assumption-row"><span>Average car emissions</span><span>2,100 kg CO₂ / yr</span></div>
+                  <div class="fin-assumption-row"><span>Average car emissions</span><span>2,190 kg CO₂ / yr</span></div>
                   <div class="fin-assumption-row fin-assumption-row--input">
                     <span>Vic. household consumption</span>
                     <span class="fin-assumption-input-wrap">
@@ -1076,7 +1076,7 @@ const monthlyOutput = computed(() => {
 // Financial assumption defaults — Melbourne 2024 commercial averages.
 const DEFAULT_COST_PER_WATT  = 1.20
 const DEFAULT_PANEL_CAPACITY = 400
-const DEFAULT_TARIFF         = 0.28
+const DEFAULT_TARIFF         = 0.2575
 const DEFAULT_EFFICIENCY     = 20    // percent
 const DEFAULT_PERF_RATIO     = 75    // percent
 
@@ -1098,11 +1098,11 @@ function resetAssumptions() {
 // Environmental conversion factors — static scientific constants.
 const TREE_CO2_KG_PER_YEAR  = 21.77  // kg CO₂ absorbed per mature tree per year (U.S. Forest Service)
 const PETROL_KWH_PER_LITRE  = 8.9    // energy equivalent of 1 litre of petrol
-const CAR_CO2_KG_PER_YEAR   = 2100   // avg Australian car: 180 g/km × 12,000 km/yr
+const CAR_CO2_KG_PER_YEAR   = 2190   // average car emissions for temporary display
 
 // User-adjustable environmental conversion factors.
-const DEFAULT_GRID_EMISSION  = 0.79   // kg CO₂e/kWh, Australian national avg
-const DEFAULT_HOME_KWH       = 7227   // average Victorian household annual consumption (AER 2023)
+const DEFAULT_GRID_EMISSION  = 0.86   // kg CO₂e/kWh, Victorian grid factor for temporary display
+const DEFAULT_HOME_KWH       = 4615   // average Victorian household annual consumption for temporary display
 const DEFAULT_SYSTEM_LIFE    = 25     // typical commercial solar panel lifespan
 
 const convGridEmission = ref(DEFAULT_GRID_EMISSION)
@@ -1118,11 +1118,8 @@ function resetConversionFactors() {
 const envMetrics = computed(() => {
   const annualKwh = formulaKwhAnnual.value
   if (!selectedBuilding.value || annualKwh <= 0) return null
-  // Use building-specific carbon offset factor from Google Solar API if available,
-  // otherwise fall back to the user-adjustable grid emission ref.
-  const carbonKgPerKwh  = solarApiData.value?.carbonOffsetKgPerMwh != null
-    ? solarApiData.value.carbonOffsetKgPerMwh / 1000
-    : convGridEmission.value
+  // Temporary display uses the Victorian grid factor from the assumptions panel.
+  const carbonKgPerKwh  = convGridEmission.value
   const co2Kg          = Math.round(annualKwh * carbonKgPerKwh)
   const treesEquiv     = Math.round(co2Kg / TREE_CO2_KG_PER_YEAR)
   const petrolLitres   = Math.round(annualKwh / PETROL_KWH_PER_LITRE)
@@ -1962,7 +1959,7 @@ function exportBuildingCsv() {
       ['Max Solar Panels', fm.maxPanels != null ? fm.maxPanels.toLocaleString() : '—'],
       ['Assumption - Panel Capacity', '400 W/panel'],
       ['Assumption - Install Cost Rate', '$1.20 / W'],
-      ['Assumption - Electricity Tariff', '$0.28 / kWh'],
+      ['Assumption - Electricity Tariff', '$0.2575 / kWh'],
     )
   } else {
     rows.push(['Financial Analysis', 'No data — select a building with solar data'])
@@ -1978,11 +1975,11 @@ function exportBuildingCsv() {
       ['Cars Off the Road', em.carsOffRoad.toLocaleString() + ' cars/yr'],
       ['Homes Powered', em.homesPowered.toLocaleString() + ' homes/yr'],
       ['Lifetime CO₂ Savings', em.lifetimeCo2T.toLocaleString() + ' tonnes CO₂'],
-      ['Conversion - Grid Emission Factor', '0.79 kg CO₂e / kWh'],
+      ['Conversion - Grid Emission Factor', '0.86 kg CO₂e / kWh'],
       ['Conversion - Tree CO₂ Absorption', '21.77 kg CO₂ / yr'],
       ['Conversion - Petrol Energy Equiv.', '8.9 kWh / litre'],
-      ['Conversion - Avg. Car Emissions', '2,100 kg CO₂ / yr'],
-      ['Conversion - Vic. Household Consumption', '7,227 kWh / yr'],
+      ['Conversion - Avg. Car Emissions', '2,190 kg CO₂ / yr'],
+      ['Conversion - Vic. Household Consumption', '4,615 kWh / yr'],
       ['Conversion - System Lifespan', '25 years'],
     )
   } else {

@@ -1486,13 +1486,13 @@ async function askBackendAi(messages, contextText, userType) {
 }
 
 const ASSUMPTIONS = {
-  electricity_tariff_aud_per_kwh: 0.25,
+  electricity_tariff_aud_per_kwh: 0.2575,
   install_cost_per_m2_aud: 150,
   peak_sun_hours_per_day: 4.1,
-  co2_emission_factor_kg_per_kwh: 0.727,
+  co2_emission_factor_kg_per_kwh: 0.86,
   co2_trees_equiv_factor: 45,
-  co2_cars_equiv_factor_tonnes: 4.6,
-  avg_home_annual_kwh: 7227,
+  co2_cars_equiv_factor_tonnes: 2.19,
+  avg_home_annual_kwh: 4615,
   petrol_co2_kg_per_litre: 2.31,
   system_lifetime_years: 25,
 }
@@ -1621,9 +1621,9 @@ async function selectOwnerResult(result) {
     const scoreAvg      = yieldData?.solar_score_avg ?? null
     const solarScore    = (scoreAvg !== null && scoreAvg > 0) ? Math.round(scoreAvg * 10) / 10 : null
     const installCost   = usableArea ? Math.round(usableArea * 150) : null
-    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * 0.25) : null
+    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.electricity_tariff_aud_per_kwh) : null
     const paybackYears  = (installCost && annualSavings > 0) ? Math.round(installCost / annualSavings * 10) / 10 : null
-    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
+    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.co2_emission_factor_kg_per_kwh) / 1000 : null
     ownerBuilding.value = {
       id: result.id,
       address: result.address,
@@ -1722,7 +1722,7 @@ function getOwnerReply(q, b) {
   if (q.includes('co2') || q.includes('carbon') || q.includes('environment') || q.includes('climate')) {
     if (b.co2Tonnes) {
       const trees = Math.round(b.co2Tonnes * 45)
-      const cars  = Math.round(b.co2Tonnes / 4.6)
+      const cars  = Math.round(b.co2Tonnes / ASSUMPTIONS.co2_cars_equiv_factor_tonnes)
       return `Installing solar on this building would offset approximately ${b.co2Tonnes} tonnes of CO₂ per year — equivalent to planting ${trees.toLocaleString()} trees or taking ${cars} cars off Melbourne's roads. See the Environmental Impact panel for more detail.`
     }
     return `Environmental impact data requires yield estimates for this building. See the Environmental Impact panel below for more detail.`
@@ -1843,9 +1843,9 @@ async function selectPlannerBuildingResult(result) {
     const scoreAvg      = yieldData?.solar_score_avg ?? null
     const solarScore    = (scoreAvg !== null && scoreAvg > 0) ? Math.round(scoreAvg * 10) / 10 : null
     const installCost   = usableArea ? Math.round(usableArea * 150) : null
-    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * 0.25) : null
+    const annualSavings = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.electricity_tariff_aud_per_kwh) : null
     const paybackYears  = (installCost && annualSavings > 0) ? Math.round(installCost / annualSavings * 10) / 10 : null
-    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * 0.727) / 1000 : null
+    const co2Tonnes     = kwhAnnual  ? Math.round(kwhAnnual * ASSUMPTIONS.co2_emission_factor_kg_per_kwh) / 1000 : null
     plannerResult.value = {
       type: 'building',
       id: result.id,
