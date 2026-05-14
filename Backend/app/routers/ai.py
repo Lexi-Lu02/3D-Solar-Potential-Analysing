@@ -15,15 +15,19 @@ real class references, not stringified forward refs.
 """
 
 import logging
-from typing import Any, Literal
+from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from psycopg import Connection
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..db import get_conn
 from ..rate_limit import limiter
+from ..services.ai_context import ContextPayload
+from ..services.ai_debug import DebugTrace, recorder
 from ..services.ai_service import AIService, ToolTrace, get_ai_service
 
 logger = logging.getLogger(__name__)
@@ -60,12 +64,14 @@ class ChatRequest(BaseModel):
             "Omit (null) to let the assistant ask a clarifying question."
         ),
     )
-    context: dict[str, Any] | None = Field(
+    context: ContextPayload | None = Field(
         None,
         description=(
-            "Pre-computed building/precinct data from the frontend (solar, "
-            "financial, environmental metrics). Injected into the system prompt "
-            "as trusted data so the model can answer without tool lookups."
+            "Trusted, pre-computed context the frontend wants the AI to use "
+            "directly without calling tools to re-verify. Use this for the "
+            "currently-selected building / precinct and any user-tweaked "
+            "assumptions (electricity tariff, season, etc.). All fields are "
+            "typed and bounded to prevent prompt injection through this path."
         ),
     )
 
@@ -78,6 +84,10 @@ class ReportRequest(BaseModel):
     user_type: UserType | None = Field(
         None,
         description="Same persona picker as /chat. Defaults to generic.",
+    )
+    context: ContextPayload | None = Field(
+        None,
+        description="Same trusted-context channel as /chat. See ChatRequest.context.",
     )
 
 
@@ -121,7 +131,24 @@ def chat(
         )
 
     messages = [m.model_dump() for m in body.messages]
-    result = ai.chat(conn, messages, mode=body.mode, user_type=body.user_type, context=body.context)
+    trace = DebugTrace(
+        enabled=get_settings().ai_debug_log,
+        request_id=getattr(request.state, "request_id", None),
+    )
+    trace.request_in(
+        endpoint="/api/v1/ai/chat",
+        mode=body.mode,
+        user_type=body.user_type,
+        messages=messages,
+    )
+    result = ai.chat(
+        conn,
+        messages,
+        mode=body.mode,
+        user_type=body.user_type,
+        context=body.context,
+        trace=trace,
+    )
 
     return ChatResponse(
         reply=result.reply,
@@ -130,6 +157,60 @@ def chat(
         blocked=result.blocked,
         block_reason=result.block_reason,
     )
+
+
+# --- Debug viewer ----------------------------------------------------------
+# Both routes are gated on AI_DEBUG_LOG to avoid leaking prompts/replies in
+# production. They are intentionally NOT rate-limited (operator tooling).
+
+_DEBUG_HTML_PATH = Path(__file__).resolve().parent.parent / "static" / "ai_debug.html"
+
+
+def _require_debug_enabled() -> None:
+    if not get_settings().ai_debug_log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI debug viewer is disabled. Set AI_DEBUG_LOG=true in .env to enable.",
+        )
+
+
+@router.get(
+    "/debug/traces",
+    summary="Recent AI request traces (newest first). Gated on AI_DEBUG_LOG=true.",
+    response_class=JSONResponse,
+)
+def debug_traces() -> JSONResponse:
+    _require_debug_enabled()
+    return JSONResponse({"traces": recorder.snapshot()})
+
+
+@router.get(
+    "/debug/ui",
+    summary="HTML viewer for recent AI request traces. Gated on AI_DEBUG_LOG=true.",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def debug_ui() -> HTMLResponse:
+    _require_debug_enabled()
+    try:
+        html = _DEBUG_HTML_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Debug UI template missing: {_DEBUG_HTML_PATH}",
+        )
+    return HTMLResponse(html)
+
+
+@router.post(
+    "/debug/clear",
+    summary="Clear the in-memory trace buffer. Gated on AI_DEBUG_LOG=true.",
+    response_class=JSONResponse,
+)
+def debug_clear() -> JSONResponse:
+    _require_debug_enabled()
+    recorder.clear()
+    return JSONResponse({"cleared": True})
 
 
 @router.post(
@@ -162,11 +243,24 @@ def report(
     )
     user_text = "\n".join(parts)
 
-    result = ai.chat(
-        conn,
-        messages=[{"role": "user", "content": user_text}],
+    messages = [{"role": "user", "content": user_text}]
+    trace = DebugTrace(
+        enabled=get_settings().ai_debug_log,
+        request_id=getattr(request.state, "request_id", None),
+    )
+    trace.request_in(
+        endpoint="/api/v1/ai/report",
         mode="report",
         user_type=body.user_type,
+        messages=messages,
+    )
+    result = ai.chat(
+        conn,
+        messages=messages,
+        mode="report",
+        user_type=body.user_type,
+        context=body.context,
+        trace=trace,
     )
 
     return ChatResponse(

@@ -56,12 +56,33 @@ class Settings(BaseSettings):
     )
     ai_max_tokens_per_request: int = Field(4000, ge=256, le=16000)
     ai_max_tool_iterations: int = Field(6, ge=1, le=20)
+    ai_call_timeout_seconds: float = Field(
+        25.0,
+        ge=5.0,
+        le=120.0,
+        description="Per-LLM-call HTTP timeout. Must be < nginx proxy_read_timeout.",
+    )
+    ai_total_timeout_seconds: float = Field(
+        45.0,
+        ge=10.0,
+        le=300.0,
+        description="Total budget for one /ai/chat or /ai/report request "
+        "across all tool-loop iterations. Hard-stop before nginx 504s.",
+    )
     ai_rate_limit_per_minute: int = Field(10, ge=1)
     ai_history_window: int = Field(20, ge=2, description="Max messages kept after truncation")
     ai_history_max_tokens: int = Field(4000, ge=256, description="Approx token budget for history")
     ai_enable_self_critique: bool = Field(
         True,
         description="Run a second qwen-flash call to verify the output before returning",
+    )
+    ai_debug_log: bool = Field(
+        False,
+        description=(
+            "When true, log full request/response payloads and per-call timing "
+            "for every /ai/* request. Use during dev only - very chatty and "
+            "may include user content in logs."
+        ),
     )
 
     @property
