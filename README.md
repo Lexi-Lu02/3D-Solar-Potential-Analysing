@@ -12,6 +12,8 @@
 
 1. [Getting Started — Logging In](#1-getting-started--logging-in)
 2. [Home Page](#2-home-page)
+   - [Property Owner Journey](#property-owner-journey)
+   - [City Planner Journey](#city-planner-journey)
 3. [3D Explore — The Main Map](#3-3d-explore--the-main-map)
    - [Navigating the Map](#navigating-the-map)
    - [Searching for a Building or Address](#searching-for-a-building-or-address)
@@ -44,7 +46,9 @@
 
 ## 2. Home Page
 
-The home page gives you a quick overview of what the platform covers and live statistics pulled from the building database.
+The home page combines live statistics with a personalised AI-powered journey. After choosing your role, a step-by-step flow guides you to the most relevant parts of the platform.
+
+**Live statistics** shown in the hero:
 
 | Stat card | What it means |
 |---|---|
@@ -53,7 +57,27 @@ The home page gives you a quick overview of what the platform covers and live st
 | **Annual Solar Yield** | Estimated combined kWh that could be generated per year if all usable space had panels |
 | **High-Potential Sites** | Buildings with a solar score of 4 or above (out of 5) |
 
-From the home page, click **Explore the 3D Map** or **Explore the Map** to jump straight into the interactive map. You can also use the navigation bar at the top to jump to any section.
+Click **Start Your Journey** or scroll down to the journey section, then select your role.
+
+### Property Owner Journey
+
+1. Click the **Property Owner** card.
+2. Type a Melbourne CBD address in the search bar — suggestions appear as you type.
+3. Select a result to load your building's solar snapshot (score, roof area, estimated annual kWh).
+4. A three-step progress bar tracks where you are:
+   - **Step 1 — Search Building**: select any building by address.
+   - **Step 2 — Review Insights**: hover over the AI Solar Assistant chat to ask questions about your building's solar potential, estimated costs, and return on investment.
+   - **Step 3 — Explore Details**: click any of the three analysis panels (Solar Potential, Financial Analysis, Environmental Impact) to jump directly to that panel in the 3D Explore view with your building pre-selected.
+
+### City Planner Journey
+
+1. Click the **City Planner** card.
+2. Select a suburb from the dropdown list — the precinct's key numbers load instantly.
+3. Alternatively, search for a specific building by address within the planner view.
+4. A three-step progress bar tracks where you are:
+   - **Step 1 — Select Suburb**: choose a Melbourne CBD precinct from the dropdown.
+   - **Step 2 — Explore Data**: interact with the AI Solar Assistant or review the precinct's adoption gap data.
+   - **Step 3 — View Maps**: navigate to the Suburb Rankings map or the 3D Explore view for deeper analysis.
 
 ---
 
@@ -178,30 +202,30 @@ Use the **Season selector** to see how output and savings change across Summer, 
 You can compare any two buildings side-by-side:
 
 1. Select a building by clicking it on the map.
-2. Click **Add to Compare** in the right panel.
-3. Click a second building on the map and click **Add to Compare** again.
+2. Click **Comparison** in the Planning Actions section of the right panel.
+3. Click a second building on the map and click **Comparison** again.
 4. The **comparison panel** slides in from the bottom showing both buildings' key metrics next to each other.
 5. The metric where one building clearly wins is marked with a **★**.
-6. To swap in a different building, select it and click **Add to Compare** — it replaces the oldest one in the pair.
+6. To swap in a different building, select it and click **Comparison** — it replaces the oldest one in the pair.
 7. Click the **×** on either building card to remove it from the comparison.
 
 ### Sharing a Building
 
 1. Select any building.
-2. Click **Copy Shareable Link** in the right panel.
+2. Click **Copy Shareable Link** in the Planning Actions section of the right panel.
 3. Share the copied URL — anyone who opens it will land directly on that building with the solar panel open.
 
 ### Exporting Data
 
 1. Select a building.
-2. Click **Export CSV** in the right panel.
+2. Click **Export CSV** in the Planning Actions section of the right panel.
 3. A `.csv` file downloads with all visible metrics for that building (solar score, kWh, roof area, financial estimates, assumptions used, etc.).
 
 ---
 
 ## 4. Precincts — Neighbourhood Rankings
 
-The **Precincts** page (accessible from the top navigation bar) ranks Melbourne CBD's neighbourhoods by their solar opportunity.
+The **Precincts** page (accessible from the top navigation bar as **Suburb**) ranks Melbourne CBD's neighbourhoods by their solar opportunity.
 
 **What you see:**
 
@@ -261,6 +285,7 @@ The **map colour-coding** is based on this same 1–5 scale, mapped visually so 
 | See the full year's data | Scroll to the monthly chart; hover each bar for exact values |
 | Find high-potential buildings fast | Apply the **Excellent** Solar Potential filter, then click any dark-green building |
 | Share the exact view | Use Copy Shareable Link — the URL includes the building ID |
+| Start an AI-guided analysis | Go to the Home page, pick a role, and use the AI Solar Assistant |
 
 ---
 
@@ -279,13 +304,16 @@ A: The map loads ~19,000 building polygons at once. On a slow connection this ca
 A: Yes. Use pinch-to-zoom and two-finger drag to tilt the 3D view. The layout adjusts for smaller screens, though the comparison panel works best on a wider display.
 
 **Q: Does the site save my session?**  
-A: The login state is saved in your browser's session storage. It persists until you close the tab or clear browser data. You will not need to re-enter the password if you navigate between pages.
+A: The login state is saved in your browser's session storage. It persists until you close the tab or clear browser data. You will not need to re-enter the password if you navigate between pages. The AI chat history on the Home page is also saved in local storage so it persists across visits.
 
 **Q: Why do some buildings look grey with no colour?**  
 A: Grey buildings have no survey data. If a Solar Potential filter is active, buildings outside the selected tier are also hidden, which can make many buildings disappear.
 
 **Q: What does the Adoption Gap on the Precincts page mean?**  
 A: It is the difference between the total solar capacity that *could* be installed (kW) and what is *currently* installed in that area. A large gap means the precinct has a lot of untapped solar potential.
+
+**Q: What is the AI Solar Assistant?**  
+A: It is a Claude-powered chatbot embedded in the Home page journey. It receives the details of your selected building or suburb and can answer plain-language questions about solar potential, estimated costs, payback periods, and CO₂ savings without you needing to read the raw numbers yourself.
 
 ---
 
@@ -356,16 +384,21 @@ npm run build
 ├── Frontend/
 │   ├── src/
 │   │   ├── views/
-│   │   │   ├── HomeView.vue              # Landing page with live stats
+│   │   │   ├── HomeView.vue              # Landing page: AI journey, stats, features
 │   │   │   ├── ExploreView.vue           # Main 3D map, sidebar, filters, comparison
 │   │   │   ├── PrecinctsView.vue         # Precinct rankings map
-│   │   │   ├── PasswordView.vue          # Access code gate
-│   │   │   └── FeaturePlaceholderView.vue # Coming-soon stub (AI Insights)
+│   │   │   └── PasswordView.vue          # Access code gate
 │   │   ├── components/
 │   │   │   ├── MainNavbar.vue            # Shared top navigation bar
-│   │   │   └── FilterPanel.vue           # Solar + roof type filter sidebar
-│   │   ├── router/index.js               # Routes: /, /explore, /precincts, /insights, /login
-│   │   ├── pictures/                     # PNG icons
+│   │   │   ├── FilterPanel.vue           # Solar + roof type filter sidebar
+│   │   │   ├── ComparisonPanel.vue       # Bottom comparison drawer
+│   │   │   ├── MonthlyChart.vue          # Monthly kWh bar chart
+│   │   │   ├── FormulaCard.vue           # Collapsible solar formula explanation
+│   │   │   └── SubnavToolbar.vue         # Search bar + filter toggle on Explore page
+│   │   ├── composables/
+│   │   │   └── useHomeJourney.js         # Singleton state for the Home page journeys
+│   │   ├── router/index.js               # Routes: /, /explore, /precincts, /login
+│   │   ├── pictures/                     # PNG icons and map screenshots
 │   │   ├── main.js
 │   │   └── style.css                     # Global styles and CSS custom properties
 │   └── vite.config.js
@@ -376,7 +409,7 @@ npm run build
 │       ├── main.py                       # FastAPI app factory
 │       ├── models/schemas.py             # Pydantic response models
 │       ├── routers/                      # FastAPI route handlers
-│       ├── services/                     # Business logic (yield calc, building queries)
+│       ├── services/                     # Business logic (yield calc, building queries, AI context)
 │       └── sql/                          # Raw SQL files
 │
 └── Data wrangling/
@@ -397,10 +430,12 @@ Interactive docs: `/api/v1/docs`
 | `GET /buildings/structure/{id}/yield` | Monthly + annual kWh, solar_score_avg |
 | `GET /buildings/{id}/solar` | Solar cache data (panels, usable area, kWh, address) |
 | `GET /buildings/{id}` | Full building record (geometry, height, roof type, solar) |
+| `GET /buildings/{id}/impact` | Financial and environmental impact estimates |
 | `GET /precincts` | List of precincts with installed/potential capacity and adoption gap |
 | `GET /sun/position` | Sun altitude and azimuth for a given date/time |
 | `GET /sun/path` | Full day arc of sun positions |
-| `GET /buildings/{id}/impact` | Financial and environmental impact estimates |
+| `POST /ai/chat` | AI Solar Assistant — streaming chat with trusted building/precinct context |
+| `POST /ai/report` | AI-generated solar summary report for a selected building |
 
 ### Data sources
 
@@ -410,7 +445,8 @@ Interactive docs: `/api/v1/docs`
 | Rooftop solar survey | [City of Melbourne — Rooftops with Environmental Retrofitting Opportunities](https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/) | CC BY 4.0 |
 | Suburb boundaries | [ABS — ASGS Edition 3 Digital Boundary Files](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files) | ABS data licence |
 | Per-building solar data | [Google Solar API](https://developers.google.com/maps/documentation/solar) — pre-fetched and cached | Google Maps Platform ToS |
-| Monthly PSH | [NASA POWER Data Access Viewer](https://power.larc.nasa.gov/data-access-viewer/) (2001–2020 climatology), calibrated to BOM station 086338 (4.1 PSH/day) | Public domain |
+| Monthly PSH | [NASA POWER Data Access Viewer](https://power.larc.nasa.gov/data-access-viewer/) (2001–2020 climatology), calibrated to [BOM station 086338](https://www.bom.gov.au/jsp/ncc/cdio/weatherData/av?p_nccObsCode=203&p_display_type=dataFile&p_startYear=&p_c=&p_stn_num=086338) (4.1 PSH/day) | Public domain |
+| Installed solar capacity | [APVI Solar Map](https://pv-map.apvi.org.au/postcode) | APVI |
 | Base map tiles | [CartoDB Light](https://carto.com/basemaps/) via OpenStreetMap | ODbL |
 | Reverse geocoding | [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org/) | ODbL |
 
@@ -425,3 +461,18 @@ kwh_annual         = usable_roof_area × 0.20 (panel efficiency)
 ```
 
 Monthly kWh uses per-month PSH values so `sum(kwh_monthly) == kwh_annual` exactly.
+
+**Financial constants**
+
+| Parameter | Value | Basis |
+|---|---|---|
+| Installation cost | $1,100 / kW | Industry average, AU |
+| Electricity tariff | $0.30 / kWh | Typical retail rate, VIC |
+| System lifetime | 25 years | Standard warranty period |
+
+**Environmental constants**
+
+| Parameter | Value | Source |
+|---|---|---|
+| Grid emission factor | 0.79 kg CO₂ / kWh | DCCEEW National Greenhouse Accounts 2024 |
+| CO₂ per tree per year | 22 kg | Used as reference absorption rate |

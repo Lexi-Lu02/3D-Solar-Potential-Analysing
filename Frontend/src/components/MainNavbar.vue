@@ -119,7 +119,13 @@ const navItems = [
   align-items: center;
   gap: 18px;
   min-height: 64px;
-  flex-shrink: 0;  /* prevents the navbar from shrinking when the page content is tall */
+  flex-shrink: 0;
+  /* Sticky so the bar stays pinned when the page scrolls (HomeView, PrecinctsView).
+     On non-scrolling pages (ExploreView) there is no scroll container so sticky
+     has no visual effect there. */
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 /* Logo + text side by side */
@@ -221,19 +227,6 @@ const navItems = [
 /* Right side slot (empty, for future use) */
 .main-nav-right {
   margin-left: auto;  /* pushes this div to the far right */
-}
-
-/* Badge style (currently unused but available for future features like notifications) */
-.main-nav-badge {
-  background: var(--ink-active);
-  color: var(--nav-active-color);
-  border: 1px solid var(--ink-active-border);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  padding: 6px 12px;
 }
 
 /* ── Responsive adjustments ────────────────────────────────────────────────── */

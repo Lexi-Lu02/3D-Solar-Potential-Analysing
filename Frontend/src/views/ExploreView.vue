@@ -230,7 +230,38 @@
         </Transition>
       </div><!-- end .map-area -->
 
-      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Building details panel">
+      <aside
+        class="sidebar"
+        :class="['sheet--' + mobileSheetState, { 'sidebar--collapsed': !sidebarOpen }]"
+        aria-label="Building details panel"
+      >
+        <!-- Mobile-only drag handle — cycles peek → half → full on tap -->
+        <div class="sheet-handle" @click="cycleSheetState" role="button" aria-label="Toggle panel height">
+          <div class="sheet-handle-bar"></div>
+        </div>
+
+        <!-- Mobile-only horizontal tabs -->
+        <div class="sidebar-tabs-h" role="tablist" aria-label="Sidebar sections">
+          <button
+            class="sidebar-tab-h"
+            :class="{ active: activeTab === 'details' }"
+            @click="activeTab = 'details'"
+            role="tab" :aria-selected="activeTab === 'details'"
+          >Solar</button>
+          <button
+            class="sidebar-tab-h"
+            :class="{ active: activeTab === 'finance' }"
+            @click="activeTab = 'finance'"
+            role="tab" :aria-selected="activeTab === 'finance'"
+          >Financial</button>
+          <button
+            class="sidebar-tab-h"
+            :class="{ active: activeTab === 'env' }"
+            @click="activeTab = 'env'"
+            role="tab" :aria-selected="activeTab === 'env'"
+          >Environment</button>
+        </div>
+
         <button
           class="sidebar-strip-btn"
           @click="sidebarOpen = !sidebarOpen"
@@ -784,7 +815,7 @@ export default { name: 'ExploreView' }
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Vue's reactivity helpers.
-import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 
 // MapLibre GL JS — the open-source map rendering engine.
 import maplibregl from 'maplibre-gl'
@@ -923,8 +954,21 @@ let searchDebounceTimer  = null         // timer handle to delay API calls while
 // Guide overlay — shown on every page load and whenever the user clicks "Guide" in the subnav.
 const showOnboarding = ref(true)   // always show on mount
 const guideStep      = ref(0)      // current step index (0-based)
-const sidebarOpen    = ref(false)
-const filtersOpen    = ref(false)
+const sidebarOpen       = ref(false)
+const filtersOpen       = ref(false)
+const mobileSheetState  = ref('peek')   // 'peek' | 'half' | 'full'
+
+function cycleSheetState() {
+  if (mobileSheetState.value === 'peek')      mobileSheetState.value = 'half'
+  else if (mobileSheetState.value === 'half') mobileSheetState.value = 'full'
+  else                                         mobileSheetState.value = 'peek'
+}
+
+watch(selectedBuilding, (building) => {
+  if (building && window.innerWidth <= 768 && mobileSheetState.value === 'peek') {
+    mobileSheetState.value = 'half'
+  }
+})
 
 // 8-step guide content. icon is an inline SVG string.
 const GUIDE_STEPS = [
