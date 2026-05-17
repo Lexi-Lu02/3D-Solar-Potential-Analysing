@@ -1262,6 +1262,10 @@ body {
   .planning-actions { grid-template-columns: 1fr; }
 }
 
+/* Mobile-only elements hidden on desktop */
+.sheet-handle  { display: none; }
+.sidebar-tabs-h { display: none; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MOBILE — ≤ 768px (phones & small tablets)
    These rules override the desktop layout so everything stacks vertically
@@ -1269,33 +1273,84 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
-  /* ── Map page: stack the map and sidebar vertically instead of side-by-side ── */
-  .main { flex-direction: column; }
+  /* ── Map fills all remaining space — sidebar overlays as a bottom sheet ── */
+  .map-area { flex: 1; }
 
-  /* Map occupies the top portion of the screen at a fixed height */
-  .map-area {
-    flex: 0 0 48vh;
-    min-height: 200px;
-  }
-
-  /* Sidebar expands to fill the bottom portion, full width */
+  /* Bottom sheet: fixed overlay anchored to the bottom of the viewport */
   .sidebar {
-    width: 100% !important;   /* override the fixed 430px desktop width */
-    flex: 1 1 auto;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    height: 120px;                /* peek state default */
+    flex-direction: column;
     border-left: none;
-    border-top: 2px solid var(--border);
-    overflow-y: auto;
-    transition: none;         /* disable the width-based transition on mobile */
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    z-index: 200;
+    overflow: hidden;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* On mobile the sidebar is always fully expanded — no collapsed strip */
-  .sidebar--collapsed { width: 100% !important; }
+  /* Sheet height states — toggled by class in JavaScript */
+  .sidebar.sheet--peek { height: 120px; }
+  .sidebar.sheet--half { height: 50vh; }
+  .sidebar.sheet--full { height: 92dvh; }
 
-  /* Hide the thin vertical collapse strip (it collapses by width on desktop) */
+  /* Collapsed maps to peek (strip button is hidden anyway) */
+  .sidebar--collapsed { width: 100% !important; height: 120px; }
+
+  /* Desktop-only controls that don't work in sheet mode */
   .sidebar-strip-btn { display: none; }
+  .sidebar-tabs-v    { display: none; }
 
   /* Allow the body area to shrink below its 312px desktop minimum */
   .sidebar-body { min-width: 0; }
+
+  /* ── Sheet drag handle ── */
+  .sheet-handle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .sheet-handle-bar {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  /* ── Horizontal tabs (mobile only) ── */
+  .sidebar-tabs-h {
+    display: flex;
+    padding: 4px 16px 8px;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-tab-h {
+    flex: 1;
+    padding: 7px 4px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .sidebar-tab-h.active {
+    color: var(--city-light);
+    border-bottom-color: var(--accent-warm);
+  }
 
   /* ── Sun path panel: stack columns top-to-bottom, remove horizontal scroll ── */
   .sunpath-panel-body {

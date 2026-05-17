@@ -666,7 +666,6 @@
               <RouterLink class="footer-link footer-link--url" to="/">Home</RouterLink>
               <RouterLink class="footer-link footer-link--url" to="/explore">3D Explore</RouterLink>
               <RouterLink class="footer-link footer-link--url" to="/precincts">Suburb</RouterLink>
-              <RouterLink class="footer-link footer-link--url" to="/insights">AI Insights</RouterLink>
             </div>
             <div class="footer-col">
               <div class="footer-col-title">Built With</div>
@@ -723,13 +722,11 @@ import icon3DBuilding   from '../pictures/3D Building Extrusion.png'
 import iconSolarScore   from '../pictures/Solar Score Ranking.png'
 import iconRoofType     from '../pictures/Roof Type Filtering.png'
 import iconEnergy       from '../pictures/Energy Estimates.png'
-import iconClickInspect from '../pictures/Click-to-Inspect.png'
 import iconComparison   from '../pictures/Comparison View.png'
 import iconSolarCell    from '../pictures/solar-cell.png'
 import iconProfits      from '../pictures/profits.png'
 import iconPlanetEarth  from '../pictures/planet-earth.png'
 import iconPrecinct     from '../pictures/precinct.png'
-import iconAiInsights   from '../pictures/ai insights.png'
 import img3dExplore     from '../pictures/3D Explore map.png'
 import imgPrecinct      from '../pictures/Precincts Map.png'
 
@@ -810,7 +807,6 @@ const features = [
   { icon: iconPlanetEarth, title: 'Environmental Impact',     desc: 'See annual CO₂ reduction, equivalent trees planted, and cars taken off the road for every building.' },
   { icon: iconPrecinct,    title: 'Suburb Solar Rankings',    desc: 'Explore an interactive map of Melbourne CBD suburbs ranked and colour-coded by solar potential tier.' },
   { icon: iconComparison,  title: 'Adoption Gap Analysis',    desc: 'Compare installed vs potential solar capacity for each suburb to identify where the biggest untapped opportunities lie.' },
-  { icon: iconAiInsights,  title: 'AI Solar Assistant',       desc: 'Chat with an AI assistant about any building or suburb — get plain-language solar guidance tailored to property owners and city planners.' },
 ]
 
 // Explore panel CTAs used in the owner journey
