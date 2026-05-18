@@ -194,11 +194,10 @@ body {
 
 /*
   SIDEBAR COLLAPSE ANIMATION
-  The sidebar collapses by animating width: 430px → 28px over 0.28 seconds.
-  transition: width 0.28s ease — CSS automatically interpolates between the two
-  width values whenever the .sidebar--collapsed class is added/removed via Vue.
-  flex-shrink: 0 prevents the sidebar from getting squished by the map; the map
-  area (flex: 1) absorbs all the space changes instead.
+  Collapses to 48px (the icon tab strip width) instead of a separate arrow button.
+  tabs-v has order:1 so it sorts to the left in the flex row — it stays visible
+  when the sidebar clips to 48px.  sidebar-body has order:2 so it sits to the
+  right and gets clipped when collapsed.
 */
 .sidebar {
   width: 430px; background: var(--surface);
@@ -206,32 +205,39 @@ body {
   display: flex; flex-direction: row; overflow: hidden; flex-shrink: 0;
   transition: width 0.28s ease;
 }
-.sidebar--collapsed { width: 28px; }
+.sidebar--collapsed { width: 48px; }
 .sidebar-tabs-v {
-  width: 48px; flex-shrink: 0;
+  width: 48px; flex-shrink: 0; order: 1;
   display: flex; flex-direction: column;
   background: var(--ink2);
 }
 .sidebar-tab-v {
-  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
   background: none; border: none;
-  cursor: pointer; padding: 0;
+  cursor: pointer; padding: 10px 4px;
   font-family: 'DM Sans', sans-serif;
   transition: background 0.18s;
+}
+.tab-v-icon {
+  width: 18px; height: 18px; object-fit: contain; flex-shrink: 0;
+  opacity: 0.55; transition: opacity 0.15s;
 }
 .sidebar-tab-v + .sidebar-tab-v { border-top: 1px solid var(--ink-border); }
 .sidebar-tab-v span {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: 14px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--nav-link);
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--nav-link);
   white-space: nowrap; user-select: none;
   transition: color 0.15s;
 }
 .sidebar-tab-v:hover { background: var(--ink); }
 .sidebar-tab-v:hover span { color: var(--nav-text); }
+.sidebar-tab-v:hover .tab-v-icon { opacity: 0.9; }
 .sidebar-tab-v.active { background: var(--surface); }
 .sidebar-tab-v.active span { color: var(--city-light); letter-spacing: 0.1em; }
+.sidebar-tab-v.active .tab-v-icon { opacity: 1; }
 .sidebar-strip-btn {
   width: 28px; flex-shrink: 0;
   background: none; border: none; border-right: 1px solid var(--border);
@@ -241,9 +247,10 @@ body {
 }
 .sidebar-strip-btn:hover { background: var(--surface2); color: var(--text-primary); }
 .sidebar-body {
-  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 312px;
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; order: 2;
 }
-.sidebar-header { position: sticky; top: 0; z-index: 5; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); background: var(--surface); margin-bottom: 16px; }
+/* Title scrolls with content — not pinned to top */
+.sidebar-header { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); background: var(--surface); margin-bottom: 16px; }
 .sidebar-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
 .search-row { display: block; margin-top: 10px; }
 .search-input-wrap { position: relative; width: 100%; }
@@ -1262,6 +1269,7 @@ body {
   .planning-actions { grid-template-columns: 1fr; }
 }
 
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MOBILE — ≤ 768px (phones & small tablets)
    These rules override the desktop layout so everything stacks vertically
@@ -1269,40 +1277,45 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
-  /* ── Map page: stack the map and sidebar vertically instead of side-by-side ── */
-  .main { flex-direction: column; }
+  /* ── Map fills all space; sidebar overlays from the right ── */
+  .map-area { flex: 1; }
+  .main { position: relative; }
 
-  /* Map occupies the top portion of the screen at a fixed height */
-  .map-area {
-    flex: 0 0 48vh;
-    min-height: 200px;
-  }
-
-  /* Sidebar expands to fill the bottom portion, full width */
+  /* Sidebar: absolute right-side overlay, always shows the 48px icon strip */
   .sidebar {
-    width: 100% !important;   /* override the fixed 430px desktop width */
-    flex: 1 1 auto;
-    border-left: none;
-    border-top: 2px solid var(--border);
-    overflow-y: auto;
-    transition: none;         /* disable the width-based transition on mobile */
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 48px;
+    border-left: 1px solid var(--border);
+    z-index: 200;
+    transition: width 0.28s ease, box-shadow 0.28s ease;
   }
 
-  /* On mobile the sidebar is always fully expanded — no collapsed strip */
-  .sidebar--collapsed { width: 100% !important; }
+  /* Expanded on mobile: slides out to cover most of the map */
+  .sidebar:not(.sidebar--collapsed) {
+    width: min(360px, 92vw);
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.35);
+  }
 
-  /* Hide the thin vertical collapse strip (it collapses by width on desktop) */
+  /* Override the global collapsed width so it stays at 48px strip */
+  .sidebar--collapsed { width: 48px; }
+
+  /* Strip button is replaced by the icon tabs on mobile */
   .sidebar-strip-btn { display: none; }
 
-  /* Allow the body area to shrink below its 312px desktop minimum */
-  .sidebar-body { min-width: 0; }
-
   /* ── Sun path panel: stack columns top-to-bottom, remove horizontal scroll ── */
+  .sunpath-panel {
+    right: 48px;
+    max-height: 65vh;
+    display: flex;
+    flex-direction: column;
+  }
+
   .sunpath-panel-body {
     flex-direction: column;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 240px;
+    flex: 1;
   }
 
   .sunpath-panel-col {

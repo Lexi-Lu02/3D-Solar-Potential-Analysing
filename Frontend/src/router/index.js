@@ -17,8 +17,6 @@ import HomeView from '../views/HomeView.vue'
 import PasswordView from '../views/PasswordView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import PrecinctsView from '../views/PrecinctsView.vue'
-import InsightsView from '../views/InsightsView.vue'
-
 
 
 // ── Authentication state ──────────────────────────────────────────────────────
@@ -37,7 +35,7 @@ let isAuthenticated = sessionStorage.getItem('auth') === 'true'
 //   name      → a short nickname used in code (e.g. router.push({ name: 'home' }))
 //   component → which Vue file to show
 //   meta      → extra information (here: whether the page requires login)
-//   props     → static data passed to the component (used by FeaturePlaceholderView)
+//   props     → static data passed to the component
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -69,13 +67,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      // AI Insights page — plain-English Q&A interface over solar data.
-      path: '/insights',
-      name: 'insights',
-      component: InsightsView,
-      meta: { requiresAuth: true },
-    },
-    { 
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
@@ -122,12 +113,6 @@ router.beforeEach((to) => {
 function setAuthenticated(value) {
   isAuthenticated = value
   sessionStorage.setItem('auth', value ? 'true' : 'false')
-}
-
-// Clears the login state — exported so a future logout button can call it.
-function logout() {
-  isAuthenticated = false
-  sessionStorage.removeItem('auth')
 }
 
 // Export setAuthenticated so PasswordView can call it after a correct password.

@@ -230,24 +230,11 @@
         </Transition>
       </div><!-- end .map-area -->
 
-      <aside class="sidebar" :class="{ 'sidebar--collapsed': !sidebarOpen }" aria-label="Building details panel">
-        <button
-          class="sidebar-strip-btn"
-          @click="sidebarOpen = !sidebarOpen"
-          :aria-label="sidebarOpen ? 'Collapse building details panel' : 'Expand building details panel'"
-          :aria-expanded="sidebarOpen"
-          aria-controls="sidebar-body"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              :d="sidebarOpen ? 'M10 4l-4 4 4 4' : 'M6 4l4 4-4 4'"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
+      <aside
+        class="sidebar"
+        :class="{ 'sidebar--collapsed': !sidebarOpen }"
+        aria-label="Building details panel"
+      >
         <div id="sidebar-body" class="sidebar-body">
           <div class="sidebar-content">
             <template v-if="activeTab === 'details'">
@@ -659,32 +646,41 @@
             </template>
           </div>
         </div>
-        <!-- Vertical section tabs on right edge -->
+        <!-- Icon tab strip — clicking opens/collapses each panel -->
         <div class="sidebar-tabs-v" role="tablist" aria-label="Sidebar sections">
           <button
             class="sidebar-tab-v"
-            :class="{ active: activeTab === 'details' }"
-            @click="activeTab = 'details'"
+            :class="{ active: activeTab === 'details' && sidebarOpen }"
+            @click="onTabClick('details')"
             role="tab"
-            :aria-selected="activeTab === 'details'"
+            :aria-selected="activeTab === 'details' && sidebarOpen"
             aria-label="Solar Potential"
-          ><span>Solar Potential</span></button>
+          >
+            <img :src="iconSolarCell" class="tab-v-icon" alt="" aria-hidden="true" />
+            <span>Solar</span>
+          </button>
           <button
             class="sidebar-tab-v"
-            :class="{ active: activeTab === 'finance' }"
-            @click="activeTab = 'finance'"
+            :class="{ active: activeTab === 'finance' && sidebarOpen }"
+            @click="onTabClick('finance')"
             role="tab"
-            :aria-selected="activeTab === 'finance'"
+            :aria-selected="activeTab === 'finance' && sidebarOpen"
             aria-label="Financial Analysis"
-          ><span>Financial Analysis</span></button>
+          >
+            <img :src="iconProfits" class="tab-v-icon" alt="" aria-hidden="true" />
+            <span>Finance</span>
+          </button>
           <button
             class="sidebar-tab-v"
-            :class="{ active: activeTab === 'env' }"
-            @click="activeTab = 'env'"
+            :class="{ active: activeTab === 'env' && sidebarOpen }"
+            @click="onTabClick('env')"
             role="tab"
-            :aria-selected="activeTab === 'env'"
+            :aria-selected="activeTab === 'env' && sidebarOpen"
             aria-label="Environmental Impact"
-          ><span>Environmental Impact</span></button>
+          >
+            <img :src="iconPlanetEarth" class="tab-v-icon" alt="" aria-hidden="true" />
+            <span>Environ.</span>
+          </button>
         </div>
       </aside>
     </main>
@@ -923,8 +919,20 @@ let searchDebounceTimer  = null         // timer handle to delay API calls while
 // Guide overlay — shown on every page load and whenever the user clicks "Guide" in the subnav.
 const showOnboarding = ref(true)   // always show on mount
 const guideStep      = ref(0)      // current step index (0-based)
-const sidebarOpen    = ref(false)
-const filtersOpen    = ref(false)
+const sidebarOpen = ref(false)
+const filtersOpen = ref(false)
+
+// Icon tab click: expand to that tab, or collapse if already on that tab
+function onTabClick(tab) {
+  if (!sidebarOpen.value) {
+    activeTab.value = tab
+    sidebarOpen.value = true
+  } else if (activeTab.value === tab) {
+    sidebarOpen.value = false
+  } else {
+    activeTab.value = tab
+  }
+}
 
 // 8-step guide content. icon is an inline SVG string.
 const GUIDE_STEPS = [

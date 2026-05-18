@@ -550,4 +550,78 @@ function compareEnvMetrics(item) {
 .comparison-empty-icon { color: rgba(255,255,255,0.20); transition: color 0.18s; }
 .comparison-empty-hint { font-size: 13px; color: var(--nav-text-muted); text-align: center; line-height: 1.7; }
 .comparison-empty-hint strong { color: var(--nav-link); }
+
+@media (max-width: 768px) {
+  /* Panel: leave room for icon strip, scrollable vertically */
+  .comparison-panel {
+    right: 48px;
+    padding: 10px 12px 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  /* Header row — compact */
+  .comparison-header { margin-bottom: 8px; }
+  .comparison-title { font-size: 11px; letter-spacing: 0.4px; }
+  .comparison-count { font-size: 11px; padding: 1px 6px; }
+  .compare-add-btn { display: none; }
+  .compare-clear-footer-btn { font-size: 11px; padding: 4px 8px; }
+
+  /* Body: stack cards vertically instead of side-by-side */
+  .comparison-body {
+    flex-direction: column;
+    overflow-x: hidden;
+    gap: 0;
+  }
+
+  /* Each building card fills full width */
+  .comparison-col,
+  .comparison-empty-col {
+    flex: none;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 8px;
+  }
+
+  /* Building label badge + address on same row, address 2-line clamp */
+  .comparison-col-header { flex-wrap: nowrap; align-items: flex-start; gap: 6px; }
+  .comparison-col-label  { font-size: 10px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; }
+  .comparison-building-id {
+    font-size: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.35;
+  }
+
+  /* Score card — single row for label + number */
+  .comparison-score-card { padding: 7px 10px; gap: 5px; }
+  .comparison-score-row  { flex-wrap: nowrap; align-items: center; }
+  .comparison-score-label { font-size: 10px; white-space: nowrap; }
+  .comparison-score-num   { font-size: 18px; white-space: nowrap; }
+  .comparison-tier-badge  { font-size: 10px; padding: 1px 6px; }
+
+  /* Metric rows */
+  .comparison-metric-row  { font-size: 12px; padding: 5px 6px; }
+  .comparison-metric-label { white-space: nowrap; }
+  .comparison-winner-badge { font-size: 11px; }
+
+  /* Reorder so VS sits between the two building cards in the column layout */
+  .comparison-body > .comparison-col:nth-child(1) { order: 1; }
+  .comparison-vs {
+    order: 2;
+    position: relative;
+    left: auto; top: auto;
+    transform: none;
+    align-self: center;
+    margin: 4px auto;
+    width: 28px; height: 28px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .comparison-body > .comparison-col:nth-child(2) { order: 3; }
+}
 </style>

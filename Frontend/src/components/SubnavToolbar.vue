@@ -132,7 +132,8 @@
           :value="searchQuery"
           type="text"
           class="subnav-search-input"
-          placeholder="Search by address…"
+          placeholder="Address fragment, e.g. Collins"
+          title="Search by street name or address fragment. Use at least 2 characters."
           autocomplete="off"
           role="combobox"
           :aria-expanded="searchResults.length > 0 || searchLoading"
@@ -217,7 +218,7 @@
         role="listbox"
         id="search-listbox"
       >
-        <li class="search-dropdown-empty">No matching addresses found</li>
+        <li class="search-dropdown-empty">No match</li>
       </ul>
 
       <!-- Error message (shown if the search API request fails) -->

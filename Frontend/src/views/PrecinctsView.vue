@@ -165,8 +165,7 @@
                 >
                   <!-- Precinct name + rank -->
                   <div class="pt-col-name">
-                    <div class="p-rank" :class="{ 'p-rank--top5': p.rank <= 5 }">{{ p.rank }}</div>
-                    <div class="p-dot" :style="{ background: tierColor(p.tier) }"></div>
+                    <div class="p-rank" :style="{ background: tierColor(p.tier) }">{{ p.rank }}</div>
                     <div class="p-name">{{ p.name }}</div>
                   </div>
                   <!-- kWh -->
@@ -1067,17 +1066,13 @@ onUnmounted(() => {
 .precinct-row--top5 { background: rgba(var(--city-light-rgb), 0.05); }
 .precinct-row--top5:hover { background: rgba(var(--city-light-rgb), 0.10); }
 
-/* Rank badge */
+/* Rank badge — background colour comes from tierColor() via :style binding */
 .p-rank {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: 8px; font-size: 13px; font-weight: 700;
-  color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
+  color: #1C1710; border: none;
 }
-.p-rank--top5 { background: var(--ink); color: var(--white); border-color: var(--ink); }
-
-/* Tier color dot */
-.p-dot { width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; }
 
 /* Precinct name */
 .p-name {
@@ -1119,4 +1114,57 @@ onUnmounted(() => {
   transition: opacity 0.2s ease, transform 0.2s ease; z-index: 9999;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Mobile layout ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Column layout — sidebar first, map below */
+  .main { flex-direction: column; }
+
+  /* Revert the global bottom-sheet positioning that ExploreView uses */
+  .sidebar {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    height: auto !important;
+    max-height: 55vh;
+    border-radius: 0 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    width: 100% !important;
+    flex-direction: row !important; /* keep strip-btn + body + tabs-v in a row */
+    flex: 0 0 auto;
+    overflow: auto;
+    order: 0;                        /* sidebar renders first (top) */
+    transition: none !important;
+  }
+
+  /* Map renders second (below the rankings panel) */
+  #precinct-map {
+    order: 1;
+    flex: 1;
+    min-height: 260px;
+  }
+
+  /* Force table wider than viewport so it scrolls horizontally */
+  .precinct-table-head,
+  .precinct-row { min-width: 490px; padding-left: 10px; padding-right: 10px; }
+
+  /* Fix header text being clipped */
+  .precinct-table-head > div {
+    overflow: visible;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Fix name column — remove flex:1 so it doesn't swallow extra space */
+  .pt-col-name { flex: none; width: 130px; min-width: 0; }
+
+  .pt-col-kwh  { width: 88px;  padding-right: 6px; }
+  .pt-col-area { width: 78px;  padding-right: 6px; }
+  .pt-col-bldg { width: 72px;  padding-right: 6px; }
+  .pt-col-stat { width: 95px;  justify-content: flex-end; }
+  .pt-col-stat .mini-bar-track { display: none; }
+}
 </style>
