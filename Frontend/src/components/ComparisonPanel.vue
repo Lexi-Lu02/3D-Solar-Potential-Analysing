@@ -564,10 +564,7 @@ function compareEnvMetrics(item) {
   .comparison-header { margin-bottom: 8px; }
   .comparison-title { font-size: 11px; letter-spacing: 0.4px; }
   .comparison-count { font-size: 11px; padding: 1px 6px; }
-  .compare-add-btn {
-    font-size: 11px; padding: 4px 8px; padding-left: 10px;
-    margin-left: 4px; gap: 4px;
-  }
+  .compare-add-btn { display: none; }
   .compare-clear-footer-btn { font-size: 11px; padding: 4px 8px; }
 
   /* Body: stack cards vertically instead of side-by-side */
