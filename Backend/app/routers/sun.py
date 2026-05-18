@@ -85,7 +85,6 @@ def get_path(
 )
 def get_psh_monthly(response: Response) -> PshMonthlyResponse:
     # season_factor = avg(PSH for season months) / avg(PSH all year)
-    # same formula as solar_impact._season_factor (Epic 6),
     # exposed here so the frontend can render a calculation breakdown.
     response.headers["Cache-Control"] = _LONG_CACHE
     psh_list = list(MONTHLY_PSH)

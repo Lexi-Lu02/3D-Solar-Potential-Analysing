@@ -94,7 +94,7 @@ pytest
 | **AI 相关（Epic 7）** | | | |
 | `DASHSCOPE_API_KEY` | ✅* | — | 阿里云 DashScope API Key（Qwen），从 https://dashscope.console.aliyun.com 申请。`*` 留空时所有 `/ai/*` 端点会返回兜底拒答而不是 500，方便没有 key 时也能跑其他接口 |
 | `QWEN_BASE_URL` | ❌ | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI 兼容端点；只在切换私有部署 / 国际版时改 |
-| `QWEN_MODEL` | ❌ | `qwen-flash` | 单一模型负责 chat / report / 安全自检。报告质量不够时可改 `qwen-plus` 或 `qwen-max` |
+| `QWEN_MODEL` | ❌ | `qwen3.5-flash` | 单一模型负责 chat / report / 安全自检。报告质量不够时可改 `qwen-plus` 或 `qwen-max` |
 | `AI_MAX_TOKENS_PER_REQUEST` | ❌ | `4000` | 单次调用 `max_tokens` |
 | `AI_MAX_TOOL_ITERATIONS` | ❌ | `6` | 工具循环上限，防死循环 |
 | `AI_RATE_LIMIT_PER_MINUTE` | ❌ | `10` | 每 IP 每分钟 `/ai/*` 请求次数 |
@@ -546,87 +546,6 @@ curl -sf http://localhost:8000/api/v1/precincts/21640 | jq '{name, building_coun
 
 ---
 
-### 5.11 `GET /api/v1/buildings/{id}/impact` *(Epic 6)*
-
-**用途:** 按建筑返回完整的财务 + 环境影响指标（系统容量、安装成本、回本年限、CO₂ 抵消、等价树木 / 汽油 / 汽车）。前端调一次拿全，不在前端复刻常量与公式。
-
-**路径参数**
-
-| 参数 | 类型 | 约束 | 含义 |
-|---|---|---|---|
-| `id` | int | `≥ 1` | `buildings.id` 代理主键 |
-
-**查询参数**
-
-| 参数 | 类型 | 约束 | 默认 | 含义 |
-|---|---|---|---|---|
-| `season` | string | `annual` / `summer` / `autumn` / `winter` / `spring` | `annual` | 季节因子，用于按月度 PSH 调整 kWh |
-
-**响应 200**
-
-```json
-{
-  "structure_id": 12345,
-  "season": "annual",
-  "kwh_annual_seasonal": 9000.0,
-  "kwh_annual_base": 9000.0,
-  "system_size_kw": 6.2,
-  "financial": {
-    "installation_cost_aud": 6820,
-    "annual_savings_aud": 2700,
-    "payback_years": 2.5,
-    "lifetime_years": 25,
-    "lifetime_net_savings_aud": 60680
-  },
-  "environmental": {
-    "annual_co2_reduction_kg": 7110,
-    "co2_kg_per_kwh_used": 0.79,
-    "co2_factor_source": "google_api",
-    "equivalent_trees": 323,
-    "equivalent_petrol_litres": 3078,
-    "equivalent_cars": 1.6
-  },
-  "assumptions": {
-    "electricity_tariff_aud_per_kwh": 0.30,
-    "cost_per_kw_installed_aud": 1100,
-    "self_consumption_pct": 100,
-    "feed_in_tariff_included": false
-  }
-}
-```
-
-**字段说明**
-
-| 字段 | 含义 |
-|---|---|
-| `kwh_annual_base` | `solar_api_cache.max_panels_kwh_annual`（满功率年发电量） |
-| `kwh_annual_seasonal` | 按季节因子调整后的 kWh，`season=annual` 时与 base 相同 |
-| `system_size_kw` | `max_panels × panel_capacity_watts ÷ 1000`，单位 kW |
-| `financial.installation_cost_aud` | `system_size_kw × 1100`（Solar Choice 2025 中位数，已含 STC 补贴） |
-| `financial.annual_savings_aud` | `kwh_seasonal × 0.30`（VIC 2025 简化电价，假设全自用） |
-| `financial.payback_years` | 安装成本 ÷ 年节省 |
-| `financial.lifetime_net_savings_aud` | `lifetime_years × annual_savings − installation_cost` |
-| `environmental.co2_factor_source` | `google_api` 表示用 `solar_api_cache.carbon_offset_kg_per_mwh`；`dcceew_2024_fallback` 表示用 0.79 默认值 |
-| `environmental.equivalent_trees` | 年 CO₂ ÷ 22kg（EPA AU） |
-| `environmental.equivalent_petrol_litres` | 年 CO₂ ÷ 2.31kg（NGA Factors 2024） |
-| `environmental.equivalent_cars` | 年 CO₂ ÷ 4500kg（澳洲平均小汽车） |
-
-**季节因子算法:** `(sum of season's MONTHLY_PSH ÷ sum of all 12 months) × (12 ÷ months_in_season)`，结果是相对年均的归一化倍率。`annual` 恒为 1.0。
-
-无 `solar_api_cache` 记录的建筑返回 **404**。常量集中在 `app/services/solar_impact.py` 顶部，PM 评审改这里即可。
-
-**缓存:** `Cache-Control: public, max-age=86400`
-
-**curl 示例:**
-
-```bash
-# 默认年度
-curl -sf http://localhost:8000/api/v1/buildings/1/impact | jq '{system_size_kw, financial, environmental}'
-
-# 夏季季节因子
-curl -sf "http://localhost:8000/api/v1/buildings/1/impact?season=summer" | jq '.kwh_annual_seasonal'
-```
-
 ---
 
 ### 5.12 `POST /api/v1/ai/chat` *(Epic 7)*
@@ -796,7 +715,7 @@ curl -sf -X POST http://localhost:8000/api/v1/ai/report \
 |---|---|
 | LLM 提供商 | **阿里云 DashScope (Qwen)**，通过 OpenAI 兼容端点 |
 | 调用 SDK | `openai` Python SDK（指向 DashScope `base_url`） |
-| 默认模型 | `qwen-flash` —— chat、report、安全自检共用一个模型 |
+| 默认模型 | `qwen3.5-flash` —— chat、report、安全自检共用一个模型 |
 | DB 访问方式 | **原生 Function Calling**，不引入 MCP；工具集白名单化 |
 | 对话记忆 | **后端不入库**。前端 `localStorage` 持全量，每次 POST 把完整 `messages[]` 带上，后端做截断 |
 | Report 输出 | Markdown 纯文本，前端自行渲染 |
@@ -999,7 +918,6 @@ LLM 看到的是 system 消息里的"可信数据"，不是 user 消息里的"�
 | `usable_roof_area_m2` | float \| null (≥0) | |
 | `total_roof_area_m2` | float \| null (≥0) | |
 | `max_panels` | int \| null (≥0) | |
-| `system_size_kw` | float \| null (≥0) | |
 | `annual_kwh` | float \| null (≥0) | |
 | `install_cost_aud` | float \| null (≥0) | |
 | `annual_savings_aud` | float \| null (≥0) | |
