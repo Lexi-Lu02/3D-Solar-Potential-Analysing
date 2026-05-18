@@ -2,6 +2,7 @@
   <div class="home-screen">
     <MainNavbar />
 
+    <div class="home-scrollable">
     <main id="main-content">
 
     <!-- ── Hero ─────────────────────────────────────────────── -->
@@ -712,6 +713,7 @@
         </div>
       </div>
     </footer>
+    </div><!-- end .home-scrollable -->
   </div>
 </template>
 
@@ -1999,14 +2001,20 @@ onMounted(async () => {
 <style scoped>
 /* ── Base ─────────────────────────────────────────────────── */
 .home-screen {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   font-family: 'DM Sans', sans-serif;
   color: var(--text-primary);
+  overflow: hidden;
+}
+
+.home-scrollable {
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
 /* ── Hero ─────────────────────────────────────────────────── */
