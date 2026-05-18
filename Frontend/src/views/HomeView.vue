@@ -127,7 +127,8 @@
                     v-model="ownerAddressQuery"
                     type="text"
                     class="search-field"
-                    placeholder="Start typing a Melbourne CBD address…"
+                    placeholder="Street name or address fragment, e.g. Collins"
+                    title="Search known Melbourne CBD building addresses. Use at least 2 characters."
                     @input="onOwnerSearchInput"
                     @blur="ownerDropdownOpen = false"
                     @keydown.escape="ownerDropdownOpen = false"
@@ -149,6 +150,12 @@
                     {{ r.address }}
                   </button>
                 </div>
+                <div
+                  v-else-if="ownerDropdownOpen && ownerAddressQuery.trim().length >= 2 && !ownerSearchLoading"
+                  class="search-dropdown"
+                >
+                  <div class="search-dropdown-empty">No match</div>
+                </div>
               </div>
               <div v-if="ownerSearchError" class="search-not-found">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;color:var(--text-muted)">
@@ -157,7 +164,7 @@
                 <span>{{ ownerSearchError }}</span>
               </div>
               <div v-if="!ownerBuilding && !ownerSearchError && !ownerAddressQuery" class="search-hint-row">
-                Start typing to search any Melbourne CBD building address
+                Type a street name or address fragment, e.g. Collins or King Street. Minimum 2 characters.
               </div>
             </div>
 
@@ -322,7 +329,8 @@
                       v-model="plannerBuildingQuery"
                       type="text"
                       class="search-field"
-                      placeholder="Enter a building address…"
+                      placeholder="Street name or address fragment, e.g. Collins"
+                      title="Search known Melbourne CBD building addresses. Use at least 2 characters."
                       @input="onPlannerSearchInput"
                       @blur="plannerBuildingDropdownOpen = false"
                       @keydown.escape="plannerBuildingDropdownOpen = false"
@@ -342,6 +350,15 @@
                       {{ r.address }}
                     </button>
                   </div>
+                  <div
+                    v-else-if="plannerBuildingDropdownOpen && plannerBuildingQuery.trim().length >= 2 && !plannerBuildingLoading"
+                    class="search-dropdown"
+                  >
+                    <div class="search-dropdown-empty">No match</div>
+                  </div>
+                </div>
+                <div v-if="!plannerBuildingQuery" class="search-hint-row">
+                  Type a street name or address fragment. This search only matches known building addresses.
                 </div>
               </div>
             </div>
@@ -723,6 +740,8 @@ import iconSolarScore   from '../pictures/Solar Score Ranking.png'
 import iconRoofType     from '../pictures/Roof Type Filtering.png'
 import iconEnergy       from '../pictures/Energy Estimates.png'
 import iconComparison   from '../pictures/Comparison View.png'
+
+const plannerBuildingLoading = ref(false)
 import iconSolarCell    from '../pictures/solar-cell.png'
 import iconProfits      from '../pictures/profits.png'
 import iconPlanetEarth  from '../pictures/planet-earth.png'
@@ -1594,12 +1613,13 @@ function onOwnerSearchInput() {
     ownerSearchLoading.value = false
     return
   }
+  ownerDropdownOpen.value = true
   ownerSearchLoading.value = true
   homeTimers.owner = setTimeout(async () => {
     try {
       const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(q)}`)
       ownerSearchResults.value = res.ok ? await res.json() : []
-      ownerDropdownOpen.value = ownerSearchResults.value.length > 0
+      ownerDropdownOpen.value = true
     } catch { ownerSearchResults.value = [] }
     finally  { ownerSearchLoading.value = false }
   }, 250)
@@ -1823,14 +1843,18 @@ function onPlannerSearchInput() {
   if (q.length < 2) {
     plannerBuildingResults.value = []
     plannerBuildingDropdownOpen.value = false
+    plannerBuildingLoading.value = false
     return
   }
+  plannerBuildingDropdownOpen.value = true
+  plannerBuildingLoading.value = true
   homeTimers.planner = setTimeout(async () => {
     try {
       const res = await fetch(`${API_BASE}/buildings/search?q=${encodeURIComponent(q)}`)
       plannerBuildingResults.value = res.ok ? await res.json() : []
-      plannerBuildingDropdownOpen.value = plannerBuildingResults.value.length > 0
+      plannerBuildingDropdownOpen.value = true
     } catch { plannerBuildingResults.value = [] }
+    finally { plannerBuildingLoading.value = false }
   }, 250)
 }
 
@@ -2370,6 +2394,12 @@ onMounted(async () => {
 }
 .search-dropdown-item:hover { background: rgba(var(--city-light-rgb), 0.07); }
 .search-dropdown-item + .search-dropdown-item { border-top: 1px solid var(--border); }
+.search-dropdown-empty {
+  padding: 11px 14px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
 
 /* ── Search loading spinner ───────────────────────────────── */
 .search-spinner {
