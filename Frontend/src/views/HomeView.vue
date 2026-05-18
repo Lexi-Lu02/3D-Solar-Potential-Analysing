@@ -2989,6 +2989,8 @@ onMounted(async () => {
   .split { grid-template-columns: 1fr; gap: 40px; }
   .split--rev { direction: ltr; }
   .split--rev > * { direction: ltr; }
+  .split--rev .split-text  { order: 1; }
+  .split--rev .split-media { order: 2; }
   .panel-row { grid-template-columns: 1fr; gap: 14px; }
   .steps-line { display: none; }
   .steps-row { grid-template-columns: 1fr; gap: 28px; }

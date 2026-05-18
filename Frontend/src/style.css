@@ -1304,11 +1304,18 @@ body {
   .sidebar-strip-btn { display: none; }
 
   /* ── Sun path panel: stack columns top-to-bottom, remove horizontal scroll ── */
+  .sunpath-panel {
+    right: 48px;
+    max-height: 65vh;
+    display: flex;
+    flex-direction: column;
+  }
+
   .sunpath-panel-body {
     flex-direction: column;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 240px;
+    flex: 1;
   }
 
   .sunpath-panel-col {
