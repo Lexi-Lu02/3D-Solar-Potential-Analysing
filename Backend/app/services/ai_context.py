@@ -34,12 +34,11 @@ class BuildingContext(BaseModel):
     usable_roof_area_m2: float | None = Field(None, ge=0)
     total_roof_area_m2: float | None = Field(None, ge=0)
     max_panels: int | None = Field(None, ge=0)
-    system_size_kw: float | None = Field(None, ge=0)
 
     # Yield
     annual_kwh: float | None = Field(None, ge=0)
 
-    # Financial (already computed on the frontend or via /buildings/{id}/impact)
+    # Financial (computed on the frontend)
     install_cost_aud: float | None = Field(None, ge=0)
     annual_savings_aud: float | None = Field(None, ge=0)
     payback_years: float | None = Field(None, ge=0)
@@ -104,7 +103,6 @@ _BUILDING_FIELDS: list[tuple[str, str, Any]] = [
     ("usable_roof_area_m2",   "usable_roof_area_m2",      lambda v: _fmt_float(v, 1)),
     ("total_roof_area_m2",    "total_roof_area_m2",       lambda v: _fmt_float(v, 1)),
     ("max_panels",            "max_panels",               _fmt_int),
-    ("system_size_kw",        "system_size_kw",           lambda v: _fmt_float(v, 2)),
     ("annual_kwh",            "annual_kwh",               _fmt_int),
     ("install_cost_aud",      "install_cost_aud",         _fmt_int),
     ("annual_savings_aud",    "annual_savings_aud",       _fmt_int),
