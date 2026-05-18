@@ -247,34 +247,21 @@ const navItems = [
   }
 }
 
-/* On very small screens, wrap the navbar to two rows */
+/* Keep everything on one row on small screens */
 @media (max-width: 880px) {
   .main-nav {
-    flex-wrap: wrap;
-    gap: 10px;
-    padding-bottom: 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 14px;
   }
 
-  .main-nav-right {
-    margin-left: 0;
-  }
-
-  /* Nav links move to a second row */
   .main-nav-links {
-    order: 3;
-    width: 100%;
-    overflow-x: visible;  /* no horizontal scroll — links will wrap or go icon-only */
-    padding-bottom: 2px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    margin-left: 4px;
   }
-}
 
-/* ≤ 520px: show only icons so all four links fit on one row without overflow */
-@media (max-width: 520px) {
-  .main-nav { padding: 8px 14px; gap: 8px; }
-
-  .main-nav-links { gap: 4px; flex-wrap: nowrap; }
-
-  /* font-size: 0 hides the text label; the <img> icon is not affected */
+  /* Hide text labels, show icons only so brand + links fit on one line */
   .main-nav-link {
     font-size: 0;
     padding: 10px 12px;
@@ -290,5 +277,7 @@ const navItems = [
   }
 
   .main-nav-title { font-size: 17px; }
+  .main-nav-subtitle { display: none; }
 }
+
 </style>

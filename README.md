@@ -313,7 +313,7 @@ A: Grey buildings have no survey data. If a Solar Potential filter is active, bu
 A: It is the difference between the total solar capacity that *could* be installed (kW) and what is *currently* installed in that area. A large gap means the precinct has a lot of untapped solar potential.
 
 **Q: What is the AI Solar Assistant?**  
-A: It is a Claude-powered chatbot embedded in the Home page journey. It receives the details of your selected building or suburb and can answer plain-language questions about solar potential, estimated costs, payback periods, and CO₂ savings without you needing to read the raw numbers yourself.
+A: It is Qwen-powered chatbot embedded in the Home page journey. It receives the details of your selected building or suburb and can answer plain-language questions about solar potential, estimated costs, payback periods, and CO₂ savings without you needing to read the raw numbers yourself.
 
 ---
 

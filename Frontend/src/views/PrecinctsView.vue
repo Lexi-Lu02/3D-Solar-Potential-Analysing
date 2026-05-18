@@ -1119,4 +1119,37 @@ onUnmounted(() => {
   transition: opacity 0.2s ease, transform 0.2s ease; z-index: 9999;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Mobile layout ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Column layout — sidebar first, map below */
+  .main { flex-direction: column; }
+
+  /* Revert the global bottom-sheet positioning that ExploreView uses */
+  .sidebar {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    height: auto !important;
+    max-height: 55vh;
+    border-radius: 0 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    width: 100% !important;
+    flex-direction: row !important; /* keep strip-btn + body + tabs-v in a row */
+    flex: 0 0 auto;
+    overflow-y: auto;
+    order: 0;                        /* sidebar renders first (top) */
+    transition: none !important;
+  }
+
+  /* Map renders second (below the rankings panel) */
+  #precinct-map {
+    order: 1;
+    flex: 1;
+    min-height: 260px;
+  }
+}
 </style>
