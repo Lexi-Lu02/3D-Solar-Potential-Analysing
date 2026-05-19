@@ -34,6 +34,18 @@
           </dl>
         </div>
       </div>
+      <a
+        href="https://unsplash.com/photos/high-rise-buildings-under-white-clouds-during-daytime-ZXJKUWUIjSM"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hero-photo-credit"
+        aria-label="Background photo source on Unsplash"
+      >
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+          <path d="M9 3h6l2 3H7L9 3zM3 6h18a1 1 0 011 1v13a1 1 0 01-1 1H3a1 1 0 01-1-1V7a1 1 0 011-1zm9 3a4 4 0 100 8 4 4 0 000-8z"/>
+        </svg>
+        Photo: Unsplash
+      </a>
     </section>
 
     <!-- ── AI-Powered Journey ─────────────────────────────────── -->
@@ -742,6 +754,7 @@ import iconSolarScore   from '../pictures/Solar Score Ranking.png'
 import iconRoofType     from '../pictures/Roof Type Filtering.png'
 import iconEnergy       from '../pictures/Energy Estimates.png'
 import iconComparison   from '../pictures/Comparison View.png'
+import iconAIAssistant  from '../pictures/ai-assistant.png'
 
 const plannerBuildingLoading = ref(false)
 import iconSolarCell    from '../pictures/solar-cell.png'
@@ -828,6 +841,7 @@ const features = [
   { icon: iconPlanetEarth, title: 'Environmental Impact',     desc: 'See annual CO₂ reduction, equivalent trees planted, and cars taken off the road for every building.' },
   { icon: iconPrecinct,    title: 'Suburb Solar Rankings',    desc: 'Explore an interactive map of Melbourne CBD suburbs ranked and colour-coded by solar potential tier.' },
   { icon: iconComparison,  title: 'Adoption Gap Analysis',    desc: 'Compare installed vs potential solar capacity for each suburb to identify where the biggest untapped opportunities lie.' },
+  { icon: iconAIAssistant, title: 'AI Solar Assistant',       desc: 'Ask natural-language questions about any building\'s solar potential and receive instant, personalised insights powered by AI.' },
 ]
 
 // Explore panel CTAs used in the owner journey
@@ -2033,6 +2047,24 @@ onMounted(async () => {
 }
 
 .hero-inner { max-width: 1240px; margin: 0 auto; width: 100%; position: relative; z-index: 1; }
+
+.hero-photo-credit {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  background: rgba(0,0,0,0.28);
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  z-index: 2;
+}
+.hero-photo-credit:hover { color: #fff; background: rgba(0,0,0,0.5); }
 
 .hero-content { display: flex; align-items: center; justify-content: space-between; gap: 40px; }
 
