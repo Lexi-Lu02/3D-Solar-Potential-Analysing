@@ -1,17 +1,13 @@
 """
 Trusted context payload from the frontend.
 
-The frontend sends pre-computed / pre-fetched data (selected building details,
-financial estimates the user is currently looking at, custom assumptions) in
-a separate `context` field on `/ai/chat` and `/ai/report`. This data is
-injected into the SYSTEM prompt as a "pre-computed context" block, so the
-model treats the numbers as authoritative and does not waste tool calls
-re-verifying them.
+Pre-computed data (selected building, financial estimates, custom assumptions)
+arrives in a separate `context` field and gets injected into the SYSTEM prompt
+as authoritative numbers - so the model needn't re-verify them via tools.
 
-Important security property: the schema below is fully typed (no free-form
-text fields except short, length-bounded strings like address). Anything the
-user types still goes through the user-message scrubber. Only the structured
-context goes through this trusted path.
+Security: the schema is fully typed (no free-form text beyond short, bounded
+strings like address). Free user text still goes through the message scrubber;
+only this structured payload takes the trusted path.
 """
 
 from __future__ import annotations
@@ -22,35 +18,35 @@ from pydantic import BaseModel, Field
 
 
 class BuildingContext(BaseModel):
-    """Snapshot of the building the user is currently looking at on the frontend."""
+    """Snapshot of the building the user has selected on the frontend."""
 
     id: int = Field(..., ge=1, description="buildings.id (surrogate PK)")
     structure_id: int | None = Field(None, ge=1)
     address: str | None = Field(None, max_length=300)
 
-    # Solar / roof
+    # solar / roof
     solar_score: float | None = Field(None, ge=0, le=5)
     dominant_rating: str | None = Field(None, max_length=40)
     usable_roof_area_m2: float | None = Field(None, ge=0)
     total_roof_area_m2: float | None = Field(None, ge=0)
     max_panels: int | None = Field(None, ge=0)
 
-    # Yield
+    # yield
     annual_kwh: float | None = Field(None, ge=0)
 
-    # Financial (computed on the frontend)
+    # financial - computed on the frontend
     install_cost_aud: float | None = Field(None, ge=0)
     annual_savings_aud: float | None = Field(None, ge=0)
     payback_years: float | None = Field(None, ge=0)
     lifetime_savings_aud: float | None = Field(None, ge=0)
 
-    # Environmental
+    # environmental
     co2_offset_kg_yr: float | None = Field(None, ge=0)
     equivalent_trees: float | None = Field(None, ge=0)
 
 
 class PrecinctContext(BaseModel):
-    """Snapshot of the precinct the user is currently looking at."""
+    """Snapshot of the precinct the user has selected."""
 
     precinct_id: int = Field(..., ge=1)
     name: str | None = Field(None, max_length=100)
@@ -87,8 +83,8 @@ class ContextPayload(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-# Per-field rendering: (key, label, formatter). Numeric values get thousands
-# separators; bare strings pass through. None values are skipped.
+# per-field rendering: (key, label, formatter). numbers get thousands
+# separators, bare strings pass through, None is skipped.
 def _fmt_int(v: Any) -> str: return f"{int(v):,}"
 def _fmt_float(v: Any, digits: int = 1) -> str: return f"{float(v):,.{digits}f}"
 def _fmt_pct(v: Any) -> str: return f"{float(v):.0f}%"
@@ -160,10 +156,10 @@ def _render_section(
 
 
 def format_context(ctx: ContextPayload | None) -> str:
-    """Render the trusted context as a Markdown block to append to the system prompt.
+    """Render the trusted context as a Markdown block for the system prompt.
 
-    Returns an empty string when there's nothing to render, so the caller can
-    safely concatenate without checking.
+    Empty string when there's nothing to render, so the caller can just
+    concatenate without checking.
     """
     if ctx is None:
         return ""

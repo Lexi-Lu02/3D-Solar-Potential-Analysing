@@ -2,16 +2,13 @@
 Tool functions exposed to the LLM via OpenAI-compatible function calling.
 
 Design rules:
-- Each tool wraps an existing service-layer function whenever possible to
-  avoid duplicating SQL. Tools that need new queries use parameterised SQL
-  with whitelisted columns/values - no string interpolation of user input.
-- Every tool returns plain JSON-serialisable data (dict / list of dict).
-- Every tool's input is validated by a Pydantic model and converted to a
-  JSONSchema for the OpenAI `tools` parameter via `TOOLS` below.
-- Each tool is given a hard LIMIT cap so a hallucinated `limit=10000` cannot
-  drag the database.
+- Reuse service-layer functions where possible; new queries use parameterised
+  SQL with whitelisted columns/values - no interpolation of user input.
+- Tools return plain JSON-serialisable data.
+- Input validated by a Pydantic model, rendered to JSONSchema for `tools`.
+- Hard LIMIT cap so a hallucinated `limit=10000` can't drag the DB.
 
-The `dispatch_tool` function is called inside the AI service's tool loop.
+`dispatch_tool` runs inside the AI service's tool loop.
 """
 
 from __future__ import annotations
@@ -29,7 +26,7 @@ from . import building_query, precinct_query
 
 logger = logging.getLogger(__name__)
 
-# Hard cap applied to every list-returning tool, no matter what the model asks.
+# hard cap on every list-returning tool, whatever the model asks for
 GLOBAL_LIST_LIMIT = 20
 
 
@@ -97,7 +94,7 @@ def _get_building_by_id(conn: Connection, args: GetBuildingByIdArgs) -> dict[str
     except building_query.BuildingNotFound:
         return {"found": False, "id": args.id}
 
-    # Drop heavyweight geometry; LLM doesn't need polygon coords.
+    # drop heavyweight geometry - LLM doesn't need polygon coords
     payload = resp.model_dump(exclude={"geometry"})
     payload["found"] = True
     return payload
@@ -112,8 +109,8 @@ def _search_buildings(conn: Connection, args: SearchBuildingsArgs) -> dict[str, 
     }
 
 
-# Whitelisted metric -> SQL ORDER BY expression. Keys must match the Literal
-# in TopBuildingsArgs; values are never user-controlled, eliminating injection.
+# metric -> ORDER BY expression. keys match the Literal in TopBuildingsArgs;
+# values are server-side only, so no injection.
 _TOP_BUILDINGS_METRIC: dict[str, str] = {
     "solar_score": "s.solar_score_avg",
     "usable_area": "s.usable_roof_area",
@@ -122,12 +119,9 @@ _TOP_BUILDINGS_METRIC: dict[str, str] = {
 
 
 def _get_top_buildings(conn: Connection, args: TopBuildingsArgs) -> dict[str, Any]:
-    """
-    Return the top N buildings by a whitelisted metric. The ORDER BY column is
-    looked up from a server-side dict, so the user can never inject SQL via
-    `metric`. The LIMIT is a clamped integer. Rows where the chosen metric is
-    NULL are excluded so the model never has to reason about "no data" entries.
-    """
+    """Top N buildings by a whitelisted metric. ORDER BY column comes from a
+    server-side dict (no SQL injection via `metric`), LIMIT is a clamped int.
+    NULL-metric rows are excluded so the model needn't reason about "no data"."""
     order_col = _TOP_BUILDINGS_METRIC[args.metric]
     sql = f"""
         SELECT
@@ -185,7 +179,7 @@ def _get_precinct_by_id(conn: Connection, args: GetPrecinctByIdArgs) -> dict[str
     except precinct_query.PrecinctNotFound:
         return {"found": False, "precinct_id": args.precinct_id}
 
-    # Strip heavyweight geo_boundary for the model.
+    # strip heavyweight geo_boundary for the model
     payload = detail.model_dump(exclude={"geo_boundary"})
     payload["found"] = True
     return payload
@@ -220,7 +214,7 @@ def _get_dataset_stats(conn: Connection, _: EmptyArgs) -> dict[str, Any]:
 
 
 def _get_schema_overview(_conn: Connection, _: EmptyArgs) -> dict[str, Any]:
-    """Static description, here as a tool so the model can re-read it on demand."""
+    """Static description, exposed as a tool so the model can re-read it."""
     from .ai_prompts import SCHEMA_DESCRIPTION
 
     return {"schema": SCHEMA_DESCRIPTION}
@@ -232,7 +226,7 @@ def _get_schema_overview(_conn: Connection, _: EmptyArgs) -> dict[str, Any]:
 
 
 class _ToolSpec:
-    """Internal wrapper holding everything needed to expose one tool."""
+    """Internal wrapper - everything needed to expose one tool."""
 
     def __init__(
         self,
@@ -247,7 +241,7 @@ class _ToolSpec:
         self.handler = handler
 
     def openai_schema(self) -> dict[str, Any]:
-        """Render as an entry of OpenAI's `tools` array (function calling)."""
+        """Render as one entry of OpenAI's `tools` array."""
         return {
             "type": "function",
             "function": {
@@ -345,14 +339,13 @@ class ToolExecutionError(Exception):
 
 def dispatch_tool(conn: Connection, name: str, arguments_json: str) -> str:
     """
-    Execute one tool call from the LLM and return its result as a JSON string,
-    suitable to be passed back to the model as a `tool` message.
+    Execute one LLM tool call, return the result as a JSON string to feed
+    back as a `tool` message.
 
-    - Unknown tool names produce an error dict (no exception bubbles up; the
-      model can recover by trying a different tool).
-    - Pydantic validation errors are converted to a structured error message.
-    - DB errors are caught and logged; an error dict is returned. We never
-      surface raw exception text to the model.
+    - Unknown tool -> error dict (no exception bubbles up, model can retry).
+    - Pydantic validation error -> structured error message.
+    - DB error -> caught + logged, error dict returned; never leak raw
+      exception text to the model.
     """
     spec = TOOL_REGISTRY.get(name)
     if spec is None:
@@ -375,25 +368,20 @@ def dispatch_tool(conn: Connection, name: str, arguments_json: str) -> str:
     try:
         result = spec.handler(conn, args)
     except Exception as exc:
-        # Full traceback always goes to logger for ops to inspect.
         logger.exception("Tool %s failed with unexpected error", name)
 
-        # CRITICAL: roll back the connection. Psycopg leaves an aborted
-        # transaction in place after a SQL error, and every subsequent
-        # query on the same connection raises InFailedSqlTransaction. The
-        # AI service dispatches multiple tools per request on ONE borrowed
-        # connection, so one poisoned tool would otherwise cascade-fail
-        # all the rest (seen on EC2: first call hit a missing PostGIS
-        # function, then 9 unrelated calls all failed with the cascade).
+        # CRITICAL: roll back. psycopg leaves an aborted transaction after a
+        # SQL error and every later query on the same conn raises
+        # InFailedSqlTransaction. one request shares ONE conn across tools,
+        # so a poisoned tool would cascade-fail all the rest (seen on EC2).
         try:
             conn.rollback()
         except Exception:
             logger.exception("Failed to roll back connection after %s error", name)
 
-        # When AI_DEBUG_LOG=true, also surface the exception type+message in the
-        # tool result so the debug UI shows the real reason without needing
-        # SSH-to-EC2. We never leak this to the model UNLESS debug is on, and
-        # even then only the exception summary (not the full traceback).
+        # with AI_DEBUG_LOG on, surface the exception summary in the result
+        # so the debug UI shows the real reason - never the full traceback,
+        # never anything when debug is off.
         from ..config import get_settings
         payload: dict[str, Any] = {"error": "tool_execution_failed", "tool": name}
         if get_settings().ai_debug_log:

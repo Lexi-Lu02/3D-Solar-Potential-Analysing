@@ -370,9 +370,6 @@
                     <div class="search-dropdown-empty">No match</div>
                   </div>
                 </div>
-                <div v-if="!plannerBuildingQuery" class="search-hint-row">
-                  Type a street name or address fragment. This search only matches known building addresses.
-                </div>
               </div>
             </div>
 
