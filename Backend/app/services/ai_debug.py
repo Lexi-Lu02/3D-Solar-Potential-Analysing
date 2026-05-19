@@ -1,19 +1,14 @@
 """
 Verbose request/response tracing for the AI pipeline.
 
-Two consumers, one source of truth:
+Two consumers, one source of truth (the `DebugTrace` that flows through the
+service):
 
-1. **Console log**  - when `AI_DEBUG_LOG=true`, every event is written to the
-   standard logger so you can `tail -f` uvicorn's terminal.
+1. Console log - when `AI_DEBUG_LOG=true`, every event hits the logger.
+2. In-memory ring buffer - every event also lands in a `TraceRecord` on
+   `recorder`; the `/api/v1/ai/debug/ui` page reads it. Capped at `MAX_RECORDS`.
 
-2. **In-memory ring buffer**  - every event is also appended to a
-   `TraceRecord` held by `recorder`. The `/api/v1/ai/debug/ui` page reads
-   the buffer and renders a per-request timeline. Survives until process
-   restart; capped at `MAX_RECORDS` to bound memory.
-
-Both consumers are populated by the same `DebugTrace` object that flows
-through the AI service. When console logging is off, recording still runs
-(it's cheap), so the UI works regardless of the console-log setting.
+Recording always runs (it's cheap), so the UI works even with console log off.
 """
 
 from __future__ import annotations
@@ -52,9 +47,8 @@ class LLMCallRecord:
     content_chars: int = 0
     tool_call_count: int = 0
     failed: bool = False
-    # Raw payload sent to Qwen + raw response received. Captured so the UI can
-    # show *exactly* what was on the wire, not just a summary. Stored as
-    # plain dicts (deep-ish copy) so later mutation of `convo` doesn't leak in.
+    # raw wire payload to/from Qwen - so the UI shows exactly what was sent,
+    # not a summary. plain dicts (deep-ish copy) so `convo` mutation can't leak in.
     request_messages: list[dict] = field(default_factory=list)
     response_content: str | None = None
     response_tool_calls: list[dict] = field(default_factory=list)
@@ -118,7 +112,7 @@ class TraceRecorder:
 
     def snapshot(self) -> list[dict[str, Any]]:
         with self._lock:
-            # Newest first.
+            # newest first
             return [r.to_dict() for r in reversed(self._records)]
 
     def clear(self) -> None:
@@ -137,9 +131,8 @@ recorder = TraceRecorder()
 def _safe_copy_message(m: dict) -> dict:
     """Shallow-copy a chat message into a JSON-safe plain dict.
 
-    Tool-call dicts inside an assistant message are nested-copied because
-    the caller may rebuild the list later (we don't want the snapshot to
-    follow those mutations).
+    Nested tool-call dicts get copied too - the caller may rebuild that list
+    later and the snapshot shouldn't follow along.
     """
     out: dict[str, Any] = {"role": m.get("role"), "content": m.get("content")}
     if "tool_call_id" in m:
@@ -178,11 +171,10 @@ def _short(text: str | None, limit: int = _PREVIEW_CHARS) -> str:
 class DebugTrace:
     """One request's debug trace.
 
-    Created in the router, threaded into the service. Both the structured
-    `TraceRecord` (for the UI) and console log lines come from here.
+    Created in the router, threaded into the service. Both the `TraceRecord`
+    (for the UI) and console log lines come from here.
 
-    `enabled` only controls *console logging*; structured recording always
-    runs so the UI works even when terminal log is too noisy.
+    `enabled` only gates console logging - recording always runs.
     """
 
     def __init__(self, enabled: bool, request_id: str | None = None):
@@ -210,7 +202,7 @@ class DebugTrace:
         self.record.endpoint = endpoint
         self.record.mode = mode
         self.record.user_type = user_type
-        # Defensive copy so later mutations to the messages list don't leak in.
+        # defensive copy - later mutations to the list shouldn't leak in
         self.record.messages = [
             {"role": m.get("role"), "content": m.get("content")} for m in messages
         ]
@@ -299,7 +291,7 @@ class DebugTrace:
 
 
 class _LLMCallSpan:
-    """Context-manager that times one upstream Qwen call."""
+    """Context manager - times one upstream Qwen call."""
 
     def __init__(self, parent: DebugTrace, record: LLMCallRecord):
         self.parent = parent
@@ -332,8 +324,7 @@ class _LLMCallSpan:
 
     def capture_request(self, messages: list[dict]) -> None:
         """Snapshot the messages array right before the SDK call goes out."""
-        # Defensive copy: convo is mutated after the call (we append assistant
-        # + tool messages), so we need a snapshot, not a reference.
+        # snapshot, not a reference - convo gets appended to after the call
         snapshot: list[dict] = []
         for m in messages:
             snapshot.append(_safe_copy_message(m))
@@ -371,5 +362,5 @@ class _LLMCallSpan:
 
 @contextmanager
 def noop_trace() -> Iterator[DebugTrace]:
-    """When recording is undesired, hand out a disabled trace that doesn't record."""
+    """Hand out a disabled trace when recording isn't wanted."""
     yield DebugTrace(enabled=False)

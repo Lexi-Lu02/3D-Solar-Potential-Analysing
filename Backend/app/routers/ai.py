@@ -1,17 +1,12 @@
 """
-POST /api/v1/ai/chat
-POST /api/v1/ai/report
+AI chat/report endpoints.
 
-The frontend keeps the full conversation in localStorage and POSTs the whole
-transcript on every request. The backend is stateless (no DB writes for AI),
-truncates the history to a token budget, runs the Qwen tool loop, and
-returns the assistant's reply plus a redacted tool trace for debugging.
+Frontend POSTs the whole transcript every request - backend is stateless.
+Truncate history, run the Qwen tool loop, return reply + redacted trace.
+Per-IP rate limit via slowapi (AI_RATE_LIMIT_PER_MINUTE).
 
-Rate limiting: per-IP via slowapi, configurable through `AI_RATE_LIMIT_PER_MINUTE`.
-
-Note: we deliberately do NOT use `from __future__ import annotations` here -
-FastAPI introspects body-model annotations at app creation time and needs
-real class references, not stringified forward refs.
+No `from __future__ import annotations` here - FastAPI needs real class
+refs for body-model annotations, not stringified forward refs.
 """
 
 import logging
@@ -34,8 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-# Resolved at import time. Changing AI_RATE_LIMIT_PER_MINUTE at runtime
-# requires a process restart - acceptable for our deployment model.
+# resolved at import time - changing the limit needs a process restart
 _LIMIT = f"{get_settings().ai_rate_limit_per_minute}/minute"
 
 
@@ -160,8 +154,8 @@ def chat(
 
 
 # --- Debug viewer ----------------------------------------------------------
-# Both routes are gated on AI_DEBUG_LOG to avoid leaking prompts/replies in
-# production. They are intentionally NOT rate-limited (operator tooling).
+# all gated on AI_DEBUG_LOG so prod doesn't leak prompts/replies.
+# not rate-limited - operator tooling.
 
 _DEBUG_HTML_PATH = Path(__file__).resolve().parent.parent / "static" / "ai_debug.html"
 
@@ -225,11 +219,8 @@ def report(
     conn: Connection = Depends(get_conn),
     ai: AIService = Depends(get_ai_service),
 ) -> ChatResponse:
-    """
-    Reports do not carry conversation history. We synthesise a single user
-    message describing what the report should cover, then let the model use
-    its tools to gather data and emit the Markdown.
-    """
+    """No conversation history - synthesise one user message and let the
+    model gather data via tools and emit the Markdown."""
     parts = [
         f"Generate a Markdown report for {body.target_type} id={body.target_id}.",
     ]
