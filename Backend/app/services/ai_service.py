@@ -1,21 +1,11 @@
 """
 Orchestrates one chat / report request end-to-end.
 
-Flow:
-    1. Truncate the frontend-supplied history to fit the token budget.
-    2. Scrub user messages (prompt-injection defang, <user_query> wrap).
-    3. Inject the appropriate system prompt.
-    4. Run the OpenAI-compatible tool loop against DashScope (Qwen):
-       - call chat.completions.create with `tools=OPENAI_TOOLS`
-       - if the model emits tool_calls, execute each via `dispatch_tool`
-         using a borrowed DB connection, and feed results back
-       - bounded by ai_max_tool_iterations to prevent runaway loops
-    5. Run deterministic safety filter on the final assistant text.
-    6. Optionally do a second qwen-flash self-critique pass.
-    7. Return the final answer plus a redacted trace for the frontend.
+Flow: truncate history -> scrub input -> inject system prompt -> run the
+DashScope (Qwen) tool loop -> deterministic output filter -> optional
+self-critique -> return answer + redacted trace.
 
-The whole module is sync so it composes with the existing psycopg pool. The
-OpenAI client we use is also sync.
+All sync, so it composes with the psycopg pool. The OpenAI client is sync too.
 """
 
 from __future__ import annotations
@@ -51,10 +41,10 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ToolTrace:
-    """One tool call, redacted for the frontend (debug/audit purposes)."""
+    """One tool call, redacted for the frontend (debug/audit)."""
 
     name: str
-    arguments: str  # raw JSON the model emitted
+    arguments: str  # raw JSON from the model
     ok: bool
 
 
@@ -77,12 +67,9 @@ class AIService:
         self.settings = settings or get_settings()
         api_key = self.settings.dashscope_api_key.get_secret_value()
         if not api_key:
-            # Allow constructing the service without a key (tests, healthchecks),
-            # but fail loudly the moment chat() is actually called.
+            # ok to construct without a key (tests, healthchecks); chat() fails loudly
             logger.warning("DASHSCOPE_API_KEY is empty; AI calls will fail until set.")
-        # Per-call timeout: nginx in front of us defaults to 60s, so we MUST
-        # fail faster than that to avoid 504s. The default openai SDK timeout
-        # is 600s, which is essentially "wait forever" from nginx's view.
+        # must beat nginx's 60s or we eat 504s - SDK default is 600s ("forever")
         self.client = OpenAI(
             api_key=api_key or "missing",
             base_url=self.settings.qwen_base_url,
@@ -107,21 +94,11 @@ class AIService:
         """
         Run a chat or report request through the tool loop.
 
-        `messages` must be the user/assistant transcript only (no system
-        message - this method injects it).
-
-        `user_type` selects a persona overlay that re-frames the same
-        underlying assistant for property owners vs city planners. `None`
-        falls back to a generic overlay that asks a clarifying question.
-
-        `context` is the trusted, frontend-supplied data block (selected
-        building, current assumptions, etc.). It is appended to the system
-        prompt as authoritative pre-computed data so the model can cite the
-        numbers without re-verifying via tools.
-
-        `trace` is the per-request debug trace. Pass a disabled DebugTrace
-        (or omit) to silence logging; pass an enabled one to see the full
-        request/response/timing breakdown in the server log.
+        `messages` - user/assistant transcript only; system prompt injected here.
+        `user_type` - persona overlay; None -> generic (asks a clarifying question).
+        `context` - trusted frontend data, appended to the system prompt as
+        authoritative numbers so the model needn't re-verify via tools.
+        `trace` - per-request debug trace; disabled/omitted = silent.
         """
         trace = trace or DebugTrace(enabled=self.settings.ai_debug_log)
         if not self.settings.dashscope_api_key.get_secret_value():
@@ -146,7 +123,7 @@ class AIService:
 
         result = self._run_tool_loop(conn, convo, trace)
 
-        # Deterministic output filter
+        # deterministic output filter
         verdict = ai_safety.check_output(result.reply)
         if not verdict.safe:
             logger.warning("Deterministic filter blocked output: %s", verdict.reason)
@@ -160,7 +137,7 @@ class AIService:
             trace.request_out(result.reply, result.iterations, True, result.block_reason)
             return result
 
-        # Optional self-critique
+        # optional self-critique pass
         if self.settings.ai_enable_self_critique:
             critique_verdict = self._self_critique(result.reply, trace)
             if not critique_verdict.startswith("SAFE"):
@@ -186,16 +163,14 @@ class AIService:
         convo: list[dict[str, Any]],
         trace: DebugTrace,
     ) -> AIResult:
-        """Execute the LLM <-> tools loop until we get a plain text answer."""
+        """Run the LLM <-> tools loop until we get plain text back."""
         max_iter = self.settings.ai_max_tool_iterations
         total_budget = self.settings.ai_total_timeout_seconds
         started = time.monotonic()
         traces: list[ToolTrace] = []
 
         for iteration in range(1, max_iter + 1):
-            # Bail before another upstream call if we've already burnt the
-            # request-level budget. Lets us return a clean refusal instead of
-            # letting nginx 504 us.
+            # budget already burnt? bail with a clean refusal before nginx 504s us
             if time.monotonic() - started > total_budget:
                 logger.warning(
                     "AI request exceeded total budget (%ss) at iteration %d",
@@ -210,8 +185,7 @@ class AIService:
                     block_reason="request_timeout",
                 )
             with trace.llm_call(self.settings.qwen_model, len(convo)) as span:
-                # Snapshot the on-the-wire request BEFORE we send it. The
-                # convo list mutates in subsequent iterations.
+                # snapshot before sending - convo mutates next iteration
                 span.capture_request(convo)
                 try:
                     completion = self.client.chat.completions.create(
@@ -242,13 +216,11 @@ class AIService:
                 len(getattr(msg, "tool_calls", None) or []),
             )
 
-            # The model wants to call one or more tools.
+            # model wants to call tools
             tool_calls = getattr(msg, "tool_calls", None) or []
             if tool_calls:
-                # Per the OpenAI spec (which DashScope mirrors): when an
-                # assistant message carries tool_calls, `content` should be
-                # null if the model didn't also emit text. Preserve None
-                # rather than coercing to "" to avoid stricter validators.
+                # keep content as None (not "") when tool_calls present -
+                # per the OpenAI spec, some validators are strict about it
                 convo.append(
                     {
                         "role": "assistant",
@@ -281,12 +253,12 @@ class AIService:
                             "content": result_json,
                         }
                     )
-                continue  # loop back so the model can read tool results
+                continue  # loop back so the model reads the results
 
-            # No tool call -> this is the final assistant text.
+            # no tool call -> final assistant text
             reply = (msg.content or "").strip()
             if not reply or finish_reason == "length":
-                # `length` means we hit max_tokens. Treat content as untrusted.
+                # `length` = hit max_tokens, treat content as untrusted
                 return AIResult(
                     reply=REFUSAL_MESSAGE,
                     tool_calls=traces,
@@ -296,7 +268,7 @@ class AIService:
                 )
             return AIResult(reply=reply, tool_calls=traces, iterations=iteration)
 
-        # Hit the iteration cap without a final answer.
+        # hit the iteration cap with no final answer
         logger.warning("AI tool loop exhausted %d iterations", max_iter)
         return AIResult(
             reply=REFUSAL_MESSAGE,
@@ -307,11 +279,9 @@ class AIService:
         )
 
     def _self_critique(self, answer: str, trace: DebugTrace) -> str:
-        """
-        Second pass with the same model judging the first pass. Returns the
-        model's verdict line ("SAFE" or "BLOCKED: ..."). On API failure we
-        return "SAFE" to avoid a third-party outage from blocking every reply.
-        """
+        """Second pass: same model judges the first. Returns the verdict line
+        ("SAFE" / "BLOCKED: ..."). API failure -> "SAFE" so an upstream outage
+        doesn't block every reply."""
         critique_messages = [
             {"role": "system", "content": SELF_CRITIQUE_PROMPT},
             {"role": "user", "content": answer},
@@ -341,7 +311,7 @@ _singleton: AIService | None = None
 
 
 def get_ai_service() -> AIService:
-    """Lazy singleton; lifecycle matches the app process."""
+    """Lazy singleton, lives as long as the app process."""
     global _singleton
     if _singleton is None:
         _singleton = AIService()

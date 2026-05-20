@@ -1,19 +1,14 @@
 """
 Input scrubbing and output content checks for the AI assistant.
 
-Two layers of cheap, deterministic defence on top of the LLM's own reasoning:
+Two cheap, deterministic layers on top of the LLM's own reasoning:
 
-1. `scrub_messages` -> defangs prompt-injection in user input before it
-   reaches the model. Wraps each user message in <user_query>...</user_query>
-   tags and snips obvious "ignore previous instructions" phrases.
+1. `scrub_messages` - defangs prompt-injection in user input: wraps each
+   user message in <user_query> tags, flags obvious injection phrases.
+2. `check_output` - regex/keyword filter on the final answer. Leak (SQL,
+   API key, stack trace), forbidden topic, or PII -> `REFUSAL_MESSAGE`.
 
-2. `check_output` -> regex/keyword filter on the assistant's final answer.
-   If anything looks like a leak (SQL, API key, stack trace), forbidden
-   topic (sexual / violent / etc.), or PII (email, phone, ID number), the
-   answer is replaced with `REFUSAL_MESSAGE`.
-
-The LLM self-critique pass in `ai_service` is a separate (slower) defence
-on top of this.
+The self-critique pass in `ai_service` is a separate, slower layer on top.
 """
 
 from __future__ import annotations
@@ -30,12 +25,11 @@ from .ai_safety_lexicon import (
 
 logger = logging.getLogger(__name__)
 
-# Single output cap (chars). Roughly aligns with ai_max_tokens_per_request.
+# output cap (chars) - roughly aligns with ai_max_tokens_per_request
 MAX_OUTPUT_CHARS = 4000
 
-# Phrases that very commonly precede a prompt-injection payload. We don't
-# delete the surrounding text - we wrap and label it so the model sees the
-# instruction as untrusted input, not as a new system message.
+# phrases that commonly precede an injection payload. we don't delete the
+# text, just wrap + label it so the model treats it as untrusted input.
 _INJECTION_FLAGS = [
     "ignore previous instructions",
     "ignore all previous instructions",
@@ -60,13 +54,9 @@ class SafetyVerdict:
 
 
 def scrub_messages(messages: list[dict]) -> list[dict]:
-    """
-    Return a new message list with user content wrapped in untrusted-input
-    tags and obvious injection flags neutralised.
-
-    Assistant messages are passed through unchanged - they were produced by
-    our own server in an earlier turn and are already trusted.
-    """
+    """New message list: user content wrapped in untrusted-input tags,
+    obvious injection flags neutralised. Assistant messages pass through -
+    our own server produced them, already trusted."""
     out: list[dict] = []
     for m in messages:
         role = m.get("role")
@@ -80,13 +70,13 @@ def scrub_messages(messages: list[dict]) -> list[dict]:
 
 def _wrap_user_content(text: str) -> str:
     cleaned = text
-    # Defuse the wrapper tags themselves if the user typed them, so they
-    # cannot close our wrapping and inject a fake system message.
+    # escape wrapper tags the user typed - else they could close our wrap
+    # and inject a fake system message
     cleaned = cleaned.replace("<user_query>", "&lt;user_query&gt;")
     cleaned = cleaned.replace("</user_query>", "&lt;/user_query&gt;")
 
-    # Lightly annotate the most blatant injection phrases so the model
-    # sees them as content rather than commands.
+    # annotate the most blatant injection phrases so the model reads them
+    # as content, not commands
     lower = cleaned.lower()
     for flag in _INJECTION_FLAGS:
         if flag in lower:
@@ -104,12 +94,10 @@ def _wrap_user_content(text: str) -> str:
 
 
 def check_output(text: str) -> SafetyVerdict:
-    """
-    Run all deterministic filters on the assistant's final answer.
+    """Run all deterministic filters on the final answer.
 
-    Returns SafetyVerdict(safe=True) if everything looks OK. Otherwise
-    returns SafetyVerdict(safe=False, reason=<short>) and the caller should
-    replace `text` with `REFUSAL_MESSAGE`.
+    safe=True if everything looks OK. Otherwise safe=False + a short reason,
+    and the caller should swap `text` for `REFUSAL_MESSAGE`.
     """
     if not text or not text.strip():
         return SafetyVerdict(False, "empty_output")
@@ -134,7 +122,7 @@ def check_output(text: str) -> SafetyVerdict:
 
 
 def safe_output_or_refuse(text: str) -> str:
-    """Convenience wrapper: return `text` if safe, else the refusal message."""
+    """Return `text` if safe, else the refusal message."""
     verdict = check_output(text)
     if verdict.safe:
         return text

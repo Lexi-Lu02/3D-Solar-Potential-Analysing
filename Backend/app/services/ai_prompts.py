@@ -1,16 +1,12 @@
 """
 System prompts and schema description for the AI assistant.
 
-These strings are injected by the AI service at request time and define:
-- Scope of the assistant (Melbourne solar / building analysis only)
-- How it must use tools (no fabricated numbers)
-- The refusal stance for off-topic or sensitive requests
-- The Markdown structure for the report mode
-- Persona-specific framing (property owner vs city planner)
+Injected by the AI service at request time. Defines scope (Melbourne solar
+only), tool-use rules (no fabricated numbers), refusal stance, report-mode
+structure, and persona framing.
 
-`get_system_prompt(mode, user_type)` is the single entry point the AI service
-uses; it composes the base prompt for `mode` ("chat" / "report") with the
-persona overlay for `user_type` ("property_owner" / "city_planner" / None).
+`get_system_prompt(mode, user_type)` is the single entry point - composes the
+base prompt for `mode` with the persona overlay for `user_type`.
 """
 
 from __future__ import annotations
@@ -25,7 +21,7 @@ REFUSAL_MESSAGE = (
     "I can only answer questions related to Melbourne's solar potential, building ratings, and Precinct policies."
 )
 
-# Concise data dictionary fed to the model so it knows what tools return.
+# data dictionary - tells the model what the tools return
 SCHEMA_DESCRIPTION = """\
 You have access to a read-only PostgreSQL database covering buildings and
 solar-potential aggregates for the City of Melbourne. Key tables / units:
@@ -131,9 +127,8 @@ Style:
 # ---------------------------------------------------------------------------
 # Persona overlays
 # ---------------------------------------------------------------------------
-# These are appended to the base chat / report prompt above. They DO NOT
-# redefine the safety rules or schema - they only shift focus and tone so the
-# same model can serve two very different audiences with one codebase.
+# appended to the base prompt. don't redefine safety/schema - just shift
+# focus and tone so one codebase serves two very different audiences.
 
 PERSONA_PROPERTY_OWNER = """\
 Audience: an individual property owner considering rooftop solar for a
@@ -197,12 +192,10 @@ _PERSONA_OVERLAY: dict[str | None, str] = {
 
 
 def get_system_prompt(mode: Mode, user_type: UserType | None) -> str:
-    """
-    Compose the final system prompt for one request.
+    """Compose the final system prompt for one request.
 
-    The base prompt (chat or report) owns the schema and safety rules; the
-    persona overlay just shifts focus and tone. Unknown / missing user_type
-    falls back to PERSONA_GENERIC so the assistant still has guidance.
+    Base prompt owns schema + safety rules; the overlay just shifts focus and
+    tone. Unknown/missing user_type falls back to PERSONA_GENERIC.
     """
     base = SYSTEM_PROMPT_REPORT if mode == "report" else SYSTEM_PROMPT_CHAT
     overlay = _PERSONA_OVERLAY.get(user_type, PERSONA_GENERIC)

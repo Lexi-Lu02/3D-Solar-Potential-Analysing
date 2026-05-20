@@ -1,16 +1,12 @@
 """
 Keyword / regex lexicon used by `ai_safety.check_output`.
 
-This is intentionally a plain Python module of constants so it can be tuned
-without code changes elsewhere. Lists cover both English and Chinese.
+Plain constants module - tune it without touching code elsewhere. Lists
+cover English and Chinese.
 
-Matching strategy (see `ai_safety.py`):
-- BANNED_*  -> case-insensitive substring match against the assistant output.
-- LEAK_PATTERNS -> compiled regex, looser checks for things that should
-  never appear in user-facing output.
-
-Coverage is best-effort, not exhaustive. The LLM self-critique pass in
-`ai_service` is the second line of defence.
+Matching (see `ai_safety.py`): BANNED_* is case-insensitive substring match;
+LEAK_PATTERNS is compiled regex. Best-effort, not exhaustive - the
+self-critique pass is the second line of defence.
 """
 
 from __future__ import annotations
@@ -34,8 +30,8 @@ BANNED_VIOLENCE = [
 ]
 
 BANNED_HATE = [
-    # Slurs and discrimination triggers. Keep list small and obvious;
-    # the LLM self-critique handles the long tail.
+    # slurs / discrimination triggers - keep it small and obvious,
+    # self-critique handles the long tail
     "racial slur", "ethnic slur", "hate speech",
     "种族歧视", "民族歧视", "仇恨言论",
 ]
@@ -52,12 +48,12 @@ BANNED_ILLEGAL = [
 ]
 
 BANNED_POLITICAL = [
-    # Avoid taking political stances; refuse to discuss.
+    # no political stances - refuse to discuss
     "天安门", "六四", "法轮功", "tiananmen massacre", "falun gong",
 ]
 
 BANNED_OFF_TOPIC = [
-    # Common attempts to get the assistant to leave its domain.
+    # common attempts to drag the assistant off-domain
     "medical diagnosis", "legal advice", "investment advice",
     "psychological counseling",
     "医疗诊断", "法律建议", "投资建议", "心理咨询",
@@ -75,17 +71,16 @@ ALL_BANNED_PHRASES: list[str] = (
 
 
 # --- Leak / format patterns ----------------------------------------------------
-# These detect things that should NEVER appear in a user-facing answer.
+# stuff that should NEVER show up in a user-facing answer
 
 LEAK_PATTERNS: list[re.Pattern[str]] = [
-    # SQL keywords introducing a statement (allow casual mentions like
-    # "select the building" by requiring a SQL-ish neighbour).
+    # SQL statement - need a SQL-ish neighbour so "select the building" is fine
     re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER)\s+(\*|FROM\b|INTO\b|TABLE\b)", re.IGNORECASE),
-    # Common API-key prefixes
+    # API-key prefixes
     re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bBearer\s+[A-Za-z0-9._-]{20,}\b"),
     re.compile(r"\bDASHSCOPE_API_KEY\b", re.IGNORECASE),
-    # Filesystem paths that suggest a stack trace or internals leak
+    # filesystem paths - smell like a stack trace / internals leak
     re.compile(r"[A-Za-z]:\\Users\\"),
     re.compile(r"/Backend/app/"),
     re.compile(r'\bFile "[^"]+", line \d+'),  # Python traceback marker
@@ -93,17 +88,16 @@ LEAK_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 
-# --- Personally identifying information patterns ------------------------------
-# Used to scrub model output before returning to the user. Solar/building
-# data should never need to mention these.
+# --- PII patterns -------------------------------------------------------------
+# scrubbed from model output - solar/building data never needs these
 
 PII_PATTERNS: list[re.Pattern[str]] = [
-    # Email addresses
+    # email
     re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
-    # Chinese mainland 11-digit mobile phone numbers
+    # China mainland 11-digit mobile
     re.compile(r"\b1[3-9]\d{9}\b"),
-    # Australian mobile numbers (04xx xxx xxx with various separators)
+    # Australian mobile (04xx xxx xxx, various separators)
     re.compile(r"\b04\d{2}[\s-]?\d{3}[\s-]?\d{3}\b"),
-    # Chinese national ID (18 digits, last char may be X)
+    # China national ID (18 digits, last may be X)
     re.compile(r"\b\d{17}[\dXx]\b"),
 ]
