@@ -170,48 +170,47 @@ class SolarCacheResponse(BaseModel):
 
 
 class YieldMonthlyItem(BaseModel):
-    month: str = Field(..., description="月份缩写，例如 'Jan'")
-    days: int = Field(..., ge=28, le=31, description="该月天数")
-    psh: float = Field(..., ge=0, description="该月日均峰值日照时数（kWh/m²/day），NASA POWER 来源")
-    kwh: int = Field(..., ge=0, description="该月估算发电量（kWh），已四舍五入为整数")
+    month: str = Field(..., description="Month abbreviation, e.g. 'Jan'")
+    days: int = Field(..., ge=28, le=31, description="Number of days in the month")
+    psh: float = Field(..., ge=0, description="Average daily peak sun hours for the month (kWh/m²/day), from NASA POWER")
+    kwh: int = Field(..., ge=0, description="Estimated electricity output for the month (kWh), rounded to integer")
 
 
 class YieldAssumptions(BaseModel):
-    """
-    用于计算本次 kWh 估算所使用的参数，方便前端展示"计算依据"或做灵敏度分析。
-    """
+    """Parameters used in the kWh estimate, exposed so the frontend can show calculation details."""
+
     panel_efficiency: float = Field(
-        ..., description="光伏板转换效率，当前固定为 0.20（20%）"
+        ..., description="Panel conversion efficiency, fixed at 0.20 (20%)"
     )
     performance_ratio: float = Field(
-        ..., description="系统性能比（逆变器损耗等），当前固定为 0.75"
+        ..., description="System performance ratio (inverter losses etc.), fixed at 0.75"
     )
     peak_sun_hours_annual: float = Field(
-        ..., description="BOM 校准后年均峰值日照时数（4.1 PSH/day）"
+        ..., description="Annual average peak sun hours calibrated to BOM station 086338 (4.1 PSH/day)"
     )
     usable_roof_area_m2: float = Field(
-        ..., ge=0, description="参与计算的可用屋顶面积（m²），来自 rooftop_solar 调研"
+        ..., ge=0, description="Usable roof area used in the calculation (m²), from the rooftop_solar survey"
     )
 
 
 class YieldResponse(BaseModel):
     structure_id: int = Field(..., description="City of Melbourne structure_id")
     has_data: bool = Field(
-        ..., description="是否有光伏调研数据。False 时 kwh_annual=0，kwh_monthly=[]"
+        ..., description="True if solar survey data exists. When False, kwh_annual=0 and kwh_monthly=[]"
     )
     kwh_annual: int = Field(
         ..., ge=0,
-        description="年度估算发电量（kWh）= sum(kwh_monthly)，保证与月度加总一致"
+        description="Estimated annual electricity output (kWh), equals sum(kwh_monthly)"
     )
     kwh_monthly: list[YieldMonthlyItem] = Field(
-        ..., description="12 个月的发电量明细（has_data=False 时为空列表）"
+        ..., description="Monthly breakdown for all 12 months (empty list when has_data=False)"
     )
     solar_score_avg: float | None = Field(
         None, ge=1, le=5,
         description="Mean patch rating on the 1–5 survey scale. NULL when no rooftop_solar record exists."
     )
     assumptions: YieldAssumptions = Field(
-        ..., description="本次计算所用的参数，供前端透明展示"
+        ..., description="Parameters used in this calculation, for transparent display in the frontend"
     )
 
 
@@ -277,7 +276,7 @@ class PrecinctSummary(BaseModel):
     potential_capacity_kw: float = Field(..., ge=0)
     adoption_gap_kw: float = Field(..., ge=0)
     building_count: int = Field(..., ge=0)
-    rank: int | None = Field(None, description="按当前排序键的排名（1=最高），仅在列表中返回")
+    rank: int | None = Field(None, description="Rank by the current sort key (1 = highest), only present in list responses")
 
 
 class PrecinctDetail(PrecinctSummary):

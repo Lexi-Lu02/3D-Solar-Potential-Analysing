@@ -2,7 +2,7 @@
 
 > An interactive 3D map that shows the rooftop solar potential of every building in Melbourne's CBD. Find out how much solar energy a building can generate, compare buildings side-by-side, and explore which precincts have the most untapped solar opportunity.
 
-**Live site:** http://3dsolarcbd.me/  
+**Live site:** http://3dsolarcbd.me  
 **Access code:** `tp06888`  
 **E-Portfolio:** https://bit.ly/SolarMapTP06
 
@@ -404,12 +404,56 @@ npm run build
 │
 ├── Backend/
 │   ├── combined-buildings.geojson        # ~19,000 buildings (served as static asset)
-│   └── app/
-│       ├── main.py                       # FastAPI app factory
-│       ├── models/schemas.py             # Pydantic response models
-│       ├── routers/                      # FastAPI route handlers
-│       ├── services/                     # Business logic (yield calc, building queries, AI context)
-│       └── sql/                          # Raw SQL files
+│   ├── melbourne_cbd_precincts.geojson   # Precinct boundaries (served as static asset)
+│   ├── pyproject.toml                    # Python package metadata and dependencies
+│   ├── app/
+│   │   ├── main.py                       # FastAPI app factory and lifespan
+│   │   ├── config.py                     # Pydantic-settings: env vars and validation
+│   │   ├── db.py                         # psycopg connection pool wired into FastAPI
+│   │   ├── errors.py                     # Shared error response helpers
+│   │   ├── rate_limit.py                 # Per-IP rate limiting for /ai/* routes
+│   │   ├── constants/
+│   │   │   └── melbourne_psh.py          # NASA POWER / BOM monthly peak sun hours
+│   │   ├── models/
+│   │   │   └── schemas.py                # Pydantic response models (API contract)
+│   │   ├── routers/
+│   │   │   ├── buildings.py              # /buildings/stats, /search, /by-structure/*
+│   │   │   ├── solar.py                  # /buildings/structure/{id}/solar
+│   │   │   ├── yield_engine.py           # /buildings/structure/{id}/yield (monthly kWh)
+│   │   │   ├── sun.py                    # /sun/path
+│   │   │   ├── precincts.py              # /precincts (list)
+│   │   │   ├── ai.py                     # /ai/chat and /ai/report
+│   │   │   └── health.py                 # /health liveness + DB check
+│   │   ├── services/
+│   │   │   ├── building_query.py         # DB query helpers for buildings
+│   │   │   ├── solar_query.py            # DB query helpers for solar data
+│   │   │   ├── precinct_query.py         # DB query helpers for precincts
+│   │   │   ├── yield_calc.py             # Monthly kWh calculation logic
+│   │   │   ├── shadow_impact.py          # Approximate rooftop shadow coverage
+│   │   │   ├── sun_position.py           # Solar altitude/azimuth maths
+│   │   │   ├── geometry.py               # GeoJSON / geometry utilities
+│   │   │   ├── solar_api.py              # Google Solar API client
+│   │   │   ├── ai_service.py             # Qwen tool-loop orchestration
+│   │   │   ├── ai_tools.py               # Tool definitions called by the LLM
+│   │   │   ├── ai_context.py             # Builds trusted building/precinct context
+│   │   │   ├── ai_prompts.py             # System prompts and persona templates
+│   │   │   ├── ai_history.py             # Chat history truncation
+│   │   │   ├── ai_safety.py              # Input/output safety scrubbing
+│   │   │   ├── ai_safety_lexicon.py      # Blocked terms and patterns
+│   │   │   └── ai_debug.py               # Verbose request/response tracing
+│   │   └── sql/                          # Raw parameterised SQL files
+│   ├── scripts/
+│   │   ├── batch_solar_fetch.py          # Pre-fetches Google Solar API for all buildings
+│   │   ├── reverse_geocode_addresses.py  # Populates solar_api_cache.address via Nominatim
+│   │   └── backfill_max_kwh.py           # Backfills max_panels_kwh_annual in the DB
+│   └── tests/
+│       ├── conftest.py                   # Shared fixtures (DB pool stub)
+│       ├── test_buildings.py
+│       ├── test_health.py
+│       ├── test_search.py
+│       ├── test_solar.py
+│       ├── test_sql_files.py             # Validates every .sql file's placeholders
+│       └── test_yield.py
 │
 └── Data wrangling/
     ├── build_geojson.py                  # Joins CSVs → combined-buildings.geojson
@@ -425,16 +469,16 @@ Interactive docs: `/api/v1/docs`
 | Endpoint | Description |
 |---|---|
 | `GET /health` | Liveness + DB readiness check |
+| `GET /buildings/stats` | Aggregate solar statistics across all buildings |
 | `GET /buildings/search?q=` | Address autocomplete (up to 20 results) |
 | `GET /buildings/by-structure/{id}/address` | Street address by structure_id |
-| `GET /buildings/structure/{id}/yield` | Monthly + annual kWh, solar_score_avg |
-| `GET /buildings/{id}/solar` | Solar cache data (panels, usable area, kWh, address) |
-| `GET /buildings/{id}` | Full building record (geometry, height, roof type, solar) |
+| `GET /buildings/by-structure/{id}/shadow-impact` | Estimated rooftop shadow coverage at a given date and time |
+| `GET /buildings/structure/{id}/solar` | Solar cache data (panels, usable area, kWh, address) |
+| `GET /buildings/structure/{id}/yield` | Monthly + annual kWh estimate, solar_score_avg |
 | `GET /precincts` | List of precincts with installed/potential capacity and adoption gap |
-| `GET /sun/position` | Sun altitude and azimuth for a given date/time |
-| `GET /sun/path` | Full day arc of sun positions |
-| `POST /ai/chat` | AI Solar Assistant — streaming chat with trusted building/precinct context |
-| `POST /ai/report` | AI-generated solar summary report for a selected building |
+| `GET /sun/path` | Full day arc of sun positions (25 samples, 6:00–18:00) |
+| `POST /ai/chat` | AI Solar Assistant — chat with trusted building/precinct context |
+| `POST /ai/report` | AI-generated solar summary report for a selected building or precinct |
 
 ### Data sources
 
@@ -448,7 +492,8 @@ Interactive docs: `/api/v1/docs`
 | Installed solar capacity | [Clean Energy Regulator — PV Installation by Postcode (via APVI)](https://pv-map.apvi.org.au/historical) | CC BY 4.0 |
 | AI inference | [Alibaba Cloud DashScope — Qwen3.5-flash](https://dashscope.aliyuncs.com/compatible-mode/v1) — stateless, no data retained | Alibaba Cloud Service Terms |
 | Base map tiles | [CartoDB Light](https://carto.com/basemaps/) via OpenStreetMap | ODbL |
-| Reverse geocoding | [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org/) — offline script only | ODbL |
+| Reverse geocoding | [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org/) | ODbL |
+| AI Solar Assistant | [Alibaba Cloud DashScope — Qwen LLM](https://dashscope.aliyuncs.com/) | Alibaba Cloud ToS |
 
 ### Solar yield formula
 
