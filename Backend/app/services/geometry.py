@@ -3,8 +3,7 @@ Polygon geometry helpers.
 
 The DB stores `buildings.geo_shape` as a GeoJSON Polygon string (no PostGIS).
 We need:
-  1. The 2D footprint area in square metres — used by /buildings/{id} and as
-     the basis for /yield's energy estimate.
+  1. The 2D footprint area in square metres — used as the basis for the /yield energy estimate.
   2. The parsed GeoJSON object — handed back to the frontend as-is so MapLibre
      can render it.
 

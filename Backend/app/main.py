@@ -34,7 +34,6 @@ from .routers import (
     health,
     precincts,
     solar,
-    solar_cache,
     sun,
     yield_engine,
 )
@@ -116,7 +115,6 @@ def create_app() -> FastAPI:
     app.include_router(buildings.router, prefix=API_PREFIX)
     app.include_router(yield_engine.router, prefix=API_PREFIX)
     app.include_router(solar.router, prefix=API_PREFIX)
-    app.include_router(solar_cache.router, prefix=API_PREFIX)
     app.include_router(sun.router, prefix=API_PREFIX)
     app.include_router(precincts.router, prefix=API_PREFIX)
     app.include_router(ai.router, prefix=API_PREFIX)
