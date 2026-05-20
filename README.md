@@ -2,7 +2,7 @@
 
 > An interactive 3D map that shows the rooftop solar potential of every building in Melbourne's CBD. Find out how much solar energy a building can generate, compare buildings side-by-side, and explore which precincts have the most untapped solar opportunity.
 
-**Live site:** http://3dsolarcbd.me/  
+**Live site:** http://3dsolarcbd.me  
 **Access code:** `tp06888`  
 **E-Portfolio:** https://bit.ly/SolarMapTP06
 
@@ -344,7 +344,6 @@ Create `Frontend/.env`:
 VITE_API_BASE_URL=http://<ec2-ip>/api/v1
 VITE_GEOJSON_URL=http://<ec2-ip>/combined-buildings.geojson
 VITE_PRECINCTS_URL=http://<ec2-ip>/melbourne_cbd_precincts.geojson
-VITE_SOLAR_API_KEY=<your-google-solar-api-key>
 ```
 
 In production these are set in `Frontend/.env.production` using relative paths so nginx serves them same-origin.
@@ -352,7 +351,7 @@ In production these are set in `Frontend/.env.production` using relative paths s
 ### Run the backend locally
 
 ```bash
-cd Backend/api
+cd Backend
 
 # Create and activate virtualenv
 python -m venv .venv
@@ -456,20 +455,10 @@ npm run build
 │       ├── test_sql_files.py             # Validates every .sql file's placeholders
 │       └── test_yield.py
 │
-├── Data wrangling/
-│   ├── MelSolar.py                       # Raw shapefile → cleaned CSVs
-│   ├── build_geojson.py                  # Joins CSVs → combined-buildings.geojson
-│   ├── precincts.py                      # Builds melbourne_cbd_precincts GeoJSON + CSV
-│   ├── solar score.py                    # Derives solar_score_avg from patch ratings
-│   ├── buildings.csv                     # Cleaned building footprint data
-│   ├── rooftop_solar.csv                 # Cleaned rooftop solar survey data
-│   ├── melbourne_cbd_precincts.csv       # Precinct boundaries and capacity data
-│   ├── Postcode capacity.csv             # APVI installed solar capacity by postcode
-│   └── green roof solar data/            # Raw City of Melbourne rooftop shapefile
-│       ├── mga55_gda95_green_roof_solar.shp
-│       ├── mga55_gda95_green_roof_solar.dbf
-│       ├── mga55_gda95_green_roof_solar.shx
-│       └── mga55_gda95_green_roof_solar.prj
+└── Data wrangling/
+    ├── build_geojson.py                  # Joins CSVs → combined-buildings.geojson
+    ├── MelSolar.py                       # Raw shapefile → cleaned CSVs
+    └── precincts.py                      # Suburb aggregates + CER capacity → precincts CSV/GeoJSON
 ```
 
 ### Backend API reference
@@ -495,12 +484,13 @@ Interactive docs: `/api/v1/docs`
 
 | Dataset | Source | Licence |
 |---|---|---|
-| Building footprints | [City of Melbourne — 2023 Building Footprints](https://data.melbourne.vic.gov.au/explore/dataset/building-footprints) | CC BY 4.0 |
-| Rooftop solar survey | [City of Melbourne — Rooftops with Environmental Retrofitting Opportunities](https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/) | CC BY 4.0 |
-| Suburb boundaries | [ABS — ASGS Edition 3 Digital Boundary Files](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files) | ABS data licence |
-| Per-building solar data | [Google Solar API](https://developers.google.com/maps/documentation/solar) — pre-fetched and cached | Google Maps Platform ToS |
+| Building footprints | [City of Melbourne — 2023 Building Footprints](https://data.melbourne.vic.gov.au/explore/dataset/2023-building-footprints/) | CC BY 4.0 |
+| Rooftop solar survey | [City of Melbourne — Rooftop Project (Green Roof Solar Shapefile)](https://data.melbourne.vic.gov.au/explore/dataset/rooftops-with-environmental-retrofitting-opportunities-rooftop-project/information/) | CC BY 4.0 |
+| Suburb boundaries | [ABS — ASGS Edition 3 SAL 2021 Digital Boundary Files](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files) | CC BY 4.0 |
+| Per-building solar data | [Google Solar API — Building Insights Endpoint](https://developers.google.com/maps/documentation/solar) — pre-fetched and cached | Google Maps Platform ToS |
 | Monthly PSH | [NASA POWER Data Access Viewer](https://power.larc.nasa.gov/data-access-viewer/) (2001–2020 climatology), calibrated to [BOM station 086338](https://www.bom.gov.au/jsp/ncc/cdio/weatherData/av?p_nccObsCode=203&p_display_type=dataFile&p_startYear=&p_c=&p_stn_num=086338) (4.1 PSH/day) | Public domain |
-| Installed solar capacity | [APVI Solar Map](https://pv-map.apvi.org.au/postcode) | APVI |
+| Installed solar capacity | [Clean Energy Regulator — PV Installation by Postcode (via APVI)](https://pv-map.apvi.org.au/historical) | CC BY 4.0 |
+| AI inference | [Alibaba Cloud DashScope — Qwen3.5-flash](https://dashscope.aliyuncs.com/compatible-mode/v1) — stateless, no data retained | Alibaba Cloud Service Terms |
 | Base map tiles | [CartoDB Light](https://carto.com/basemaps/) via OpenStreetMap | ODbL |
 | Reverse geocoding | [Nominatim / OpenStreetMap](https://nominatim.openstreetmap.org/) | ODbL |
 | AI Solar Assistant | [Alibaba Cloud DashScope — Qwen LLM](https://dashscope.aliyuncs.com/) | Alibaba Cloud ToS |
@@ -521,13 +511,19 @@ Monthly kWh uses per-month PSH values so `sum(kwh_monthly) == kwh_annual` exactl
 
 | Parameter | Value | Basis |
 |---|---|---|
-| Installation cost | $1,200 / kW ($1.20 / W) | Your Solar Quotes / Commercial Solar Guide, Apr 2024 |
-| Electricity tariff | $0.2575 / kWh | ESC Victorian Default Offer 2024–25, CitiPower zone |
-| System lifetime | 25 years | Standard warranty period |
+| Installation cost | $1.20 / W | Your Solar Quotes, Commercial Solar Guide (April 2024) |
+| Electricity tariff | $0.2575 / kWh | ESC, Victorian Default Offer 2024–25 (CitiPower zone, incl. GST) |
+| Panel efficiency | 20% | Industry standard |
+| Performance ratio | 75% | Industry standard |
+| Panel capacity | 400 W | Industry standard |
+| System lifetime | 25 years | Industry standard |
 
 **Environmental constants**
 
 | Parameter | Value | Source |
 |---|---|---|
-| Grid emission factor | 0.86 kg CO₂e / kWh | DCCEEW National Greenhouse Accounts Factors 2024, Victoria-specific |
-| CO₂ per tree per year | 21.77 kg | USDA / US Forest Service / EPA |
+| Grid emission factor | 0.86 kg CO₂e / kWh | DCCEEW National Greenhouse Accounts 2024 — Victoria-specific |
+| CO₂ per tree per year | 21.77 kg | USDA / US Forest Service / EPA (via Treewards) |
+| Petrol energy equivalent | 8.9 kWh / litre | Natural Resources Canada, Fuel Consumption Guide |
+| Average car emissions | 2,190 kg CO₂ / yr | 181 g/km × 12,100 km/yr (DCCEEW + ABS 2020) |
+| Vic. household consumption | 4,615 kWh / yr | AER, Residential Energy Consumption Benchmarks 2020 |

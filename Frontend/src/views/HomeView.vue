@@ -20,9 +20,9 @@
               generation, and support sustainable urban planning.
             </p>
             <div class="hero-actions">
-              <a class="btn-primary" href="#start-journey" aria-label="Start your personalised journey">
-                Start Your Journey →
-              </a>
+              <RouterLink class="btn-primary" to="/explore" aria-label="Directly explore 3D Explore">
+                Directly explore →
+              </RouterLink>
               <a class="btn-ghost" href="#features" aria-label="See platform features">See features</a>
             </div>
           </div>
@@ -130,7 +130,7 @@
             </div>
 
             <!-- Search field -->
-            <div class="search-area">
+            <div class="search-area" ref="ownerSearchAreaRef">
               <div style="position:relative">
                 <div class="search-field-wrap">
                   <svg class="search-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -314,7 +314,7 @@
             </div>
 
             <!-- Precinct + building search row -->
-            <div class="planner-controls">
+            <div class="planner-controls" ref="plannerControlsRef">
               <div class="planner-ctrl-group">
                 <label class="planner-ctrl-label" for="precinct-select">Browse by suburb</label>
                 <div class="select-wrap">
@@ -768,10 +768,21 @@ const ownerResultsRef   = ref(null)
 const plannerResultsRef = ref(null)
 const ownerStepBarRef   = ref(null)
 const plannerStepBarRef = ref(null)
+const ownerSearchAreaRef = ref(null)
+const plannerControlsRef = ref(null)
 
 function scrollToResults(stepBarRef) {
   nextTick(() => {
     stepBarRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function scrollToIdentityInput(id) {
+  const targetRef = id === 'owner' ? ownerSearchAreaRef : plannerControlsRef
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      targetRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
   })
 }
 
@@ -1610,9 +1621,7 @@ function selectIdentity(id) {
   plannerStep2Done.value = false
   plannerStep3Done.value = false
   if (id === 'planner') loadPrecinctList()
-  nextTick(() => {
-    document.getElementById('start-journey')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  })
+  scrollToIdentityInput(id)
 }
 
 // ── Property Owner: debounced search + result selection ──────────────────────

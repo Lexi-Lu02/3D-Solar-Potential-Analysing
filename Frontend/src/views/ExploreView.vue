@@ -893,7 +893,7 @@ const activeSolarFilter  = ref([])   // selected solar tier ids, e.g. ['very-hig
 
 // Whether the solar colour gradient / roof type effect are currently painted on the map.
 const solarPotentialColorOn = ref(true)
-const roofTypeEffectOn      = ref(true)
+const roofTypeEffectOn      = ref(false)
 
 // Toast notification state (the brief popup message).
 const toastMessage = ref('')
