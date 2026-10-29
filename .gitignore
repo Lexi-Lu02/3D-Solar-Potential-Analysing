@@ -37,6 +37,9 @@ Data wrangling/precincts_data/
 *.db
 Backend/api/scripts/addresses_cache.sqlite
 
+# Raw pg_dump is ~1.35 GiB; the repo tracks the .gz instead
+DataBase/*.sql
+
 # ── Build artefacts ───────────────────────────────────────────
 build/
 *.egg

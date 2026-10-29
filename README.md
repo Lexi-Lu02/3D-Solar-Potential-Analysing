@@ -369,6 +369,17 @@ uvicorn app.main:app --reload --port 8000
 # → Swagger docs: http://localhost:8000/api/v1/docs
 ```
 
+### Restore the database
+
+The full PostgreSQL dump ships compressed as `DataBase/melbourne_solar.sql.gz`
+(1.35 GiB → 78.9 MB). It requires PostgreSQL 16 with the PostGIS extension.
+
+```bash
+gunzip -c DataBase/melbourne_solar.sql.gz | psql -h localhost -U postgres -d melbourne_solar
+```
+
+The uncompressed `.sql` is git-ignored; `gunzip -k` it in place if you prefer a file-based import.
+
 ### Build for production
 
 ```bash
